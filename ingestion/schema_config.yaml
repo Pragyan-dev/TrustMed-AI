@@ -1,0 +1,129 @@
+# BioCypher Schema Configuration
+# Maps PostgreSQL tables (medicines, diseases, symptoms) to a knowledge graph schema
+
+# ============================================
+# NODE DEFINITIONS
+# ============================================
+
+Drug:
+  represented_as: node
+  label_in_input: medicines
+  preferred_id: drug_id
+  properties:
+    source_url:
+      type: string
+      description: "Original URL of the medical article or drug information page"
+    description:
+      type: string
+      description: "Full description of the drug including usage, dosage, and effects"
+    title:
+      type: string
+      description: "Name or title of the drug/medicine"
+    introduction:
+      type: string
+      description: "Introductory summary of the medicine"
+    primary_topic:
+      type: string
+      description: "Main category (e.g., Antibiotic, Analgesic, Vaccine)"
+    further_reading:
+      type: string
+      description: "References or related articles"
+
+Disease:
+  represented_as: node
+  label_in_input: diseases
+  preferred_id: disease_id
+  properties:
+    source_url:
+      type: string
+      description: "Primary source URL of the disease information"
+    description:
+      type: string
+      description: "General overview and background about the disease"
+    name:
+      type: string
+      description: "Name of the disease or condition"
+    causes:
+      type: string
+      description: "Underlying causes or contributing factors"
+    diagnosis:
+      type: string
+      description: "Information on how the disease is diagnosed"
+    prevention:
+      type: string
+      description: "Preventive measures or lifestyle tips"
+    treatment:
+      type: string
+      description: "Treatment methods, therapies, or medications"
+    living_with:
+      type: string
+      description: "Advice for managing or living with the condition"
+    questions_to_ask:
+      type: string
+      description: "Common patient questions for healthcare providers"
+    resources:
+      type: string
+      description: "External references for further reading"
+
+Symptom:
+  represented_as: node
+  label_in_input: symptoms
+  preferred_id: symptom_id
+  properties:
+    source_url:
+      type: string
+      description: "Source link to the medical content"
+    description:
+      type: string
+      description: "Detailed description of the symptom"
+    disease_name:
+      type: string
+      description: "Name of the associated disease or condition"
+    overview:
+      type: string
+      description: "Short summary of the symptom/condition"
+    causes:
+      type: string
+      description: "Known or suspected causes"
+    risk_factors:
+      type: string
+      description: "Factors that increase likelihood of occurrence"
+    complications:
+      type: string
+      description: "Possible health complications"
+
+# ============================================
+# RELATIONSHIP DEFINITIONS
+# ============================================
+
+TREATS:
+  represented_as: edge
+  label_in_input: drug_treats_disease
+  source: Drug
+  target: Disease
+  properties:
+    efficacy:
+      type: string
+      description: "Effectiveness of the drug for treating the disease"
+    dosage_info:
+      type: string
+      description: "Recommended dosage information"
+    side_effects:
+      type: string
+      description: "Known side effects when treating this disease"
+
+HAS_SYMPTOM:
+  represented_as: edge
+  label_in_input: disease_has_symptom
+  source: Disease
+  target: Symptom
+  properties:
+    severity:
+      type: string
+      description: "Typical severity of the symptom (mild, moderate, severe)"
+    frequency:
+      type: string
+      description: "How common the symptom is (common, occasional, rare)"
+    onset:
+      type: string
+      description: "When the symptom typically appears (early, late, variable)"

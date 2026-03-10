@@ -1,0 +1,184 @@
+/* ==========================================================================
+   Medical Term Highlighter – Click-to-Explain
+   ========================================================================== */
+
+.mth-wrapper {
+    position: relative;
+}
+
+/* ── Highlighted term ───────────────────────────────────────────────────── */
+.mth-term {
+    border-bottom: 1.5px dotted currentColor;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 2px;
+    padding: 0 1px;
+}
+
+/* Light theme (patient portal) */
+.pp .mth-term {
+    color: #2E7D52;
+    border-bottom-color: rgba(46, 125, 82, 0.4);
+}
+
+.pp .mth-term:hover {
+    color: #1B5E3A;
+    background: rgba(46, 125, 82, 0.08);
+    border-bottom-color: #2E7D52;
+}
+
+/* Light theme (clinician dashboard) */
+.cd .mth-term {
+    color: #2E7D52;
+    border-bottom-color: rgba(46, 125, 82, 0.4);
+}
+
+.cd .mth-term:hover {
+    background: rgba(46, 125, 82, 0.08);
+    border-bottom-color: #2E7D52;
+}
+
+/* ── Popover ────────────────────────────────────────────────────────────── */
+.mth-popover {
+    position: fixed;
+    width: 300px;
+    z-index: 1000;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.1);
+    animation: mthFadeIn 0.18s ease-out;
+}
+
+/* Light theme popover */
+.pp .mth-popover {
+    background: #ffffff;
+    border: 1px solid rgba(46, 125, 82, 0.15);
+}
+
+/* Light theme popover (clinician) */
+.cd .mth-popover {
+    background: #ffffff;
+    border: 1px solid rgba(46, 125, 82, 0.15);
+}
+
+@keyframes mthFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.mth-popover__header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 0.85rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.pp .mth-popover__header {
+    background: #F2FAF4;
+    color: #2E7D52;
+    border-bottom: 1px solid rgba(46, 125, 82, 0.1);
+}
+
+.cd .mth-popover__header {
+    background: #F2FAF4;
+    color: #2E7D52;
+    border-bottom: 1px solid rgba(46, 125, 82, 0.1);
+}
+
+.mth-popover__term {
+    flex: 1;
+    text-transform: capitalize;
+}
+
+.mth-popover__close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px;
+    display: flex;
+    opacity: 0.6;
+    color: inherit;
+}
+
+.mth-popover__close:hover {
+    opacity: 1;
+}
+
+.mth-popover__body {
+    padding: 0.75rem 0.85rem;
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
+.pp .mth-popover__body {
+    color: #2D3436;
+}
+
+.cd .mth-popover__body {
+    color: #2D3436;
+}
+
+.mth-popover__body p {
+    margin: 0;
+}
+
+.mth-popover__loading {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+}
+
+.pp .mth-popover__loading {
+    color: #636E72;
+}
+
+.cd .mth-popover__loading {
+    color: #636E72;
+}
+
+@keyframes mthSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.mth-spin {
+    animation: mthSpin 1s linear infinite;
+}
+
+/* ── Toggle button (clinician view) ─────────────────────────────────────── */
+.mth-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 8px;
+    border: 1px solid rgba(46, 125, 82, 0.15);
+    background: transparent;
+    color: #6B7280;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.mth-toggle:hover {
+    border-color: rgba(46, 125, 82, 0.3);
+    color: #374151;
+}
+
+.mth-toggle.active {
+    border-color: rgba(46, 125, 82, 0.3);
+    background: rgba(46, 125, 82, 0.08);
+    color: #2E7D52;
+}

@@ -1,0 +1,634 @@
+"""
+TrustMed AI - FastAPI Backend
+Modern REST API wrapping the TrustMed Brain orchestrator.
+Persistent chat history + multi-session support.
+"""
+
+import os
+import sys
+import json
+import asyncio
+import uuid
+import time
+from typing import Optional, List, Dict
+from pathlib import Path
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+# Add project root to path
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
+
+from src.trustmed_brain import ask_trustmed, ask_trustmed_streaming, ask_trustmed_direct, generate_soap_note
+import traceback
+from src.vision_agent import get_vision_cache_stats, clear_vision_cache
+from src.graph_visualizer import get_graph_json
+from src.subfigure_detector import detect_compound_figure, split_compound_figure
+from src.patient_context_tool import get_patient_data_json
+
+app = FastAPI(
+    title="TrustMed AI API",
+    description="Clinical Decision Support API",
+    version="2.0.0"
+)
+
+# CORS for frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# =============================================================================
+# Persistent Chat History
+# =============================================================================
+
+HISTORY_DIR = os.path.join(PROJECT_ROOT, "chat_history")
+UPLOADS_DIR = os.path.join(PROJECT_ROOT, "uploads")
+
+
+def _ensure_dirs():
+    """Create storage directories if they don't exist."""
+    os.makedirs(HISTORY_DIR, exist_ok=True)
+    os.makedirs(UPLOADS_DIR, exist_ok=True)
+
+# Serve uploaded images so they're accessible by URL in session history
+_ensure_dirs()
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
+
+
+def _image_url(abs_path: str) -> Optional[str]:
+    """Convert an absolute upload path to a serveable /uploads/... URL."""
+    if not abs_path:
+        return None
+    filename = os.path.basename(abs_path)
+    candidate = os.path.join(UPLOADS_DIR, filename)
+    if os.path.exists(candidate):
+        return f"/uploads/{filename}"
+    return None
+
+
+def _session_path(session_id: str) -> str:
+    """Get the JSON file path for a session."""
+    safe_id = session_id.replace("/", "_").replace("\\", "_")
+    return os.path.join(HISTORY_DIR, f"{safe_id}.json")
+
+
+def _load_session(session_id: str) -> dict:
+    """Load a session from disk. Returns default if not found."""
+    path = _session_path(session_id)
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            return json.load(f)
+    return {
+        "id": session_id,
+        "title": "New chat",
+        "created_at": time.time(),
+        "updated_at": time.time(),
+        "messages": []
+    }
+
+
+def _save_session(session_id: str, data: dict):
+    """Save a session to disk."""
+    _ensure_dirs()
+    data["updated_at"] = time.time()
+    path = _session_path(session_id)
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
+
+
+def _delete_session(session_id: str):
+    """Delete a session file from disk."""
+    path = _session_path(session_id)
+    if os.path.exists(path):
+        os.remove(path)
+
+
+def _list_all_sessions() -> List[dict]:
+    """List all saved sessions, sorted by most recent first."""
+    _ensure_dirs()
+    sessions = []
+    for filename in os.listdir(HISTORY_DIR):
+        if filename.endswith(".json"):
+            filepath = os.path.join(HISTORY_DIR, filename)
+            try:
+                with open(filepath, "r") as f:
+                    data = json.load(f)
+                sessions.append({
+                    "id": data.get("id", filename.replace(".json", "")),
+                    "title": data.get("title", "Untitled"),
+                    "message_count": len(data.get("messages", [])),
+                    "updated_at": data.get("updated_at", 0),
+                    "created_at": data.get("created_at", 0),
+                    "source": data.get("source", "clinician"),
+                })
+            except (json.JSONDecodeError, IOError):
+                continue
+    # Most recent first
+    sessions.sort(key=lambda s: s["updated_at"], reverse=True)
+    return sessions
+
+
+def _auto_title(message: str) -> str:
+    """Generate a short title from the first user message."""
+    title = message.strip()
+    # Remove image attachment tags
+    if "[ATTACHMENT:" in title:
+        import re
+        title = re.sub(r'\s*\[ATTACHMENT:.*?\]', '', title).strip()
+    if not title:
+        return "Image analysis"
+    # Truncate to ~50 chars at a word boundary
+    if len(title) > 50:
+        title = title[:50].rsplit(" ", 1)[0] + "..."
+    return title
+
+
+# =============================================================================
+# Pydantic Models
+# =============================================================================
+
+class ChatRequest(BaseModel):
+    message: str
+    session_id: str = "default"
+    image_path: Optional[str] = None
+    temperature: Optional[float] = None  # 0.0–1.0, overrides default
+    model: Optional[str] = None          # OpenRouter model ID override
+    vision_model: Optional[str] = None   # Vision model ID override
+
+
+class ChatResponse(BaseModel):
+    response: str
+    session_id: str
+    title: str
+
+
+class SOAPRequest(BaseModel):
+    session_id: str = "default"
+
+
+class RenameRequest(BaseModel):
+    session_id: str
+    title: str
+
+
+class DetectPanelsRequest(BaseModel):
+    image_path: str
+
+
+# =============================================================================
+# Endpoints
+# =============================================================================
+
+@app.get("/")
+async def root():
+    return {"message": "TrustMed AI API is running", "version": "2.0.0"}
+
+
+@app.get("/vision-cache")
+async def vision_cache_stats():
+    """Get vision result cache statistics."""
+    return get_vision_cache_stats()
+
+
+@app.post("/vision-cache/clear")
+async def vision_cache_clear():
+    """Clear the vision result cache."""
+    clear_vision_cache()
+    return {"message": "Vision cache cleared"}
+
+
+async def _stream_chat(request: ChatRequest):
+    """SSE generator that streams pipeline progress + LLM tokens."""
+    session_id = request.session_id
+    session = _load_session(session_id)
+    history = session["messages"]
+
+    query = request.message
+    if request.image_path and os.path.exists(request.image_path):
+        query += f" [ATTACHMENT: {request.image_path}]"
+
+    final_response = ""
+    try:
+        async for event in ask_trustmed_streaming(
+            query, history,
+            temperature=request.temperature,
+            model=request.model,
+            vision_model=request.vision_model
+        ):
+            if event["type"] == "done":
+                final_response = event.get("final_response", "")
+                # Save session history (include image URL if present)
+                user_entry = {"role": "user", "content": request.message}
+                img_url = _image_url(request.image_path)
+                if img_url:
+                    user_entry["image"] = img_url
+                history.append(user_entry)
+                history.append({"role": "assistant", "content": final_response})
+                if session["title"] == "New chat" and request.message.strip():
+                    session["title"] = _auto_title(request.message)
+                _save_session(session_id, session)
+                # Send done with session metadata
+                done_event = {
+                    "type": "done",
+                    "session_id": session_id,
+                    "title": session["title"],
+                    "final_response": final_response
+                }
+                yield f"data: {json.dumps(done_event)}\n\n"
+            else:
+                yield f"data: {json.dumps(event)}\n\n"
+    except Exception as e:
+        yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+
+@app.post("/chat/stream")
+async def chat_stream(request: ChatRequest):
+    """Streaming chat endpoint — returns SSE events."""
+    return StreamingResponse(
+        _stream_chat(request),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest):
+    """
+    Send a message and get an AI response.
+    History is persisted to disk per session.
+    """
+    session_id = request.session_id
+    session = _load_session(session_id)
+    history = session["messages"]
+
+    # Build query with image attachment if present
+    query = request.message
+    if request.image_path and os.path.exists(request.image_path):
+        query += f" [ATTACHMENT: {request.image_path}]"
+
+    # Call TrustMed Brain (already async)
+    try:
+        response = await ask_trustmed(query, history, temperature=request.temperature, model=request.model, vision_model=request.vision_model)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # Update history (include image URL if present)
+    user_entry = {"role": "user", "content": request.message}
+    img_url = _image_url(request.image_path)
+    if img_url:
+        user_entry["image"] = img_url
+    history.append(user_entry)
+    history.append({"role": "assistant", "content": response})
+
+    # Auto-title from first user message
+    if session["title"] == "New chat" and request.message.strip():
+        session["title"] = _auto_title(request.message)
+
+    # Keep last 50 messages (25 exchanges) for context
+    if len(history) > 50:
+        session["messages"] = history[-50:]
+
+    # Persist to disk
+    _save_session(session_id, session)
+
+    return ChatResponse(
+        response=response,
+        session_id=session_id,
+        title=session["title"]
+    )
+
+
+@app.post("/upload-image")
+async def upload_image(file: UploadFile = File(...)):
+    """
+    Upload an image for analysis.
+    Uses unique filenames to prevent race conditions.
+    """
+    _ensure_dirs()
+
+    # Generate unique filename
+    ext = os.path.splitext(file.filename or "image.jpg")[1] or ".jpg"
+    unique_name = f"scan_{uuid.uuid4().hex[:12]}{ext}"
+    save_path = os.path.join(UPLOADS_DIR, unique_name)
+
+    try:
+        content = await file.read()
+        with open(save_path, "wb") as f:
+            f.write(content)
+        return {"path": save_path, "filename": file.filename}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/soap-note")
+async def soap_note(request: SOAPRequest):
+    """
+    Generate a structured SOAP note from the current session.
+    Returns JSON with subjective, objective, assessment, plan sections.
+    """
+    session = _load_session(request.session_id)
+    history = session["messages"]
+
+    if not history:
+        raise HTTPException(status_code=400, detail="No conversation history found")
+
+    try:
+        note = await asyncio.to_thread(generate_soap_note, history, "N/A", "N/A")
+        if "error" in note:
+            raise HTTPException(status_code=400, detail=note["error"])
+        return note
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/patient/{patient_id}")
+async def get_patient(patient_id: str):
+    """
+    Get structured patient data (vitals, diagnoses, medications) from MIMIC DB.
+    """
+    try:
+        data = await asyncio.to_thread(get_patient_data_json, patient_id)
+        if not data.get("vitals") and not data.get("diagnoses") and not data.get("medications"):
+            raise HTTPException(status_code=404, detail=f"No data found for patient {patient_id}")
+        return data
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/clear-session")
+async def clear_session(session_id: str = "default"):
+    """
+    Delete a chat session from disk (legacy endpoint).
+    """
+    _delete_session(session_id)
+    return {"message": "Session cleared", "session_id": session_id}
+
+
+@app.delete("/sessions/{session_id}")
+async def delete_session(session_id: str):
+    """
+    Delete a chat session by ID.
+    """
+    _delete_session(session_id)
+    return {"message": "Session deleted", "session_id": session_id}
+
+
+@app.get("/sessions")
+async def list_sessions(source: str = None):
+    """
+    List all saved sessions with metadata, optionally filtered by source.
+    """
+    all_sessions = _list_all_sessions()
+    if source:
+        all_sessions = [s for s in all_sessions if s.get("source") == source]
+    return {"sessions": all_sessions}
+
+
+@app.get("/sessions/{session_id}")
+async def get_session(session_id: str):
+    """
+    Get full message history for a session.
+    """
+    session = _load_session(session_id)
+    return session
+
+
+@app.post("/sessions/rename")
+async def rename_session(request: RenameRequest):
+    """
+    Rename a chat session.
+    """
+    session = _load_session(request.session_id)
+    session["title"] = request.title
+    _save_session(request.session_id, session)
+    return {"message": "Session renamed", "title": request.title}
+
+
+@app.post("/sessions/new")
+async def create_session(source: str = "clinician"):
+    """
+    Create a new empty session and return its ID.
+    """
+    session_id = uuid.uuid4().hex[:16]
+    session = {
+        "id": session_id,
+        "title": "New chat",
+        "created_at": time.time(),
+        "updated_at": time.time(),
+        "messages": [],
+        "source": source
+    }
+    _save_session(session_id, session)
+    return session
+
+
+# =============================================================================
+# Knowledge Graph & Panel Detection Endpoints
+# =============================================================================
+
+PANELS_DIR = os.path.join(UPLOADS_DIR, "panels")
+
+
+def _get_graph_data(search_term: str, patient_id: str = None) -> dict:
+    """Fetch graph data from Neo4j as plain JSON."""
+    try:
+        from src.graph_visualizer import get_graph_json
+        return get_graph_json(search_term, patient_id)
+    except Exception as e:
+        print(f"Graph query error: {e}")
+        return {"nodes": [], "edges": [], "stats": {}}
+
+
+@app.get("/graph")
+async def get_graph(search_term: str = Query(..., min_length=2), patient_id: str = None):
+    """
+    Get knowledge graph data for a search term.
+    Returns nodes and edges as plain JSON for frontend rendering.
+    """
+    try:
+        data = await asyncio.to_thread(_get_graph_data, search_term, patient_id)
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/detect-panels")
+async def detect_panels(request: DetectPanelsRequest):
+    """
+    Detect if an image is a compound figure and split into panels.
+    Saves each panel as a separate PNG in uploads/panels/.
+    """
+    image_path = request.image_path
+    if not os.path.exists(image_path):
+        raise HTTPException(status_code=404, detail="Image file not found")
+
+    try:
+        # Run detection in thread (OpenCV is CPU-bound)
+        analysis = await asyncio.to_thread(detect_compound_figure, image_path)
+
+        result = {
+            "is_compound": analysis.is_compound,
+            "confidence": round(analysis.confidence, 3),
+            "num_panels": analysis.num_panels,
+            "layout": analysis.layout.value if analysis.layout else "single",
+            "grid_structure": analysis.grid_structure,
+            "panels": []
+        }
+
+        if analysis.is_compound:
+            # Split and save each panel
+            os.makedirs(PANELS_DIR, exist_ok=True)
+            subfigures = await asyncio.to_thread(split_compound_figure, image_path)
+
+            for sf in subfigures:
+                panel_filename = f"panel_{uuid.uuid4().hex[:8]}_{sf.panel_id}.png"
+                panel_path = os.path.join(PANELS_DIR, panel_filename)
+                sf.image.save(panel_path)
+
+                result["panels"].append({
+                    "panel_id": sf.panel_id,
+                    "label": sf.label or sf.panel_id,
+                    "image_url": f"/panels/{panel_filename}",
+                    "bbox": {
+                        "x1": sf.bbox.x1, "y1": sf.bbox.y1,
+                        "x2": sf.bbox.x2, "y2": sf.bbox.y2,
+                        "width": sf.bbox.width, "height": sf.bbox.height
+                    },
+                    "grid_position": list(sf.grid_position),
+                    "confidence": round(sf.confidence, 3)
+                })
+
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/panels/{filename}")
+async def serve_panel(filename: str):
+    """Serve a split panel image."""
+    filepath = os.path.join(PANELS_DIR, filename)
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="Panel image not found")
+    return FileResponse(filepath, media_type="image/png")
+
+
+# =============================================================================
+# Patient Portal Endpoints
+# =============================================================================
+
+# In-memory cache for term explanations (persists across requests)
+_term_cache: Dict[str, str] = {}
+
+PATIENT_SUMMARY_PROMPT = """You are a friendly medical assistant explaining health information to a patient.
+Translate all clinical terms to plain English. Use an 8th-grade reading level.
+Be warm, clear, and reassuring. Do not diagnose or give medical advice — just explain what the existing data means.
+
+Given the following patient clinical data, return a JSON object with exactly these keys:
+- "summary": A 2-3 sentence overview of the patient's current health status in plain language.
+- "vitals_explanation": Explain what each vital sign means and whether it's in a healthy range. Be reassuring.
+- "medications_explanation": For each medication, explain what it's for in simple terms.
+- "next_steps": 2-3 practical next steps the patient should be aware of (follow-ups, things to watch for, etc.)
+
+Respond ONLY with valid JSON. No markdown, no code fences, no extra text.
+
+Patient Data:
+{patient_data}"""
+
+
+@app.post("/patient/{patient_id}/summary")
+async def patient_summary(patient_id: str):
+    """
+    Generate a plain-language health summary for a patient.
+    Uses the LLM to translate clinical data into patient-friendly explanations.
+    """
+    try:
+        # Get raw clinical data
+        patient_data = get_patient_data_json(patient_id)
+        if not patient_data or "error" in str(patient_data).lower():
+            raise HTTPException(status_code=404, detail="Patient not found")
+
+        # Format the data as a readable string for the LLM
+        data_str = json.dumps(patient_data, indent=2, default=str)
+
+        # Call the LLM via the existing ask_trustmed function
+        prompt = PATIENT_SUMMARY_PROMPT.format(patient_data=data_str)
+        response = await asyncio.to_thread(ask_trustmed, prompt)
+
+        # Try to parse as JSON; if it fails, wrap in a structured response
+        try:
+            # Strip markdown code fences if present
+            cleaned = response.strip()
+            if cleaned.startswith("```"):
+                cleaned = cleaned.split("\n", 1)[1]  # Remove first line
+                if cleaned.endswith("```"):
+                    cleaned = cleaned[:-3]
+                cleaned = cleaned.strip()
+            result = json.loads(cleaned)
+        except (json.JSONDecodeError, ValueError):
+            # LLM didn't return valid JSON — wrap the response
+            result = {
+                "summary": response[:500] if response else "Unable to generate summary.",
+                "vitals_explanation": "Please ask your care team about your vital signs.",
+                "medications_explanation": "Please review your medications with your care team.",
+                "next_steps": "Schedule a follow-up with your primary care provider."
+            }
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Summary generation failed: {str(e)}")
+
+
+EXPLAIN_TERM_PROMPT = """Explain the medical term "{term}" in plain English at an 8th-grade reading level.
+Keep it to 2-3 sentences. Be warm and reassuring. Do not give medical advice.
+Just explain what the term means in simple language a patient can understand."""
+
+
+@app.get("/explain-term")
+async def explain_term(term: str = Query(..., min_length=2, max_length=200)):
+    """
+    Explain a medical term in plain English using the LLM.
+    Responses are cached to avoid repeated API calls for the same term.
+    """
+    # Check cache first
+    cache_key = term.strip().lower()
+    if cache_key in _term_cache:
+        return {"term": term, "explanation": _term_cache[cache_key], "cached": True}
+
+    try:
+        prompt = EXPLAIN_TERM_PROMPT.format(term=term)
+        explanation = await ask_trustmed_direct(
+            prompt,
+            model="stepfun/step-3.5-flash:free"
+        )
+
+        # Cache the result
+        _term_cache[cache_key] = explanation
+
+        return {"term": term, "explanation": explanation, "cached": False}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to explain term: {str(e)}")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

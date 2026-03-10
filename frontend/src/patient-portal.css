@@ -1,0 +1,581 @@
+/* ==========================================================================
+   TrustMed AI – Patient Portal (Warm, Accessible Light Theme)
+   Friendly, no-jargon medical interface for patients
+   ========================================================================== */
+
+/* ── Page Container ─────────────────────────────────────────────────────── */
+.pp {
+    --pp-bg: #F7FAF8;
+    --pp-card: #ffffff;
+    --pp-border: rgba(46, 125, 82, 0.1);
+    --pp-text: #2D3436;
+    --pp-text-dim: #636E72;
+    --pp-text-muted: #B2BEC3;
+    --pp-green: #2E7D52;
+    --pp-green-light: #E8F5E9;
+    --pp-green-bg: #F2FAF4;
+    --pp-blue: #3B82F6;
+    --pp-blue-light: #EFF6FF;
+    --pp-yellow: #F59E0B;
+    --pp-yellow-light: #FFFBEB;
+    --pp-red: #EF4444;
+    --pp-red-light: #FEF2F2;
+    --pp-purple: #8B5CF6;
+    --pp-purple-light: #F5F3FF;
+
+    min-height: 100%;
+    background: var(--pp-bg);
+    color: var(--pp-text);
+    font-family: var(--font-body);
+}
+
+/* ── Section Grid ───────────────────────────────────────────────────────── */
+.pp-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    padding-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+    .pp-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.pp-full {
+    grid-column: 1 / -1;
+}
+
+/* ── Cards ──────────────────────────────────────────────────────────────── */
+.pp-card {
+    background: var(--pp-card);
+    border-radius: 16px;
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+}
+
+.pp-card__header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--pp-border);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.pp-card__icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pp-card__icon--green {
+    background: var(--pp-green-light);
+    color: var(--pp-green);
+}
+
+.pp-card__icon--blue {
+    background: var(--pp-blue-light);
+    color: var(--pp-blue);
+}
+
+.pp-card__icon--red {
+    background: var(--pp-red-light);
+    color: var(--pp-red);
+}
+
+.pp-card__icon--purple {
+    background: var(--pp-purple-light);
+    color: var(--pp-purple);
+}
+
+.pp-card__icon--yellow {
+    background: var(--pp-yellow-light);
+    color: var(--pp-yellow);
+}
+
+.pp-card__title {
+    font-family: var(--font-heading);
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--pp-text);
+}
+
+.pp-card__body {
+    padding: 1.25rem;
+}
+
+/* ── Patient Selector ───────────────────────────────────────────────────── */
+.pp-patient-bar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    background: var(--pp-card);
+    padding: 0.85rem 1.25rem;
+    border-radius: 14px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+}
+
+.pp-patient-bar label {
+    font-weight: 600;
+    color: var(--pp-text-dim);
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.pp-patient-bar select {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+    border: 2px solid var(--pp-border);
+    font-size: 0.9rem;
+    font-family: var(--font-body);
+    color: var(--pp-text);
+    background: var(--pp-bg);
+    outline: none;
+}
+
+.pp-patient-bar select:focus {
+    border-color: var(--pp-green);
+}
+
+/* ── Vitals Grid ────────────────────────────────────────────────────────── */
+.pp-vitals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 0.75rem;
+}
+
+.pp-vital {
+    padding: 0.85rem;
+    border-radius: 12px;
+    text-align: center;
+    border: 1px solid var(--pp-border);
+    background: var(--pp-bg);
+    transition: transform 0.2s;
+}
+
+.pp-vital:hover {
+    transform: translateY(-2px);
+}
+
+.pp-vital__icon {
+    margin-bottom: 0.3rem;
+}
+
+.pp-vital__value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    font-family: var(--font-heading);
+    line-height: 1.2;
+}
+
+.pp-vital__label {
+    font-size: 0.75rem;
+    color: var(--pp-text-dim);
+    margin-top: 0.15rem;
+}
+
+.pp-vital__unit {
+    font-size: 0.7rem;
+    color: var(--pp-text-muted);
+    font-weight: 400;
+}
+
+.pp-vital--normal .pp-vital__value {
+    color: var(--pp-green);
+}
+
+.pp-vital--warning .pp-vital__value {
+    color: var(--pp-yellow);
+}
+
+.pp-vital--danger .pp-vital__value {
+    color: var(--pp-red);
+}
+
+.pp-vital--normal {
+    border-color: rgba(46, 125, 82, 0.15);
+}
+
+.pp-vital--warning {
+    border-color: rgba(245, 158, 11, 0.2);
+    background: var(--pp-yellow-light);
+}
+
+.pp-vital--danger {
+    border-color: rgba(239, 68, 68, 0.2);
+    background: var(--pp-red-light);
+}
+
+/* ── Health Summary ─────────────────────────────────────────────────────── */
+.pp-diagnosis-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.pp-diagnosis {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    background: var(--pp-bg);
+    border: 1px solid var(--pp-border);
+}
+
+.pp-diagnosis__badge {
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+}
+
+.pp-diagnosis__badge--low {
+    background: var(--pp-green-light);
+    color: var(--pp-green);
+}
+
+.pp-diagnosis__badge--moderate {
+    background: var(--pp-yellow-light);
+    color: #B45309;
+}
+
+.pp-diagnosis__badge--high {
+    background: var(--pp-red-light);
+    color: var(--pp-red);
+}
+
+.pp-diagnosis__name {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.pp-diagnosis__desc {
+    font-size: 0.8rem;
+    color: var(--pp-text-dim);
+}
+
+/* ── Medications ────────────────────────────────────────────────────────── */
+.pp-med-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.pp-med {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    background: var(--pp-bg);
+    border: 1px solid var(--pp-border);
+}
+
+.pp-med__pill {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: var(--pp-green-light);
+    color: var(--pp-green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pp-med__info {
+    flex: 1;
+    min-width: 0;
+}
+
+.pp-med__name {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.pp-med__desc {
+    font-size: 0.78rem;
+    color: var(--pp-text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pp-med__check-btn {
+    padding: 0.35rem 0.7rem;
+    border-radius: 8px;
+    border: 1px solid var(--pp-border);
+    background: white;
+    color: var(--pp-green);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.pp-med__check-btn:hover {
+    background: var(--pp-green);
+    color: white;
+    border-color: var(--pp-green);
+}
+
+/* ── Imaging Results ────────────────────────────────────────────────────── */
+.pp-imaging-result {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    background: var(--pp-bg);
+    border: 1px solid var(--pp-border);
+    margin-bottom: 0.5rem;
+}
+
+.pp-imaging-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.pp-imaging-badge--normal {
+    background: var(--pp-green-light);
+    color: var(--pp-green);
+}
+
+.pp-imaging-badge--attention {
+    background: var(--pp-yellow-light);
+    color: #B45309;
+}
+
+.pp-imaging-badge--flagged {
+    background: var(--pp-red-light);
+    color: var(--pp-red);
+}
+
+.pp-imaging-text {
+    font-size: 0.85rem;
+    color: var(--pp-text);
+}
+
+/* ── Chat (Ask a Question) ──────────────────────────────────────────────── */
+.pp-chat {
+    display: flex;
+    flex-direction: column;
+    height: 360px;
+}
+
+.pp-chat__messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.75rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.pp-chat__msg {
+    max-width: 85%;
+    padding: 0.75rem 1rem;
+    border-radius: 14px;
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.pp-chat__msg--user {
+    align-self: flex-end;
+    background: var(--pp-green);
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.pp-chat__msg--assistant {
+    align-self: flex-start;
+    background: var(--pp-bg);
+    color: var(--pp-text);
+    border-bottom-left-radius: 4px;
+    border: 1px solid var(--pp-border);
+}
+
+.pp-chat__msg--assistant p {
+    margin: 0.3rem 0;
+}
+
+.pp-chat__msg--assistant ul {
+    padding-left: 1.2rem;
+    margin: 0.3rem 0;
+}
+
+.pp-chat__msg--assistant strong {
+    color: var(--pp-green);
+}
+
+.pp-chat__input-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.pp-chat__input {
+    flex: 1;
+    padding: 0.7rem 1rem;
+    border-radius: 12px;
+    border: 2px solid var(--pp-border);
+    font-size: 0.9rem;
+    font-family: var(--font-body);
+    outline: none;
+    color: var(--pp-text);
+}
+
+.pp-chat__input:focus {
+    border-color: var(--pp-green);
+}
+
+.pp-chat__input::placeholder {
+    color: var(--pp-text-muted);
+}
+
+.pp-chat__send {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    border: none;
+    background: var(--pp-green);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.pp-chat__send:hover {
+    background: #236B45;
+}
+
+.pp-chat__send:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.pp-chat__typing {
+    display: flex;
+    gap: 4px;
+    padding: 0.4rem 0;
+    align-self: flex-start;
+}
+
+.pp-chat__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--pp-green);
+    animation: ppBounce 1.4s infinite ease-in-out;
+}
+
+.pp-chat__dot:nth-child(2) {
+    animation-delay: 0.16s;
+}
+
+.pp-chat__dot:nth-child(3) {
+    animation-delay: 0.32s;
+}
+
+@keyframes ppBounce {
+
+    0%,
+    80%,
+    100% {
+        transform: scale(0.6);
+        opacity: 0.4;
+    }
+
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* ── Care Plan ──────────────────────────────────────────────────────────── */
+.pp-care-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.pp-care-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    background: var(--pp-bg);
+    border: 1px solid var(--pp-border);
+}
+
+.pp-care-item__icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.pp-care-item__text {
+    flex: 1;
+}
+
+.pp-care-item__title {
+    font-weight: 600;
+    font-size: 0.88rem;
+    margin-bottom: 0.15rem;
+}
+
+.pp-care-item__detail {
+    font-size: 0.8rem;
+    color: var(--pp-text-dim);
+    line-height: 1.4;
+}
+
+/* ── Empty state ────────────────────────────────────────────────────────── */
+.pp-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--pp-text-muted);
+}
+
+.pp-empty svg {
+    margin-bottom: 0.5rem;
+}
+
+.pp-empty p {
+    font-size: 0.85rem;
+}
+
+/* ── Spin ───────────────────────────────────────────────────────────────── */
+@keyframes ppSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.pp-spin {
+    animation: ppSpin 1s linear infinite;
+}

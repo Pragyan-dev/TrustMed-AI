@@ -1,0 +1,243 @@
+{
+  "timestamp": "2026-01-27 15:59:37",
+  "system_stats": {
+    "train_images": 1800,
+    "test_images": 200,
+    "chromadb_collections": {
+      "diseases": 1676,
+      "symptoms": 3920,
+      "medicines": 3867,
+      "medical_images": 1800
+    }
+  },
+  "visual_search": {
+    "total_queries": 20,
+    "modality_matches": 9,
+    "similarity_scores": [
+      0.9006611108779907,
+      0.8542967438697815,
+      0.8946830630302429,
+      0.7468833327293396,
+      0.8539026975631714,
+      0.8977158665657043,
+      0.8012022972106934,
+      0.7501389980316162,
+      0.8301920890808105,
+      0.6764451861381531,
+      0.8640864491462708,
+      0.8395813703536987,
+      0.7476558685302734,
+      0.7409651279449463,
+      0.8563043475151062,
+      0.8773525357246399,
+      0.7297645211219788,
+      0.9045853614807129,
+      0.8193660378456116,
+      0.9260492920875549
+    ],
+    "query_times": [
+      0.3324110507965088,
+      0.036940813064575195,
+      0.04555010795593262,
+      0.05425834655761719,
+      0.05669808387756348,
+      0.09161710739135742,
+      0.08968186378479004,
+      0.06820392608642578,
+      0.05983996391296387,
+      0.055812835693359375,
+      0.054711103439331055,
+      0.053800106048583984,
+      0.054991960525512695,
+      0.06957101821899414,
+      0.08217287063598633,
+      0.06727385520935059,
+      0.06196403503417969,
+      0.05842709541320801,
+      0.05127596855163574,
+      0.0511019229888916
+    ],
+    "top_k_results": [
+      {
+        "query": "test_1933.jpg",
+        "query_modality": "unknown",
+        "top_result": "roco_1156_jpg",
+        "top_similarity": 0.9006611108779907,
+        "retrieved_modality": "ct"
+      },
+      {
+        "query": "test_1927.jpg",
+        "query_modality": "ct",
+        "top_result": "roco_1078_jpg",
+        "top_similarity": 0.8542967438697815,
+        "retrieved_modality": "ct"
+      },
+      {
+        "query": "test_1847.jpg",
+        "query_modality": "unknown",
+        "top_result": "roco_0740_jpg",
+        "top_similarity": 0.8946830630302429,
+        "retrieved_modality": "mri"
+      },
+      {
+        "query": "test_1853.jpg",
+        "query_modality": "unknown",
+        "top_result": "roco_0485_jpg",
+        "top_similarity": 0.7468833327293396,
+        "retrieved_modality": "ct"
+      },
+      {
+        "query": "test_1884.jpg",
+        "query_modality": "xray",
+        "top_result": "roco_0960_jpg",
+        "top_similarity": 0.8539026975631714,
+        "retrieved_modality": "x-ray"
+      },
+      {
+        "query": "test_1890.jpg",
+        "query_modality": "ct",
+        "top_result": "roco_0402_jpg",
+        "top_similarity": 0.8977158665657043,
+        "retrieved_modality": "ct"
+      },
+      {
+        "query": "test_1891.jpg",
+        "query_modality": "unknown",
+        "top_result": "roco_0734_jpg",
+        "top_similarity": 0.8012022972106934,
+        "retrieved_modality": "ct"
+      },
+      {
+        "query": "test_1885.jpg",
+        "query_modality": "ct",
+        "top_result": "roco_1230_jpg",
+        "top_similarity": 0.7501389980316162,
+        "retrieved_modality": "ct"
+      },
+      {
+        "query": "test_1852.jpg",
+        "query_modality": "ultrasound",
+        "top_result": "roco_1310_jpg",
+        "top_similarity": 0.8301920890808105,
+        "retrieved_modality": "ct"
+      },
+      {
+        "query": "test_1846.jpg",
+        "query_modality": "ct",
+        "top_result": "roco_1007_jpg",
+        "top_similarity": 0.6764451861381531,
+        "retrieved_modality": "ct"
+      },
+      {
+        "query": "test_1926.jpg",
+        "query_modality": "mri",
+        "top_result": "roco_0695_jpg",
+        "top_similarity": 0.8640864491462708,
+        "retrieved_modality": "mri"
+      },
+      {
+        "query": "test_1932.jpg",
+        "query_modality": "ct",
+        "top_result": "roco_0580_jpg",
+        "top_similarity": 0.8395813703536987,
+        "retrieved_modality": "ct"
+      },
+      {
+        "query": "test_1918.jpg",
+        "query_modality": "ultrasound",
+        "top_result": "roco_0284_jpg",
+        "top_similarity": 0.7476558685302734,
+        "retrieved_modality": "medical"
+      },
+      {
+        "query": "test_1924.jpg",
+        "query_modality": "ct",
+        "top_result": "roco_0984_jpg",
+        "top_similarity": 0.7409651279449463,
+        "retrieved_modality": "ct"
+      },
+      {
+        "query": "test_1930.jpg",
+        "query_modality": "ct",
+        "top_result": "roco_1353_jpg",
+        "top_similarity": 0.8563043475151062,
+        "retrieved_modality": "ct"
+      },
+      {
+        "query": "test_1878.jpg",
+        "query_modality": "unknown",
+        "top_result": "roco_0006_jpg",
+        "top_similarity": 0.8773525357246399,
+        "retrieved_modality": "medical"
+      },
+      {
+        "query": "test_1850.jpg",
+        "query_modality": "ct",
+        "top_result": "roco_0403_jpg",
+        "top_similarity": 0.7297645211219788,
+        "retrieved_modality": "ct"
+      },
+      {
+        "query": "test_1844.jpg",
+        "query_modality": "xray",
+        "top_result": "roco_0960_jpg",
+        "top_similarity": 0.9045853614807129,
+        "retrieved_modality": "x-ray"
+      },
+      {
+        "query": "test_1893.jpg",
+        "query_modality": "mri",
+        "top_result": "roco_0932_jpg",
+        "top_similarity": 0.8193660378456116,
+        "retrieved_modality": "medical"
+      },
+      {
+        "query": "test_1887.jpg",
+        "query_modality": "ct",
+        "top_result": "roco_1454_jpg",
+        "top_similarity": 0.9260492920875549,
+        "retrieved_modality": "medical"
+      }
+    ],
+    "avg_similarity": 0.8255916148424148,
+    "avg_query_time_ms": 74.81520175933838,
+    "modality_match_rate": 0.45
+  },
+  "text_rag": {
+    "total_queries": 5,
+    "query_times": [
+      0.19953513145446777,
+      0.09780669212341309,
+      0.09842300415039062,
+      0.09906005859375,
+      0.09988212585449219
+    ],
+    "results_found": 5,
+    "collection_stats": {
+      "diseases": 1676,
+      "symptoms": 3920,
+      "medicines": 3867
+    },
+    "avg_query_time_ms": 118.94140243530273,
+    "retrieval_success_rate": 1.0
+  },
+  "vision_agent": {
+    "total_tests": 5,
+    "successful_analyses": 5,
+    "vision_found": 5,
+    "text_rag_found": 5,
+    "visual_rag_found": 5,
+    "processing_times": [
+      1.6593918800354004,
+      39.865886926651,
+      8.711721181869507,
+      58.745773792266846,
+      38.793612003326416
+    ],
+    "avg_processing_time": 29.555277156829835,
+    "success_rate": 1.0,
+    "vision_rate": 1.0,
+    "text_rag_rate": 1.0,
+    "visual_rag_rate": 1.0
+  }
+}

@@ -1,0 +1,932 @@
+{
+  "model": "MedGemma 27B (Vertex AI)",
+  "timestamp": "2026-03-10 15:38:36",
+  "num_samples": 46,
+  "metrics": {
+    "json_parse_rate": 1.0,
+    "modality_accuracy": 0.975,
+    "macro_f1": 0.3467191300357175,
+    "hallucination_rate": 0.6231884057971014,
+    "mean_latency_ms": 13551.958301792974,
+    "api_error_rate": 0.13043478260869565
+  },
+  "per_label": {
+    "Atelectasis": {
+      "sensitivity": 0.2,
+      "precision": 0.3333,
+      "f1": 0.25,
+      "tp": 2,
+      "fp": 4,
+      "fn": 8,
+      "tn": 26
+    },
+    "Cardiomegaly": {
+      "sensitivity": 0.2778,
+      "precision": 0.3125,
+      "f1": 0.2941,
+      "tp": 5,
+      "fp": 11,
+      "fn": 13,
+      "tn": 14
+    },
+    "Consolidation": {
+      "sensitivity": 0.2,
+      "precision": 0.2727,
+      "f1": 0.2308,
+      "tp": 3,
+      "fp": 8,
+      "fn": 12,
+      "tn": 23
+    },
+    "Edema": {
+      "sensitivity": 0.3333,
+      "precision": 0.4,
+      "f1": 0.3636,
+      "tp": 4,
+      "fp": 6,
+      "fn": 8,
+      "tn": 24
+    },
+    "Enlarged Cardiomediastinum": {
+      "sensitivity": 0.5714,
+      "precision": 0.1905,
+      "f1": 0.2857,
+      "tp": 4,
+      "fp": 17,
+      "fn": 3,
+      "tn": 17
+    },
+    "Fracture": {
+      "sensitivity": 0.25,
+      "precision": 0.4,
+      "f1": 0.3077,
+      "tp": 2,
+      "fp": 3,
+      "fn": 6,
+      "tn": 29
+    },
+    "Lung Lesion": {
+      "sensitivity": 0.0,
+      "precision": 0.0,
+      "f1": 0,
+      "tp": 0,
+      "fp": 4,
+      "fn": 5,
+      "tn": 33
+    },
+    "Lung Opacity": {
+      "sensitivity": 0.6667,
+      "precision": 0.5882,
+      "f1": 0.625,
+      "tp": 10,
+      "fp": 7,
+      "fn": 5,
+      "tn": 20
+    },
+    "No Finding": {
+      "sensitivity": 0.5,
+      "precision": 0.2,
+      "f1": 0.2857,
+      "tp": 2,
+      "fp": 8,
+      "fn": 2,
+      "tn": 28
+    },
+    "Pleural Effusion": {
+      "sensitivity": 0.7778,
+      "precision": 0.5,
+      "f1": 0.6087,
+      "tp": 14,
+      "fp": 14,
+      "fn": 4,
+      "tn": 11
+    },
+    "Pleural Other": {
+      "sensitivity": 0.4286,
+      "precision": 0.1111,
+      "f1": 0.1765,
+      "tp": 3,
+      "fp": 24,
+      "fn": 4,
+      "tn": 9
+    },
+    "Pneumonia": {
+      "sensitivity": 0.2857,
+      "precision": 0.4,
+      "f1": 0.3333,
+      "tp": 2,
+      "fp": 3,
+      "fn": 5,
+      "tn": 31
+    },
+    "Pneumothorax": {
+      "sensitivity": 0.6667,
+      "precision": 0.2353,
+      "f1": 0.3478,
+      "tp": 4,
+      "fp": 13,
+      "fn": 2,
+      "tn": 21
+    },
+    "Support Devices": {
+      "sensitivity": 0.7037,
+      "precision": 0.7917,
+      "f1": 0.7451,
+      "tp": 19,
+      "fp": 5,
+      "fn": 8,
+      "tn": 13
+    }
+  },
+  "per_sample": [
+    {
+      "image": "3b461f64-2f5355d4-51397f46-e2867a9b-a13790e5.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Pleural Effusion",
+        "Support Devices",
+        "Consolidation",
+        "Cardiomegaly"
+      ],
+      "detected_labels": [
+        "Consolidation",
+        "Enlarged Cardiomediastinum",
+        "Lung Opacity",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 29429.91805076599
+    },
+    {
+      "image": "828dd9de-ee245eb4-e8513715-9218b1f9-081a1742.jpg",
+      "status": "error",
+      "error": "MedGemma endpoint returned 400: {\"error\":{\"message\":\"cannot identify image file <_io.BytesIO object> cannot identify image file <_io.BytesIO object>\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}"
+    },
+    {
+      "image": "86d872e8-00b86ec3-29cc71d6-aaca7905-1999e9e3.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Enlarged Cardiomediastinum",
+        "Edema",
+        "Consolidation",
+        "Pleural Effusion"
+      ],
+      "detected_labels": [
+        "Enlarged Cardiomediastinum",
+        "No Finding",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Pneumothorax",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 13925.188064575195
+    },
+    {
+      "image": "0dca7720-300a8209-f74117f4-6df513ec-df54b630.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Edema",
+        "Pneumonia",
+        "Pleural Effusion",
+        "Support Devices",
+        "Consolidation"
+      ],
+      "detected_labels": [
+        "Lung Opacity",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Pneumonia",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 14231.44817352295
+    },
+    {
+      "image": "a6dd888d-49393401-1618537e-597f4395-4a913218.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Support Devices",
+        "Pneumothorax",
+        "Pleural Other"
+      ],
+      "detected_labels": [
+        "Cardiomegaly",
+        "Enlarged Cardiomediastinum",
+        "No Finding",
+        "Pneumothorax",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 13835.922002792358
+    },
+    {
+      "image": "3034dd36-7e10f4e0-a2b0ac75-368d0947-dcc93419.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Edema",
+        "Pleural Effusion",
+        "Atelectasis",
+        "Support Devices",
+        "Lung Opacity"
+      ],
+      "detected_labels": [
+        "Cardiomegaly",
+        "Consolidation",
+        "Edema",
+        "Enlarged Cardiomediastinum",
+        "Lung Opacity",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Pneumothorax",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 18233.43276977539
+    },
+    {
+      "image": "a88d7da8-f0b93f97-0136547b-78e70452-96abc57c.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Pleural Effusion",
+        "Pneumothorax"
+      ],
+      "detected_labels": [
+        "Atelectasis",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Pneumothorax",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 12889.340877532959
+    },
+    {
+      "image": "6e58e826-fc08e4ee-a9ff0245-34c6f4cd-cd0aedc8.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Edema",
+        "Pleural Effusion",
+        "Support Devices",
+        "Consolidation",
+        "Cardiomegaly"
+      ],
+      "detected_labels": [
+        "Cardiomegaly",
+        "Edema",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 13310.6050491333
+    },
+    {
+      "image": "0ee7dd74-6f9a43eb-fb1096c6-f762dc5c-a82fb623.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Pneumothorax",
+        "Pleural Effusion",
+        "Atelectasis",
+        "Cardiomegaly",
+        "Fracture"
+      ],
+      "detected_labels": [
+        "Fracture",
+        "Pneumothorax"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 12697.944641113281
+    },
+    {
+      "image": "eb4d5fb1-e0d7593f-e0a93f00-fe6e05b7-6fa1fe1e.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Edema",
+        "Pleural Effusion",
+        "Atelectasis",
+        "Lung Opacity",
+        "Cardiomegaly"
+      ],
+      "detected_labels": [
+        "Cardiomegaly",
+        "Consolidation",
+        "Enlarged Cardiomediastinum",
+        "Lung Lesion",
+        "Lung Opacity",
+        "Pleural Effusion",
+        "Pleural Other"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 16384.986877441406
+    },
+    {
+      "image": "00e1637f-c10eba07-3f2b1297-150861de-324ff211.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Support Devices",
+        "Pneumothorax",
+        "Cardiomegaly",
+        "Lung Opacity"
+      ],
+      "detected_labels": [
+        "Edema",
+        "Enlarged Cardiomediastinum",
+        "Lung Opacity",
+        "No Finding",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Pneumonia",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 16596.57096862793
+    },
+    {
+      "image": "5b05c3da-4f8f9c06-7b8c4faf-4c12d978-6cb22b83.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Support Devices",
+        "No Finding"
+      ],
+      "detected_labels": [
+        "Cardiomegaly",
+        "Edema",
+        "Enlarged Cardiomediastinum",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 16555.761337280273
+    },
+    {
+      "image": "d8d89fae-d828b540-932a2cde-971fb69b-1817ee7d.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "No Finding"
+      ],
+      "detected_labels": [
+        "Enlarged Cardiomediastinum",
+        "No Finding"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 10202.194929122925
+    },
+    {
+      "image": "1edaea22-f6c9cbad-c824fa0a-4b169775-dba21c77.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Pleural Effusion",
+        "Atelectasis",
+        "Pneumonia",
+        "Cardiomegaly"
+      ],
+      "detected_labels": [
+        "Consolidation",
+        "Lung Opacity",
+        "Pleural Effusion",
+        "Pleural Other"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 18073.587894439697
+    },
+    {
+      "image": "1617c7ef-e1a6c62a-bbdd1ca0-eae6d065-5dbe21f0.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Edema",
+        "Pleural Effusion",
+        "Atelectasis",
+        "Enlarged Cardiomediastinum",
+        "Cardiomegaly"
+      ],
+      "detected_labels": [
+        "Consolidation",
+        "Lung Opacity",
+        "Pleural Effusion",
+        "Pleural Other"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 15207.430839538574
+    },
+    {
+      "image": "989187e4-e88b4477-fda12c36-68ced994-cda88a83.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Pleural Effusion",
+        "Lung Opacity",
+        "Consolidation",
+        "Cardiomegaly",
+        "Fracture"
+      ],
+      "detected_labels": [
+        "Consolidation",
+        "Enlarged Cardiomediastinum",
+        "Lung Lesion",
+        "Lung Opacity",
+        "Pleural Effusion",
+        "Pleural Other"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 16589.48516845703
+    },
+    {
+      "image": "e7f2ad9b-a5698623-14f87c8b-47a99b0b-31959f7a.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Pneumonia",
+        "Pleural Other",
+        "Pleural Effusion",
+        "Support Devices",
+        "Lung Opacity"
+      ],
+      "detected_labels": [
+        "Cardiomegaly",
+        "Edema",
+        "Lung Opacity",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Pneumonia",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 15642.120122909546
+    },
+    {
+      "image": "713dc85f-bdb5e668-b8fe011f-e9da76e9-13d25b02.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Pleural Other",
+        "Fracture"
+      ],
+      "detected_labels": [],
+      "modality": "X-Ray",
+      "latency_ms": 16170.430898666382
+    },
+    {
+      "image": "e2e514a2-9cfa9f5f-0b329c8e-605beeb7-8e6e6df6.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Support Devices",
+        "Pleural Other",
+        "Lung Opacity"
+      ],
+      "detected_labels": [
+        "Lung Lesion",
+        "Lung Opacity"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 12639.085054397583
+    },
+    {
+      "image": "8d97a44d-3314e7ec-dc7b5056-16bcae79-3da7728e.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Enlarged Cardiomediastinum",
+        "Support Devices",
+        "Cardiomegaly"
+      ],
+      "detected_labels": [
+        "Cardiomegaly",
+        "Enlarged Cardiomediastinum",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 18780.8198928833
+    },
+    {
+      "image": "f0c72126-3684d883-c729f256-be214f93-8f4274d1.jpg",
+      "status": "error",
+      "error": "MedGemma endpoint returned 400: {\"error\":{\"message\":\"cannot identify image file <_io.BytesIO object> cannot identify image file <_io.BytesIO object>\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}"
+    },
+    {
+      "image": "581a33ce-5bd61881-2963542f-46481b71-4f98753d.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Support Devices",
+        "No Finding"
+      ],
+      "detected_labels": [
+        "Cardiomegaly",
+        "Edema",
+        "Lung Opacity",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Pneumonia",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 14948.928117752075
+    },
+    {
+      "image": "94e0c82e-67fc17e5-357fb801-f98830ac-3c4b9112.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Enlarged Cardiomediastinum",
+        "Support Devices",
+        "Atelectasis",
+        "Cardiomegaly"
+      ],
+      "detected_labels": [
+        "Atelectasis",
+        "Fracture",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Pneumothorax",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 13990.328073501587
+    },
+    {
+      "image": "4ce273d7-4dfdf94f-d1dfcfe8-c648efcd-29685a0f.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Support Devices",
+        "Cardiomegaly"
+      ],
+      "detected_labels": [
+        "Cardiomegaly",
+        "Consolidation",
+        "Edema",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 15281.615018844604
+    },
+    {
+      "image": "4f8e2082-8f7f61e7-4b8afdaa-db534fd6-c430f7bf.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Pneumothorax",
+        "Lung Opacity",
+        "Fracture"
+      ],
+      "detected_labels": [
+        "Atelectasis",
+        "Enlarged Cardiomediastinum",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Pneumothorax",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 18558.16102027893
+    },
+    {
+      "image": "c27a1062-28dd3d19-4ae26205-b69741bb-b479f705.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Edema"
+      ],
+      "detected_labels": [
+        "Cardiomegaly",
+        "Edema",
+        "Enlarged Cardiomediastinum",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 15549.324750900269
+    },
+    {
+      "image": "a3c243a7-bd476b04-fc184ec6-055534cc-a85b21ac.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Pneumonia",
+        "Support Devices",
+        "Consolidation"
+      ],
+      "detected_labels": [
+        "Cardiomegaly",
+        "Enlarged Cardiomediastinum",
+        "Fracture",
+        "Lung Opacity",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Pneumothorax",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 17533.477783203125
+    },
+    {
+      "image": "f39109b2-6d124d2c-a6b095f9-d291aa4e-91f61711.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "No Finding"
+      ],
+      "detected_labels": [
+        "Cardiomegaly",
+        "Consolidation",
+        "Enlarged Cardiomediastinum",
+        "No Finding",
+        "Pleural Effusion",
+        "Pneumothorax",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 9051.139831542969
+    },
+    {
+      "image": "bcedcb7a-8e94ccba-d0b7e97a-7f47b7f6-79cd079e.jpg",
+      "status": "error",
+      "error": "MedGemma returned empty content. Response: {\"error\": {\"message\": \"image file is truncated (3 bytes not processed)\", \"type\": \"InternalServerError\", \"param\": null, \"code\": 500}}"
+    },
+    {
+      "image": "668a4e09-8ed25f65-a2e29792-a4a586fb-690f9256.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Pleural Effusion",
+        "Pleural Other",
+        "Lung Opacity"
+      ],
+      "detected_labels": [
+        "Edema",
+        "Lung Lesion",
+        "Lung Opacity",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Pneumonia"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 15192.556858062744
+    },
+    {
+      "image": "99c4df69-48b61ad8-98109624-d1e0fd08-c740d59b.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Atelectasis",
+        "Cardiomegaly",
+        "Pleural Other"
+      ],
+      "detected_labels": [
+        "Cardiomegaly",
+        "Enlarged Cardiomediastinum",
+        "No Finding",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Pneumothorax"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 12891.642808914185
+    },
+    {
+      "image": "51bbacd3-3d9b84cc-b8a3684a-b028c924-aff52832.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Edema",
+        "Pleural Effusion",
+        "Support Devices",
+        "Lung Opacity",
+        "Fracture"
+      ],
+      "detected_labels": [
+        "Cardiomegaly",
+        "Edema",
+        "Lung Opacity",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 16797.746181488037
+    },
+    {
+      "image": "c96ddc88-a67be295-1f46fde1-bd2b2596-f3600914.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Support Devices",
+        "Atelectasis",
+        "Lung Opacity",
+        "Fracture"
+      ],
+      "detected_labels": [
+        "Fracture",
+        "Pneumothorax"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 11096.60005569458
+    },
+    {
+      "image": "c617f586-16e1c2e8-ad96224f-c8efc925-5a5e14dd.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Enlarged Cardiomediastinum"
+      ],
+      "detected_labels": [
+        "Enlarged Cardiomediastinum",
+        "No Finding",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Pneumothorax"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 8356.891870498657
+    },
+    {
+      "image": "6e58e826-fc08e4ee-a9ff0245-34c6f4cd-cd0aedc8.jpg",
+      "status": "error",
+      "error": "MedGemma endpoint returned 400: {\"error\":{\"message\":\"cannot identify image file <_io.BytesIO object> cannot identify image file <_io.BytesIO object>\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}"
+    },
+    {
+      "image": "03b7251c-babfcf9d-9bf50124-a37b688a-0bce9d90.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Support Devices",
+        "Pleural Other",
+        "Lung Opacity"
+      ],
+      "detected_labels": [],
+      "modality": "X-Ray",
+      "latency_ms": 12214.570045471191
+    },
+    {
+      "image": "a3c243a7-bd476b04-fc184ec6-055534cc-a85b21ac.jpg",
+      "status": "error",
+      "error": "MedGemma endpoint returned 400: {\"error\":{\"message\":\"cannot identify image file <_io.BytesIO object> cannot identify image file <_io.BytesIO object>\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}"
+    },
+    {
+      "image": "f0c72126-3684d883-c729f256-be214f93-8f4274d1.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Edema",
+        "Pleural Effusion",
+        "Support Devices",
+        "Lung Opacity",
+        "Consolidation",
+        "Cardiomegaly"
+      ],
+      "detected_labels": [
+        "Atelectasis",
+        "Consolidation",
+        "Enlarged Cardiomediastinum",
+        "Lung Opacity",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Pneumothorax",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 19235.249996185303
+    },
+    {
+      "image": "f2b3546e-2af2361a-b4f6d4e0-9de2128f-befc93d6.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Support Devices",
+        "Consolidation",
+        "Cardiomegaly"
+      ],
+      "detected_labels": [
+        "Atelectasis",
+        "Enlarged Cardiomediastinum",
+        "Fracture",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Pneumothorax",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 20520.532846450806
+    },
+    {
+      "image": "2295a1f1-f18de4aa-87c17dd1-c2ef3f47-824565ef.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Fracture"
+      ],
+      "detected_labels": [
+        "Cardiomegaly",
+        "No Finding"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 15245.811939239502
+    },
+    {
+      "image": "3b461f64-2f5355d4-51397f46-e2867a9b-a13790e5.jpg",
+      "status": "error",
+      "error": "MedGemma endpoint returned 400: {\"error\":{\"message\":\"cannot identify image file <_io.BytesIO object> cannot identify image file <_io.BytesIO object>\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}"
+    },
+    {
+      "image": "a8336caa-04cdadca-c35f9e4b-cd3eb906-9ed933ab.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Support Devices",
+        "Edema",
+        "Pneumonia",
+        "Cardiomegaly"
+      ],
+      "detected_labels": [
+        "Consolidation",
+        "Support Devices"
+      ],
+      "modality": "Skin Photo",
+      "latency_ms": 16706.48717880249
+    },
+    {
+      "image": "6bd4fb5d-7dcc4da2-bc7b8a8c-6a624c3c-c40ff7c0.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Support Devices",
+        "Atelectasis",
+        "Lung Lesion",
+        "Fracture"
+      ],
+      "detected_labels": [
+        "Atelectasis",
+        "Consolidation",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Pneumothorax",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 14533.66494178772
+    },
+    {
+      "image": "783d435f-76b7792a-676c2685-d33e2ca5-eed1f920.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Pneumonia"
+      ],
+      "detected_labels": [
+        "Enlarged Cardiomediastinum",
+        "No Finding",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Pneumothorax"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 13388.535737991333
+    },
+    {
+      "image": "828dd9de-ee245eb4-e8513715-9218b1f9-081a1742.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Support Devices",
+        "Lung Opacity",
+        "Enlarged Cardiomediastinum",
+        "Consolidation",
+        "Lung Lesion"
+      ],
+      "detected_labels": [
+        "Cardiomegaly",
+        "Enlarged Cardiomediastinum",
+        "Lung Opacity",
+        "No Finding",
+        "Pleural Effusion",
+        "Pleural Other",
+        "Pneumothorax",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 14550.52900314331
+    },
+    {
+      "image": "14bcdce8-dc48e936-8ff527be-3187fcc0-ae7b2c21.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Pneumothorax",
+        "Atelectasis",
+        "Lung Lesion"
+      ],
+      "detected_labels": [
+        "Enlarged Cardiomediastinum",
+        "Lung Opacity"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 14307.941198348999
+    }
+  ],
+  "errors": [
+    {
+      "image": "828dd9de-ee245eb4-e8513715-9218b1f9-081a1742.jpg",
+      "error": "MedGemma endpoint returned 400: {\"error\":{\"message\":\"cannot identify image file <_io.BytesIO object> cannot identify image file <_io.BytesIO object>\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}"
+    },
+    {
+      "image": "f0c72126-3684d883-c729f256-be214f93-8f4274d1.jpg",
+      "error": "MedGemma endpoint returned 400: {\"error\":{\"message\":\"cannot identify image file <_io.BytesIO object> cannot identify image file <_io.BytesIO object>\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}"
+    },
+    {
+      "image": "bcedcb7a-8e94ccba-d0b7e97a-7f47b7f6-79cd079e.jpg",
+      "error": "MedGemma returned empty content. Response: {\"error\": {\"message\": \"image file is truncated (3 bytes not processed)\", \"type\": \"InternalServerError\", \"param\": null, \"code\": 500}}"
+    },
+    {
+      "image": "6e58e826-fc08e4ee-a9ff0245-34c6f4cd-cd0aedc8.jpg",
+      "error": "MedGemma endpoint returned 400: {\"error\":{\"message\":\"cannot identify image file <_io.BytesIO object> cannot identify image file <_io.BytesIO object>\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}"
+    },
+    {
+      "image": "a3c243a7-bd476b04-fc184ec6-055534cc-a85b21ac.jpg",
+      "error": "MedGemma endpoint returned 400: {\"error\":{\"message\":\"cannot identify image file <_io.BytesIO object> cannot identify image file <_io.BytesIO object>\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}"
+    },
+    {
+      "image": "3b461f64-2f5355d4-51397f46-e2867a9b-a13790e5.jpg",
+      "error": "MedGemma endpoint returned 400: {\"error\":{\"message\":\"cannot identify image file <_io.BytesIO object> cannot identify image file <_io.BytesIO object>\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}"
+    }
+  ]
+}

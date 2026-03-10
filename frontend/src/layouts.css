@@ -1,0 +1,563 @@
+/* ==========================================================================
+   TrustMed AI – Dual Layout Styles
+   Clinician: Dark professional theme with sidebar
+   Patient:   Light accessible theme with top navbar
+   ========================================================================== */
+
+/* ── Role Selector (Landing Page /) ─────────────────────────────────────── */
+
+.role-selector {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(160deg, #F2FAF4 0%, #E8F5E9 50%, #F2FAF4 100%);
+    padding: 2rem;
+    gap: 1rem;
+}
+
+.role-selector__logo {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #2E7D52, #4CAF50);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 8px 32px rgba(46, 125, 82, 0.25);
+}
+
+.role-selector__logo svg {
+    width: 44px;
+    height: 44px;
+    color: white;
+}
+
+.role-selector h1 {
+    font-family: var(--font-heading);
+    font-size: 2.2rem;
+    color: #2D3436;
+    margin: 0;
+}
+
+.role-selector__subtitle {
+    color: #636E72;
+    font-size: 1rem;
+    margin-bottom: 2rem;
+}
+
+.role-selector__cards {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.role-card {
+    background: white;
+    border-radius: 20px;
+    padding: 2.5rem 2rem;
+    width: 320px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.role-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+    text-decoration: none;
+}
+
+.role-card--clinician:hover {
+    border-color: #1a1a2e;
+}
+
+.role-card--patient:hover {
+    border-color: #2E7D52;
+}
+
+.role-card__icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.2rem;
+}
+
+.role-card--clinician .role-card__icon {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    color: #64ffda;
+}
+
+.role-card--patient .role-card__icon {
+    background: linear-gradient(135deg, #2E7D52, #4CAF50);
+    color: white;
+}
+
+.role-card h2 {
+    font-family: var(--font-heading);
+    font-size: 1.3rem;
+    margin: 0 0 0.5rem;
+    color: #2D3436;
+}
+
+.role-card p {
+    color: #636E72;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.role-card__arrow {
+    margin-top: 1.5rem;
+    color: #B2BEC3;
+    transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.role-card:hover .role-card__arrow {
+    transform: translateX(6px);
+    color: #2E7D52;
+}
+
+.role-selector__footer {
+    margin-top: 3rem;
+    text-align: center;
+    color: #B2BEC3;
+    font-size: 0.8rem;
+}
+
+/* ── Clinician Layout (Light Theme — matches patient portal) ────────────── */
+
+.clinician-layout {
+    --cl-bg: #F7FAF8;
+    --cl-sidebar: #ffffff;
+    --cl-card: #F2FAF4;
+    --cl-border: rgba(46, 125, 82, 0.1);
+    --cl-text: #2D3436;
+    --cl-text-dim: #636E72;
+    --cl-accent: #2E7D52;
+    --cl-accent-hover: #236B45;
+
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    background: var(--cl-bg);
+    color: var(--cl-text);
+    overflow: hidden;
+}
+
+/* Override index.css variables within clinician scope */
+.clinician-layout {
+    --bg-primary: #F7FAF8;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #F2FAF4;
+    --bg-hover: #E8F5E9;
+    --text-primary: #2D3436;
+    --text-secondary: #636E72;
+    --text-tertiary: #B2BEC3;
+    --accent: #2E7D52;
+    --accent-hover: #236B45;
+    --accent-glow: rgba(46, 125, 82, 0.15);
+    --border: rgba(46, 125, 82, 0.1);
+    --glass-border: rgba(46, 125, 82, 0.12);
+    --gradient-primary: linear-gradient(135deg, #2E7D52, #4CAF50);
+}
+
+.cl-sidebar {
+    width: 64px;
+    background: var(--cl-sidebar);
+    border-right: 1px solid var(--cl-border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem 0;
+    gap: 0.25rem;
+    flex-shrink: 0;
+    transition: width 0.3s ease;
+}
+
+.cl-sidebar__logo {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #64ffda, #007cf0);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    flex-shrink: 0;
+}
+
+.cl-sidebar__logo svg {
+    width: 22px;
+    height: 22px;
+    color: #0f0f1a;
+}
+
+.cl-sidebar__nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    width: 100%;
+    padding: 0 8px;
+}
+
+.cl-nav-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    border: none;
+    background: transparent;
+    color: var(--cl-text-dim);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.cl-nav-btn:hover {
+    background: var(--cl-card);
+    color: var(--cl-accent);
+}
+
+.cl-nav-btn.active {
+    background: rgba(100, 255, 218, 0.1);
+    color: var(--cl-accent);
+}
+
+.cl-nav-btn.active::before {
+    content: '';
+    position: absolute;
+    left: -8px;
+    width: 3px;
+    height: 24px;
+    background: var(--cl-accent);
+    border-radius: 0 4px 4px 0;
+}
+
+.cl-sidebar__spacer {
+    flex: 1;
+}
+
+.cl-sidebar__bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    width: 100%;
+    padding: 0 8px;
+}
+
+.cl-main {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Patient Layout (Light Theme) ───────────────────────────────────────── */
+
+.patient-layout {
+    height: 100vh;
+    background: #F2FAF4;
+    color: #2D3436;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.pt-navbar {
+    background: white;
+    border-bottom: 1px solid rgba(46, 125, 82, 0.1);
+    padding: 0 2rem;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
+    flex-shrink: 0;
+}
+
+.pt-navbar__brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: #2D3436;
+}
+
+.pt-navbar__logo {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #2E7D52, #4CAF50);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pt-navbar__logo svg {
+    width: 20px;
+    height: 20px;
+    color: white;
+}
+
+.pt-navbar__title {
+    font-family: var(--font-heading);
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.pt-navbar__title span {
+    color: #2E7D52;
+}
+
+.pt-navbar__links {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.pt-nav-link {
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
+    border: none;
+    background: transparent;
+    color: #636E72;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.pt-nav-link:hover {
+    background: #E8F5E9;
+    color: #2E7D52;
+    text-decoration: none;
+}
+
+.pt-nav-link.active {
+    background: #2E7D52;
+    color: white;
+}
+
+.pt-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 1.5rem 2rem;
+    overflow-y: auto;
+}
+
+/* ── Patient Chat ───────────────────────────────────────────────────────── */
+
+.patient-chat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+}
+
+.patient-chat__header {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid rgba(46, 125, 82, 0.1);
+}
+
+.patient-chat__header h2 {
+    font-family: var(--font-heading);
+    font-size: 1.3rem;
+    color: #2D3436;
+    margin: 0 0 0.3rem;
+}
+
+.patient-chat__header p {
+    color: #636E72;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.patient-chat__messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.patient-msg {
+    max-width: 85%;
+    padding: 1rem 1.25rem;
+    border-radius: 16px;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.patient-msg--user {
+    align-self: flex-end;
+    background: #2E7D52;
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.patient-msg--assistant {
+    align-self: flex-start;
+    background: #F2FAF4;
+    color: #2D3436;
+    border-bottom-left-radius: 4px;
+    border: 1px solid rgba(46, 125, 82, 0.1);
+}
+
+.patient-msg--assistant h1,
+.patient-msg--assistant h2,
+.patient-msg--assistant h3 {
+    font-size: 1.1rem;
+    margin: 0.8rem 0 0.4rem;
+    color: #2E7D52;
+}
+
+.patient-msg--assistant p {
+    margin: 0.4rem 0;
+}
+
+.patient-msg--assistant ul,
+.patient-msg--assistant ol {
+    padding-left: 1.2rem;
+    margin: 0.4rem 0;
+}
+
+.patient-chat__input-area {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid rgba(46, 125, 82, 0.1);
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    background: white;
+}
+
+.patient-chat__input {
+    flex: 1;
+    padding: 0.85rem 1.2rem;
+    border-radius: 14px;
+    border: 2px solid rgba(46, 125, 82, 0.15);
+    font-size: 1rem;
+    font-family: var(--font-body);
+    background: #FAFFF8;
+    color: #2D3436;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.patient-chat__input:focus {
+    border-color: #2E7D52;
+}
+
+.patient-chat__input::placeholder {
+    color: #B2BEC3;
+}
+
+.patient-chat__send {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    border: none;
+    background: #2E7D52;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease, transform 0.1s ease;
+    flex-shrink: 0;
+}
+
+.patient-chat__send:hover {
+    background: #236B45;
+}
+
+.patient-chat__send:active {
+    transform: scale(0.95);
+}
+
+.patient-chat__send:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.patient-chat__typing {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    padding: 0.6rem 1rem;
+    align-self: flex-start;
+}
+
+.patient-chat__typing-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #2E7D52;
+    animation: typingBounce 1.4s infinite ease-in-out;
+}
+
+.patient-chat__typing-dot:nth-child(2) {
+    animation-delay: 0.16s;
+}
+
+.patient-chat__typing-dot:nth-child(3) {
+    animation-delay: 0.32s;
+}
+
+@keyframes typingBounce {
+
+    0%,
+    80%,
+    100% {
+        transform: scale(0.6);
+        opacity: 0.4;
+    }
+
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+    .role-selector__cards {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .role-card {
+        width: 90%;
+        max-width: 360px;
+    }
+
+    .pt-main {
+        padding: 1rem;
+    }
+}

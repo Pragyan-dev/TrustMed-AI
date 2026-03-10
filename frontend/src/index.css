@@ -1,0 +1,172 @@
+/* ==========================================================================
+   TrustMed AI – PostVisit.ai-Inspired Theme
+   Concept: Clean, Minimal, Medical-Grade
+   Primary:    Mint Green (#E8F5E9 bg) + Emerald (#2E7D52 accent)
+   Background: Very Light Mint (#F2FAF4)
+   Cards:      Pure White (#FFFFFF)
+   Text:       Charcoal (#2D3436)
+   Typography: Poppins (Headings) + Open Sans (Body)
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600&family=Poppins:wght@400;500;600;700&display=swap');
+
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* ── Backgrounds ─────────────────────────────────────────────── */
+    --bg-primary: #F2FAF4;
+    /* Very light mint */
+    --bg-secondary: rgba(255, 255, 255, 0.85);
+    /* Glassy white sidebar */
+    --bg-tertiary: #FFFFFF;
+    /* Pure white cards */
+    --bg-hover: #E8F5E9;
+    /* Soft mint hover */
+
+    /* ── Text ────────────────────────────────────────────────────── */
+    --text-primary: #2D3436;
+    /* Near-black charcoal */
+    --text-secondary: #636E72;
+    /* Medium gray */
+    --text-tertiary: #B2BEC3;
+    /* Light gray */
+
+    /* ── Primary accent (Emerald Green) ──────────────────────────── */
+    --accent: #2E7D52;
+    /* Emerald green */
+    --accent-hover: #236B45;
+    /* Darker emerald */
+    --accent-glow: rgba(46, 125, 82, 0.15);
+    /* Subtle green glow */
+
+    /* ── Warm accent (kept subtle — light teal) ──────────────────── */
+    --warm-accent: #2E7D52;
+    /* Same emerald for consistency */
+    --warm-accent-light: #A8E6CF;
+    /* Light mint green */
+    --warm-glow: rgba(168, 230, 207, 0.3);
+
+    /* ── Teal legacy variable ────────────────────────────────────── */
+    --teal: #2E7D52;
+
+    /* ── Gradients ───────────────────────────────────────────────── */
+    --gradient-primary: linear-gradient(135deg, #A8E6CF, #2E7D52);
+    --gradient-warm: linear-gradient(135deg, #2E7D52, #236B45);
+    --gradient-ambient: radial-gradient(circle at 50% 0%, rgba(46, 125, 82, 0.04), transparent 60%);
+
+    /* ── Border ──────────────────────────────────────────────────── */
+    --border: rgba(45, 52, 54, 0.08);
+    --glass-border: rgba(46, 125, 82, 0.12);
+
+    /* ── Typography ──────────────────────────────────────────────── */
+    --font-heading: 'Poppins', sans-serif;
+    --font-body: 'Open Sans', sans-serif;
+
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    background-color: var(--bg-primary);
+
+    /* ── Shapes ──────────────────────────────────────────────────── */
+    --radius-sm: 8px;
+    --radius-md: 16px;
+    --radius-lg: 24px;
+    --radius-full: 9999px;
+
+    color-scheme: light;
+}
+
+html,
+body,
+#root {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-image: var(--gradient-ambient);
+    background-attachment: fixed;
+}
+
+/* ── Typography Overrides ─────────────────────────────────────── */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.02em;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(46, 125, 82, 0.2);
+    border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(46, 125, 82, 0.4);
+}
+
+/* ── Selection ────────────────────────────────────────────────── */
+::selection {
+    background: rgba(46, 125, 82, 0.15);
+    color: var(--text-primary);
+}
+
+/* ── Links ────────────────────────────────────────────────────── */
+a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* ── Code blocks ──────────────────────────────────────────────── */
+code {
+    font-family: 'Menlo', 'Monaco', monospace;
+    font-size: 0.9em;
+    background: #F0FAF2;
+    padding: 2px 6px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    color: var(--accent);
+}
+
+pre {
+    background: #F5FAF7;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    overflow-x: auto;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    color: var(--text-primary);
+}

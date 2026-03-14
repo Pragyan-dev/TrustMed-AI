@@ -1635,6 +1635,7 @@ async def ask_trustmed_streaming(query: str, chat_history: list = None,
         # ── Step A: Patient Context ──────────────────────────────────────
         yield {"type": "progress", "step": "patient", "message": "📋 Retrieving patient context…"}
         patient_context = get_patient_context(clean_query)
+        patient_id = None
         if not patient_context:
             patient_context = "No patient-specific data requested."
         else:
@@ -1642,9 +1643,20 @@ async def ask_trustmed_streaming(query: str, chat_history: list = None,
             import re as _re
             _pid_match = _re.search(r'\b(\d{7,8})\b', clean_query)
             if _pid_match:
-                yield {"type": "patient_context", "patient_id": _pid_match.group(1)}
+                patient_id = _pid_match.group(1)
+                yield {"type": "patient_context", "patient_id": patient_id}
 
         graph_query = _extract_medical_terms_for_graph(clean_query, vision_result, patient_context)
+        diagnosis_names = _extract_diagnosis_names(patient_context) if patient_context else []
+        graph_source = "query"
+        if diagnosis_names and any(diag in graph_query.lower() for diag in diagnosis_names):
+            graph_source = "patient_diagnosis"
+        yield {
+            "type": "graph_context",
+            "search_term": graph_query,
+            "patient_id": patient_id,
+            "source": graph_source,
+        }
 
         vector_query = clean_query
         if vision_result and "No image provided" not in vision_result:

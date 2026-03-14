@@ -1,6 +1,9 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import ForceGraph2D from 'react-force-graph-2d'
-import { Search, Network, Loader2, X, Pill, Activity, Shield, AlertTriangle, ChevronRight } from 'lucide-react'
+import {
+  Search, Network, Loader2, X, Pill, Activity, Shield,
+  AlertTriangle, ChevronRight, RefreshCw, Link2, Maximize2, Minimize2
+} from 'lucide-react'
 
 const API_BASE = '/api'
 
@@ -21,35 +24,109 @@ const LEGEND_ITEMS = [
   { label: 'Precaution', color: '#636EFA', icon: '🛡️' },
 ]
 
-function KnowledgeGraphPanel() {
-  const [searchTerm, setSearchTerm] = useState('')
+const QUALIFIER_PATTERN = /\b(organism unspecified|unspecified|not otherwise specified|nos|without mention of complication|site not specified|unknown etiology)\b/gi
+
+const prettifyGraphTerm = (term) => {
+  return term
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => {
+      if (word.length <= 4 && word === word.toUpperCase()) return word
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    })
+    .join(' ')
+}
+
+const normalizeGraphTerm = (term) => {
+  if (!term) return ''
+
+  let cleaned = String(term)
+    .replace(/\((?:[^)(]+)\)/g, ' ')
+    .replace(/[_/]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  const commaParts = cleaned.split(',').map(part => part.trim()).filter(Boolean)
+  if (commaParts.length > 1) {
+    const qualifierTail = commaParts.slice(1).join(' ')
+    if (QUALIFIER_PATTERN.test(qualifierTail)) {
+      cleaned = commaParts[0]
+    }
+    QUALIFIER_PATTERN.lastIndex = 0
+  }
+
+  cleaned = cleaned
+    .replace(QUALIFIER_PATTERN, ' ')
+    .replace(/\s*,\s*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (!cleaned) return ''
+  return prettifyGraphTerm(cleaned)
+}
+
+const extractGraphTerms = (rawContext) => {
+  if (!rawContext) return []
+
+  const rawParts = String(rawContext)
+    .split(/\n|;|•|\. (?=[A-Za-z])/g)
+    .map(part => part.trim())
+    .filter(Boolean)
+
+  const sourceParts = rawParts.length > 0 ? rawParts : [rawContext]
+  const seen = new Set()
+  const normalized = []
+
+  for (const part of sourceParts) {
+    const cleaned = normalizeGraphTerm(part)
+    if (!cleaned) continue
+    const key = cleaned.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    normalized.push(cleaned)
+  }
+
+  return normalized
+}
+
+function KnowledgeGraphPanel({
+  syncedSearchTerm = '',
+  patientId = null,
+  syncLabel = '',
+  allowManualOverride = true,
+}) {
+  const [searchInput, setSearchInput] = useState('')
+  const [manualSearchTerm, setManualSearchTerm] = useState('')
+  const [manualOverride, setManualOverride] = useState(false)
+  const [activeSyncedTerm, setActiveSyncedTerm] = useState('')
   const [graphData, setGraphData] = useState({ nodes: [], links: [] })
   const [stats, setStats] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
   const [error, setError] = useState(null)
   const [selectedNode, setSelectedNode] = useState(null)
   const [hoveredNode, setHoveredNode] = useState(null)
   const graphRef = useRef()
-  const containerRef = useRef()
+  const canvasWrapRef = useRef()
   const [dimensions, setDimensions] = useState({ width: 800, height: 500 })
+  const syncedTerms = useMemo(() => extractGraphTerms(syncedSearchTerm), [syncedSearchTerm])
 
-  // Observe container size
+  // Observe the actual canvas area so the graph uses the full remaining space.
   useEffect(() => {
-    if (!containerRef.current) return
+    if (!canvasWrapRef.current) return
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const sidebarWidth = selectedNode ? 320 : 0
         setDimensions({
-          width: entry.contentRect.width - sidebarWidth,
-          height: Math.max(entry.contentRect.height - 140, 400)
+          width: Math.max(entry.contentRect.width, 260),
+          height: Math.max(entry.contentRect.height, 320)
         })
       }
     })
-    observer.observe(containerRef.current)
+    observer.observe(canvasWrapRef.current)
     return () => observer.disconnect()
-  }, [selectedNode])
+  }, [])
 
-  const fetchGraph = useCallback(async (term) => {
+  const fetchGraph = useCallback(async (term, activePatientId = patientId) => {
     if (!term || term.trim().length < 2) return
 
     setIsLoading(true)
@@ -57,7 +134,11 @@ function KnowledgeGraphPanel() {
     setSelectedNode(null)
 
     try {
-      const res = await fetch(`${API_BASE}/graph?search_term=${encodeURIComponent(term.trim())}`)
+      const params = new URLSearchParams({ search_term: term.trim() })
+      if (activePatientId) {
+        params.set('patient_id', activePatientId)
+      }
+      const res = await fetch(`${API_BASE}/graph?${params.toString()}`)
       if (!res.ok) throw new Error('Failed to fetch graph data')
       const data = await res.json()
 
@@ -98,7 +179,37 @@ function KnowledgeGraphPanel() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [patientId])
+
+  useEffect(() => {
+    setManualOverride(false)
+    setManualSearchTerm('')
+    setSearchInput('')
+    setActiveSyncedTerm(syncedTerms[0] || '')
+  }, [patientId, syncedTerms])
+
+  useEffect(() => {
+    if (!syncedTerms.length) {
+      setActiveSyncedTerm('')
+      return
+    }
+
+    setActiveSyncedTerm(prev => (
+      prev && syncedTerms.includes(prev) ? prev : syncedTerms[0]
+    ))
+  }, [syncedTerms])
+
+  useEffect(() => {
+    const activeTerm = (manualOverride ? manualSearchTerm : activeSyncedTerm || '').trim()
+    if (activeTerm.length < 2) {
+      setGraphData({ nodes: [], links: [] })
+      setStats(null)
+      setError(null)
+      setSelectedNode(null)
+      return
+    }
+    fetchGraph(activeTerm, patientId)
+  }, [fetchGraph, manualOverride, manualSearchTerm, activeSyncedTerm, patientId])
 
   // Configure d3 forces for better node spacing
   useEffect(() => {
@@ -108,9 +219,38 @@ function KnowledgeGraphPanel() {
     }
   }, [graphData])
 
+  useEffect(() => {
+    if (!isExpanded) return undefined
+
+    const previousOverflow = document.body.style.overflow
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setIsExpanded(false)
+      }
+    }
+
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', handleEscape)
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', handleEscape)
+    }
+  }, [isExpanded])
+
   const handleSearch = (e) => {
     e.preventDefault()
-    fetchGraph(searchTerm)
+    const nextTerm = normalizeGraphTerm(searchInput.trim()) || searchInput.trim()
+    if (!allowManualOverride || nextTerm.length < 2) return
+    setManualSearchTerm(nextTerm)
+    setManualOverride(true)
+    setSearchInput(nextTerm)
+  }
+
+  const resetToSyncedContext = () => {
+    setManualOverride(false)
+    setManualSearchTerm('')
+    setSearchInput('')
   }
 
   // Custom node rendering
@@ -207,6 +347,19 @@ function KnowledgeGraphPanel() {
   }, [])
 
   const hasData = graphData.nodes.length > 0
+  const activeContextTerm = (manualOverride ? manualSearchTerm : activeSyncedTerm || '').trim()
+  const contextLabel = manualOverride ? 'Manual Override' : 'Synced Context'
+  const contextDescription = manualOverride
+    ? 'Using a manual graph search. Reset to resume automatic sync.'
+    : (syncLabel || 'Auto-synced to the active patient and latest clinical context.')
+  const visibleContextTerms = manualOverride
+    ? [manualSearchTerm].filter(Boolean)
+    : syncedTerms
+
+  const handleSyncedTermSelect = (term) => {
+    if (manualOverride) return
+    setActiveSyncedTerm(term)
+  }
 
   // Get edges connected to selected node
   const getNodeEdges = (nodeId) => {
@@ -217,21 +370,84 @@ function KnowledgeGraphPanel() {
   }
 
   return (
-    <div className="graph-panel" ref={containerRef}>
+    <>
+      {isExpanded && (
+        <div
+          className="graph-panel-backdrop"
+          onClick={() => setIsExpanded(false)}
+          aria-hidden="true"
+        />
+      )}
+      <div className={`graph-panel ${isExpanded ? 'graph-panel--expanded' : ''}`}>
+      <div className="graph-sync-bar">
+        <div className="graph-sync-top">
+          <div className="graph-sync-pill">
+            <Link2 size={12} />
+            <span>{contextLabel}</span>
+          </div>
+          {visibleContextTerms.length > 1 && !manualOverride && (
+            <div className="graph-sync-count">{visibleContextTerms.length} linked contexts</div>
+          )}
+          <button
+            type="button"
+            className="graph-expand-btn"
+            onClick={() => setIsExpanded(prev => !prev)}
+            title={isExpanded ? 'Close enlarged view' : 'Open enlarged view'}
+          >
+            {isExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            <span>{isExpanded ? 'Close view' : 'Enlarge view'}</span>
+          </button>
+          {allowManualOverride && manualOverride && (
+            <button type="button" className="graph-sync-reset" onClick={resetToSyncedContext}>
+              <RefreshCw size={14} />
+              Reset
+            </button>
+          )}
+        </div>
+
+        {visibleContextTerms.length > 0 ? (
+          <div className="graph-context-chips">
+            {visibleContextTerms.map((term) => (
+              <button
+                key={term}
+                type="button"
+                className={`graph-context-chip ${activeContextTerm === term ? 'active' : ''}`}
+                onClick={() => handleSyncedTermSelect(term)}
+                disabled={manualOverride}
+                title={term}
+              >
+                {term}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="graph-sync-empty">No synced context yet.</div>
+        )}
+
+        <div className="graph-sync-desc">
+          {contextDescription}
+          {patientId && !manualOverride ? ` Patient ${patientId} is included in the graph query.` : ''}
+        </div>
+      </div>
+
       {/* Search bar */}
       <form className="graph-search" onSubmit={handleSearch}>
         <div className="graph-search-input-wrap">
           <Search size={18} className="graph-search-icon" />
           <input
             type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search disease or condition (e.g. pneumonia, migraine, diabetes)"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder={activeContextTerm ? `Override "${activeContextTerm}"` : 'Override graph focus'}
             className="graph-search-input"
           />
         </div>
-        <button type="submit" className="graph-search-btn" disabled={isLoading || searchTerm.trim().length < 2}>
-          {isLoading ? <Loader2 size={16} className="spin" /> : 'Search'}
+        <button
+          type="submit"
+          className="graph-search-btn"
+          disabled={!allowManualOverride || isLoading || searchInput.trim().length < 2}
+        >
+          {isLoading && manualOverride ? <Loader2 size={16} className="spin" /> : 'Apply'}
         </button>
       </form>
 
@@ -273,14 +489,18 @@ function KnowledgeGraphPanel() {
         <div className="graph-empty">
           <Network size={64} strokeWidth={1} />
           <h3>Knowledge Graph</h3>
-          <p>Search for a disease or condition to explore its symptoms, treatments, drug interactions, and precautions.</p>
+          <p>
+            {activeContextTerm
+              ? `No graph data is available for "${activeContextTerm}" yet.`
+              : 'Select a patient or ask a question to sync the graph automatically.'}
+          </p>
         </div>
       )}
 
       {/* Graph + optional detail sidebar */}
       {hasData && (
-        <div className="graph-content-area">
-          <div className="graph-canvas-wrap">
+        <div className={`graph-content-area ${isExpanded ? 'graph-content-area--expanded' : ''}`}>
+          <div className="graph-canvas-wrap" ref={canvasWrapRef}>
             <ForceGraph2D
               ref={graphRef}
               graphData={graphData}
@@ -399,7 +619,8 @@ function KnowledgeGraphPanel() {
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }
 

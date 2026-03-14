@@ -1,16 +1,15 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import ReactMarkdown from 'react-markdown'
 import {
     Send, Plus, Image as ImageIcon, X, Loader2, MessageSquare,
-    Trash2, Settings, Stethoscope, FileText, Network, Shield,
+    Trash2, Stethoscope, FileText, Network, Shield,
     Eye, Cpu, PanelRightClose, PanelRight, Upload, Activity, BookOpen,
-    History, ChevronDown
+    SlidersHorizontal
 } from 'lucide-react'
 import KnowledgeGraphPanel from '../components/KnowledgeGraphPanel'
 import SOAPNoteModal from '../components/SOAPNoteModal'
 import PatientInfoPanel from '../components/PatientInfoPanel'
 import CompoundPanelViewer from '../components/CompoundPanelViewer'
-import MedicalTermHighlighter, { MarkdownWithHighlight } from '../components/MedicalTermHighlighter'
+import { MarkdownWithHighlight } from '../components/MedicalTermHighlighter'
 import SafeMarkdownWrapper from '../components/SafeMarkdownWrapper'
 import '../clinician.css'
 
@@ -34,6 +33,11 @@ const AVAILABLE_VISION_MODELS = [
 ]
 
 const SAMPLE_PATIENTS = ['10002428', '10025463', '10027602', '10009049', '10007058', '10020640', '10018081', '10023239', '10035631']
+const STARTER_PROMPTS = [
+    'Summarize the current risks for patient 10002428.',
+    'Review this chest X-ray for pneumonia and medication risks.',
+    'Generate a focused assessment and next steps for today.',
+]
 
 // Pipeline step config
 const PIPELINE_STEPS = [
@@ -49,6 +53,44 @@ const cleanContent = (text) => {
     let t = text.trim()
     if (t.startsWith('"') && t.endsWith('"')) t = t.slice(1, -1)
     return t
+}
+
+const streamSseEvents = async (response, onEvent) => {
+    const reader = response.body?.getReader()
+    if (!reader) throw new Error('Streaming response unavailable')
+
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            const jsonStr = line.slice(6).trim()
+            if (!jsonStr) continue
+
+            try {
+                onEvent(JSON.parse(jsonStr))
+            } catch {
+                // Ignore malformed partial events and continue streaming.
+            }
+        }
+    }
+
+    const trailing = buffer.trim()
+    if (trailing.startsWith('data: ')) {
+        try {
+            onEvent(JSON.parse(trailing.slice(6).trim()))
+        } catch {
+            // Ignore incomplete trailing event payloads.
+        }
+    }
 }
 
 export default function ClinicianDashboard() {
@@ -89,12 +131,13 @@ export default function ClinicianDashboard() {
 
     // Drug alerts parsed from streaming
     const [drugAlerts, setDrugAlerts] = useState([])
+    const [graphContext, setGraphContext] = useState(null)
 
     // Term highlighter toggle
     const [highlighterOn, setHighlighterOn] = useState(false)
 
-    // Sessions dropdown
-    const [sessionsOpen, setSessionsOpen] = useState(false)
+    // Settings drawer
+    const [settingsOpen, setSettingsOpen] = useState(false)
 
     const messagesEndRef = useRef(null)
     const fileInputRef = useRef(null)
@@ -127,6 +170,9 @@ export default function ClinicianDashboard() {
 
     // ── Patient Loading ──────────────────────────────────────────────
     const loadPatient = async (patId) => {
+        setGraphContext(null)
+        setDrugAlerts([])
+        setPatientData(null)
         if (!patId) { setPatientData(null); return }
         try {
             const res = await fetch(`${API_BASE}/patient/${patId}`)
@@ -146,7 +192,10 @@ export default function ClinicianDashboard() {
             setSessionTitle('New Chat')
             setMessages([])
             setDrugAlerts([])
+            setGraphContext(null)
             setPipelineSteps({})
+            setSoapData(null)
+            setSettingsOpen(false)
             fetchSessions()
         } catch (err) { console.error('Failed to create session:', err) }
     }
@@ -159,7 +208,9 @@ export default function ClinicianDashboard() {
             setSessionTitle(data.title || 'Chat')
             setMessages(data.messages || data.history || [])
             setDrugAlerts([])
+            setGraphContext(null)
             setPipelineSteps({})
+            setSettingsOpen(false)
         } catch (err) { console.error('Failed to load session:', err) }
     }
 
@@ -171,6 +222,7 @@ export default function ClinicianDashboard() {
                 setSessionId(null)
                 setMessages([])
                 setSessionTitle('New Chat')
+                setGraphContext(null)
             }
             fetchSessions()
         } catch (err) { console.error('Failed to delete session:', err) }
@@ -265,8 +317,9 @@ export default function ClinicianDashboard() {
         }
 
         // Wait for upload
-        if (selectedImage && !uploadedImagePath && uploadPromiseRef.current) {
-            await uploadPromiseRef.current
+        let resolvedImagePath = uploadedImagePath
+        if (selectedImage && !resolvedImagePath && uploadPromiseRef.current) {
+            resolvedImagePath = await uploadPromiseRef.current
         }
 
         const userMessage = {
@@ -282,7 +335,7 @@ export default function ClinicianDashboard() {
         setPipelineSteps({})
         setDrugAlerts([])
 
-        const imagePath = uploadedImagePath
+        const imagePath = resolvedImagePath
         removeImage()
 
         let apiMessage = userMessage.content
@@ -304,77 +357,66 @@ export default function ClinicianDashboard() {
                 })
             })
 
-            const reader = res.body.getReader()
-            const decoder = new TextDecoder()
             let assistantAdded = false
 
-            while (true) {
-                const { done, value } = await reader.read()
-                if (done) break
-
-                const chunk = decoder.decode(value, { stream: true })
-                for (const line of chunk.split('\n')) {
-                    if (!line.startsWith('data: ')) continue
-                    const jsonStr = line.slice(6).trim()
-                    if (!jsonStr) continue
-
-                    try {
-                        const event = JSON.parse(jsonStr)
-
-                        if (event.type === 'progress') {
-                            setStreamingStatus(event.message)
-                            updatePipeline(event.message)
-                        } else if (event.type === 'token') {
-                            if (!assistantAdded) {
-                                setMessages(prev => [...prev, { role: 'assistant', content: '' }])
-                                assistantAdded = true
-                                setStreamingStatus('')
-                            }
-                            setMessages(prev => {
-                                const updated = [...prev]
-                                const last = updated[updated.length - 1]
-                                updated[updated.length - 1] = { ...last, content: last.content + event.content }
-                                return updated
-                            })
-                        } else if (event.type === 'replace') {
-                            setMessages(prev => {
-                                const updated = [...prev]
-                                if (!assistantAdded || updated[updated.length - 1]?.role !== 'assistant') {
-                                    updated.push({ role: 'assistant', content: event.content })
-                                    assistantAdded = true
-                                } else {
-                                    updated[updated.length - 1] = { role: 'assistant', content: event.content }
-                                }
-                                return updated
-                            })
-                        } else if (event.type === 'done') {
-                            if (event.title) setSessionTitle(event.title)
-                            if (event.session_id) setSessionId(event.session_id)
-                            if (!assistantAdded && event.final_response) {
-                                setMessages(prev => [...prev, { role: 'assistant', content: event.final_response }])
-                            }
-                            // Mark all pipeline steps done
-                            setPipelineSteps(prev => {
-                                const next = { ...prev }
-                                Object.keys(next).forEach(k => { next[k] = 'done' })
-                                return next
-                            })
-                            fetchSessions()
-                        } else if (event.type === 'patient_context') {
-                            if (event.patient_id) {
-                                setSelectedPatient(event.patient_id)
-                                loadPatient(event.patient_id)
-                            }
-                        } else if (event.type === 'drug_alerts') {
-                            setDrugAlerts(event.alerts || [])
-                        } else if (event.type === 'error') {
-                            if (!assistantAdded) {
-                                setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${event.message}` }])
-                            }
+            await streamSseEvents(res, (event) => {
+                if (event.type === 'progress') {
+                    setStreamingStatus(event.message)
+                    updatePipeline(event.message)
+                } else if (event.type === 'token') {
+                    if (!assistantAdded) {
+                        setMessages(prev => [...prev, { role: 'assistant', content: '' }])
+                        assistantAdded = true
+                        setStreamingStatus('')
+                    }
+                    setMessages(prev => {
+                        const updated = [...prev]
+                        const last = updated[updated.length - 1]
+                        updated[updated.length - 1] = { ...last, content: last.content + event.content }
+                        return updated
+                    })
+                } else if (event.type === 'replace') {
+                    setMessages(prev => {
+                        const updated = [...prev]
+                        if (!assistantAdded || updated[updated.length - 1]?.role !== 'assistant') {
+                            updated.push({ role: 'assistant', content: event.content })
+                            assistantAdded = true
+                        } else {
+                            updated[updated.length - 1] = { role: 'assistant', content: event.content }
                         }
-                    } catch { /* skip parse errors */ }
+                        return updated
+                    })
+                } else if (event.type === 'done') {
+                    if (event.title) setSessionTitle(event.title)
+                    if (event.session_id) setSessionId(event.session_id)
+                    if (!assistantAdded && event.final_response) {
+                        setMessages(prev => [...prev, { role: 'assistant', content: event.final_response }])
+                    }
+                    setPipelineSteps(prev => {
+                        const next = { ...prev }
+                        Object.keys(next).forEach(k => { next[k] = 'done' })
+                        return next
+                    })
+                    fetchSessions()
+                } else if (event.type === 'patient_context') {
+                    if (event.patient_id) {
+                        setSelectedPatient(event.patient_id)
+                        loadPatient(event.patient_id)
+                    }
+                } else if (event.type === 'graph_context') {
+                    setGraphContext({
+                        search_term: event.search_term || '',
+                        patient_id: event.patient_id || null,
+                        source: event.source || 'query',
+                    })
+                } else if (event.type === 'drug_alerts') {
+                    setDrugAlerts(event.alerts || [])
+                } else if (event.type === 'error') {
+                    if (!assistantAdded) {
+                        setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${event.message}` }])
+                    }
                 }
-            }
+            })
         } catch (err) {
             console.error('Chat error:', err)
             setMessages(prev => [...prev, { role: 'assistant', content: `Connection error: ${err.message}` }])
@@ -393,7 +435,10 @@ export default function ClinicianDashboard() {
             const res = await fetch(`${API_BASE}/soap-note`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ session_id: sessionId })
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    patient_id: selectedPatient || null,
+                })
             })
             const data = await res.json()
             setSoapData(data)
@@ -410,6 +455,28 @@ export default function ClinicianDashboard() {
         }
     }
 
+    const applyStarterPrompt = (prompt) => {
+        setInput(prompt)
+        textareaRef.current?.focus()
+    }
+
+    const activePatientId = selectedPatient || patientData?.patient_id || graphContext?.patient_id || null
+    const fallbackDiagnosis = patientData?.diagnoses?.[0]?.title?.trim() || ''
+    const syncedGraphSearchTerm = (graphContext?.search_term || fallbackDiagnosis || '').trim()
+    const graphSyncLabel = graphContext?.search_term
+        ? graphContext.source === 'patient_diagnosis'
+            ? `Synced from the backend patient diagnosis context${activePatientId ? ` for Patient ${activePatientId}` : ''}.`
+            : graphContext.source === 'current_answer'
+                ? 'Synced from the latest assistant assessment.'
+                : 'Synced from the current clinical query.'
+        : fallbackDiagnosis
+            ? `Defaulting to the first active diagnosis for Patient ${activePatientId}.`
+            : 'Select a patient or ask a question to sync the graph automatically.'
+    const latestAssistantMessage = [...messages]
+        .reverse()
+        .find(msg => msg.role === 'assistant' && cleanContent(msg.content))?.content || ''
+    const latestAssistantPreview = cleanContent(latestAssistantMessage)
+
     // ── Render ───────────────────────────────────────────────────────
     return (
         <div className="cd">
@@ -422,82 +489,7 @@ export default function ClinicianDashboard() {
 
                 <div className="cd-topbar__divider" />
 
-                {/* Model selector */}
-                <select
-                    className="cd-topbar__select"
-                    value={selectedModel}
-                    onChange={e => setSelectedModel(e.target.value)}
-                    title="Synthesis Model"
-                >
-                    {AVAILABLE_MODELS.map(m => (
-                        <option key={m.id} value={m.id}>{m.label}</option>
-                    ))}
-                </select>
-
-                <select
-                    className="cd-topbar__select"
-                    value={selectedVisionModel}
-                    onChange={e => setSelectedVisionModel(e.target.value)}
-                    title="Vision Model"
-                >
-                    {AVAILABLE_VISION_MODELS.map(m => (
-                        <option key={m.id} value={m.id}>{m.label}</option>
-                    ))}
-                </select>
-
                 <div className="cd-topbar__spacer" />
-
-                {/* Session dropdown trigger */}
-                <div className="cd-topbar__session-wrap">
-                    <button
-                        className={`cd-topbar__session-btn ${sessionsOpen ? 'active' : ''}`}
-                        onClick={() => setSessionsOpen(!sessionsOpen)}
-                        title="Chat History"
-                    >
-                        <History size={14} />
-                        <span className="cd-topbar__session-title">{sessionTitle}</span>
-                        <ChevronDown size={12} className={`cd-topbar__chevron ${sessionsOpen ? 'open' : ''}`} />
-                    </button>
-
-                    <button className="cd-topbar__btn" onClick={() => { createNewSession(); setSessionsOpen(false); }} title="New Chat">
-                        <Plus size={16} />
-                    </button>
-
-                    {/* Sessions dropdown */}
-                    {sessionsOpen && (
-                        <>
-                            <div className="cd-sessions-overlay" onClick={() => setSessionsOpen(false)} />
-                            <div className="cd-sessions-dropdown">
-                                <div className="cd-sessions-dropdown__header">
-                                    <span>Chat History</span>
-                                    <span className="cd-sessions-dropdown__count">{sessions.length}</span>
-                                </div>
-                                <div className="cd-sessions-dropdown__list">
-                                    {sessions.length === 0 ? (
-                                        <div className="cd-sessions-dropdown__empty">No sessions yet</div>
-                                    ) : (
-                                        sessions.map(s => (
-                                            <div
-                                                key={s.id}
-                                                className={`cd-session-item ${sessionId === s.id ? 'active' : ''}`}
-                                                onClick={() => { loadSession(s.id); setSessionsOpen(false); }}
-                                            >
-                                                <MessageSquare size={14} />
-                                                <span className="cd-session-item__title">{s.title || 'New Chat'}</span>
-                                                <button
-                                                    className="cd-session-item__delete"
-                                                    onClick={e => deleteSession(s.id, e)}
-                                                >
-                                                    <Trash2 size={12} />
-                                                </button>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                            </div>
-                        </>
-                    )}
-                </div>
 
                 <button
                     className={`mth-toggle ${highlighterOn ? 'active' : ''}`}
@@ -510,12 +502,127 @@ export default function ClinicianDashboard() {
 
                 <button
                     className="cd-topbar__btn"
+                    onClick={() => setSettingsOpen(true)}
+                    title="Open settings"
+                >
+                    <SlidersHorizontal size={16} />
+                </button>
+
+                <button
+                    className="cd-topbar__btn"
                     onClick={() => setRightOpen(!rightOpen)}
                     title={rightOpen ? 'Collapse Panel' : 'Expand Panel'}
                 >
                     {rightOpen ? <PanelRightClose size={16} /> : <PanelRight size={16} />}
                 </button>
             </header>
+
+            {settingsOpen && (
+                <>
+                    <div className="cd-settings-backdrop" onClick={() => setSettingsOpen(false)} />
+                    <aside className="cd-settings-drawer">
+                        <div className="cd-settings__header">
+                            <div>
+                                <div className="cd-settings__eyebrow">Workspace Controls</div>
+                                <h2>Settings</h2>
+                            </div>
+                            <button
+                                className="cd-topbar__btn"
+                                onClick={() => setSettingsOpen(false)}
+                                title="Close settings"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+
+                        <section className="cd-settings__section">
+                            <div className="cd-settings__section-title">Conversation</div>
+                            <div className="cd-settings__session-card">
+                                <div className="cd-settings__session-meta">
+                                    <span className="cd-settings__session-label">Current Session</span>
+                                    <strong>{sessionTitle || 'New Chat'}</strong>
+                                </div>
+                                <button className="cd-settings__new-chat" onClick={createNewSession}>
+                                    <Plus size={14} />
+                                    New Chat
+                                </button>
+                            </div>
+
+                            <div className="cd-settings__session-list">
+                                {sessions.length === 0 ? (
+                                    <div className="cd-settings__empty">No saved sessions yet.</div>
+                                ) : (
+                                    sessions.map(s => (
+                                        <div
+                                            key={s.id}
+                                            className={`cd-session-item ${sessionId === s.id ? 'active' : ''}`}
+                                            onClick={() => loadSession(s.id)}
+                                        >
+                                            <MessageSquare size={14} />
+                                            <span className="cd-session-item__title">{s.title || 'New Chat'}</span>
+                                            <button
+                                                className="cd-session-item__delete"
+                                                onClick={e => deleteSession(s.id, e)}
+                                                title="Delete session"
+                                            >
+                                                <Trash2 size={12} />
+                                            </button>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="cd-settings__section">
+                            <div className="cd-settings__section-title">Models</div>
+                            <label className="cd-settings__field">
+                                <span>Text Model</span>
+                                <select
+                                    className="cd-settings__select"
+                                    value={selectedModel}
+                                    onChange={e => setSelectedModel(e.target.value)}
+                                >
+                                    {AVAILABLE_MODELS.map(m => (
+                                        <option key={m.id} value={m.id}>{m.label}</option>
+                                    ))}
+                                </select>
+                            </label>
+
+                            <label className="cd-settings__field">
+                                <span>Vision Model</span>
+                                <select
+                                    className="cd-settings__select"
+                                    value={selectedVisionModel}
+                                    onChange={e => setSelectedVisionModel(e.target.value)}
+                                >
+                                    {AVAILABLE_VISION_MODELS.map(m => (
+                                        <option key={m.id} value={m.id}>{m.label}</option>
+                                    ))}
+                                </select>
+                            </label>
+                        </section>
+
+                        <section className="cd-settings__section">
+                            <div className="cd-settings__section-title">Generation</div>
+                            <label className="cd-settings__field">
+                                <div className="cd-settings__field-row">
+                                    <span>Temperature</span>
+                                    <strong>{temperature.toFixed(1)}</strong>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="1"
+                                    step="0.1"
+                                    value={temperature}
+                                    onChange={e => setTemperature(Number(e.target.value))}
+                                    className="cd-settings__slider"
+                                />
+                            </label>
+                        </section>
+                    </aside>
+                </>
+            )}
 
             {/* ═══ BODY (3-column) ═══ */}
             <div className="cd-body">
@@ -648,37 +755,90 @@ export default function ClinicianDashboard() {
                         )}
                     </div>
 
+                    <div className="cd-chat-header">
+                        <div className="cd-chat-header__meta">
+                            <div className="cd-chat-header__eyebrow">
+                                {activePatientId ? `Patient ${activePatientId}` : 'Clinical Assistant'}
+                            </div>
+                            <div className="cd-chat-header__title">{sessionTitle || 'New Chat'}</div>
+                            <div className="cd-chat-header__subtitle">
+                                {messages.length > 0
+                                    ? 'Grounded clinical conversation with patient context, imaging, KG retrieval, and safety checks.'
+                                    : 'Start a new conversation, upload imaging, and ask a focused clinical question.'}
+                            </div>
+                        </div>
+                        <button className="cd-chat-new" onClick={createNewSession}>
+                            <Plus size={16} />
+                            New Chat
+                        </button>
+                    </div>
+
                     {/* Messages */}
                     <div className="cd-messages">
                         {messages.length === 0 ? (
-                            <div className="cd-empty">
-                                <div className="cd-empty__icon">
-                                    <Stethoscope size={28} />
+                            <div className="cd-empty cd-empty--chat">
+                                <div className="cd-empty__panel">
+                                    <div className="cd-empty__icon">
+                                        <Stethoscope size={28} />
+                                    </div>
+                                    <h3>TrustMed Clinical Assistant</h3>
+                                    <p>
+                                        Select a patient, upload imaging, or start a new conversation with a focused assessment prompt.
+                                    </p>
+                                    <div className="cd-empty__actions">
+                                        <button className="cd-chat-new cd-chat-new--hero" onClick={createNewSession}>
+                                            <Plus size={16} />
+                                            New Chat
+                                        </button>
+                                        <div className="cd-empty__hint">
+                                            {activePatientId ? `Patient ${activePatientId} is ready for review.` : 'No patient selected yet.'}
+                                        </div>
+                                    </div>
+                                    <div className="cd-empty__prompts">
+                                        {STARTER_PROMPTS.map((prompt) => (
+                                            <button
+                                                key={prompt}
+                                                type="button"
+                                                className="cd-empty__prompt"
+                                                onClick={() => applyStarterPrompt(prompt)}
+                                            >
+                                                {prompt}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                                <h3>Clinical Decision Support</h3>
-                                <p>
-                                    Select a patient, upload imaging, or ask a clinical question to begin analysis.
-                                </p>
                             </div>
                         ) : (
                             messages.map((msg, i) => (
-                                <div key={i} className={`cd-msg cd-msg--${msg.role}`}>
-                                    {msg.image && (
-                                        <img
-                                            src={msg.image.startsWith('blob:') || msg.image.startsWith('http') ? msg.image : `${API_BASE}${msg.image}`}
-                                            alt="Attached"
-                                            className="cd-msg__image"
-                                        />
-                                    )}
-                                    {msg.role === 'assistant' ? (
-                                        <SafeMarkdownWrapper fallbackText={cleanContent(msg.content)}>
-                                            <MarkdownWithHighlight enabled={highlighterOn}>
-                                                {cleanContent(msg.content)}
-                                            </MarkdownWithHighlight>
-                                        </SafeMarkdownWrapper>
-                                    ) : (
-                                        msg.content
-                                    )}
+                                <div key={i} className={`cd-msg-row cd-msg-row--${msg.role}`}>
+                                    <div className={`cd-msg-avatar cd-msg-avatar--${msg.role}`}>
+                                        {msg.role === 'assistant' ? <Stethoscope size={15} /> : <span>You</span>}
+                                    </div>
+                                    <div className={`cd-msg-stack cd-msg-stack--${msg.role}`}>
+                                        <div className="cd-msg-meta">
+                                            <span className="cd-msg-meta__name">
+                                                {msg.role === 'assistant' ? 'TrustMed AI' : 'You'}
+                                            </span>
+                                        </div>
+                                        <div className={`cd-msg cd-msg--${msg.role}`}>
+                                            {msg.image && (
+                                                <img
+                                                    src={msg.image.startsWith('blob:') || msg.image.startsWith('http') ? msg.image : `${API_BASE}${msg.image}`}
+                                                    alt="Attached"
+                                                    className="cd-msg__image"
+                                                />
+                                            )}
+                                            {msg.role === 'assistant' ? (
+                                                <SafeMarkdownWrapper fallbackText={cleanContent(msg.content)}>
+                                                    <MarkdownWithHighlight enabled={highlighterOn}>
+                                                        {cleanContent(msg.content)}
+                                                    </MarkdownWithHighlight>
+                                                </SafeMarkdownWrapper>
+                                            ) : (
+                                                msg.content
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             ))
                         )}
@@ -737,12 +897,27 @@ export default function ClinicianDashboard() {
                     </div>
 
                     <div className="cd-right__content">
-                        {rightTab === 'kg' && <KnowledgeGraphPanel />}
+                        {rightTab === 'kg' && (
+                            <KnowledgeGraphPanel
+                                syncedSearchTerm={syncedGraphSearchTerm}
+                                patientId={activePatientId}
+                                syncLabel={graphSyncLabel}
+                                allowManualOverride
+                            />
+                        )}
 
                         {rightTab === 'drugs' && (
                             <div>
                                 <div className="cd-left__label" style={{ marginBottom: '0.75rem' }}>
                                     <Shield size={12} /> Drug Safety Alerts
+                                </div>
+                                <div className="cd-right__meta-card">
+                                    <strong>{activePatientId ? `Patient ${activePatientId}` : 'No patient selected'}</strong>
+                                    <span>
+                                        {activePatientId
+                                            ? 'Alerts from the latest assessment stream will appear here.'
+                                            : 'Select a patient or assess a case to populate this panel.'}
+                                    </span>
                                 </div>
                                 {drugAlerts.length > 0 ? (
                                     drugAlerts.map((alert, i) => (
@@ -757,7 +932,11 @@ export default function ClinicianDashboard() {
                                 ) : (
                                     <div className="cd-empty" style={{ height: 'auto', padding: '2rem 1rem' }}>
                                         <Shield size={24} />
-                                        <p>Drug safety alerts will appear here after patient assessment.</p>
+                                        <p>
+                                            {activePatientId
+                                                ? 'No alerts for the latest assessment yet.'
+                                                : 'No patient selected yet.'}
+                                        </p>
                                     </div>
                                 )}
                             </div>
@@ -767,6 +946,14 @@ export default function ClinicianDashboard() {
                             <div>
                                 <div className="cd-left__label" style={{ marginBottom: '0.75rem' }}>
                                     <FileText size={12} /> Clinical Notes
+                                </div>
+                                <div className="cd-right__meta-card">
+                                    <strong>{activePatientId ? `Patient ${activePatientId}` : 'Session-only note'}</strong>
+                                    <span>
+                                        {latestAssistantPreview
+                                            ? latestAssistantPreview.slice(0, 180) + (latestAssistantPreview.length > 180 ? '…' : '')
+                                            : 'The latest assistant assessment will appear here before note generation.'}
+                                    </span>
                                 </div>
                                 <button
                                     className="cd-soap-btn"

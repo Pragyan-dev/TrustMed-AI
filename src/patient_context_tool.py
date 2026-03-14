@@ -13,6 +13,7 @@ from langchain_core.tools import tool
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _PROJECT_ROOT = os.path.dirname(_SCRIPT_DIR)  # Go up from src/ to project root
 DB_PATH = os.path.join(_PROJECT_ROOT, 'data', 'mimic_demo.db')
+VITAL_HISTORY_LIMIT = 16
 
 
 def query_db(query, params=()):
@@ -37,6 +38,18 @@ def query_db(query, params=()):
     except Exception as e:
         print(f"[DB Error] {e}")
         return []
+
+
+def _serialize_vitals_row(row):
+    return {
+        "temperature": row["temperature"],
+        "heart_rate": row["heartrate"],
+        "respiratory_rate": row["resprate"],
+        "o2_saturation": row["o2sat"],
+        "systolic_bp": row["sbp"],
+        "diastolic_bp": row["dbp"],
+        "recorded_at": row["charttime"],
+    }
 
 
 @tool
@@ -151,22 +164,19 @@ def get_patient_data_json(patient_id: str) -> dict:
         FROM vitalsign 
         WHERE subject_id = ? 
         ORDER BY charttime DESC 
-        LIMIT 1
+        LIMIT ?
     """
-    rows = query_db(vitals_query, (patient_id,))
+    rows = query_db(vitals_query, (patient_id, VITAL_HISTORY_LIMIT))
     if rows:
-        row = rows[0]
-        result["vitals"] = {
-            "temperature": row["temperature"],
-            "heart_rate": row["heartrate"],
-            "respiratory_rate": row["resprate"],
-            "o2_saturation": row["o2sat"],
-            "systolic_bp": row["sbp"],
-            "diastolic_bp": row["dbp"],
-            "recorded_at": row["charttime"],
-        }
+        latest_row = rows[0]
+        result["vitals"] = _serialize_vitals_row(latest_row)
+        result["vitals_history"] = [
+            _serialize_vitals_row(row)
+            for row in reversed(rows)
+        ]
     else:
         result["vitals"] = None
+        result["vitals_history"] = []
 
     # Diagnoses
     diag_query = """
@@ -217,4 +227,3 @@ if __name__ == "__main__":
     
     print("\n💊 MEDICATIONS:")
     print(get_patient_meds.invoke(test_patient))
-

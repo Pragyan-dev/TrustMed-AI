@@ -22,7 +22,13 @@ from pydantic import BaseModel
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
-from src.trustmed_brain import ask_trustmed, ask_trustmed_streaming, ask_trustmed_direct, generate_soap_note
+from src.trustmed_brain import (
+    ask_trustmed,
+    ask_trustmed_streaming,
+    ask_trustmed_direct,
+    generate_soap_note,
+    get_patient_context,
+)
 import traceback
 from src.vision_agent import get_vision_cache_stats, clear_vision_cache
 from src.graph_visualizer import get_graph_json
@@ -162,6 +168,7 @@ class ChatRequest(BaseModel):
     temperature: Optional[float] = None  # 0.0–1.0, overrides default
     model: Optional[str] = None          # OpenRouter model ID override
     vision_model: Optional[str] = None   # Vision model ID override
+    persist: bool = True                 # Whether to read/write session history
 
 
 class ChatResponse(BaseModel):
@@ -172,6 +179,7 @@ class ChatResponse(BaseModel):
 
 class SOAPRequest(BaseModel):
     session_id: str = "default"
+    patient_id: Optional[str] = None
 
 
 class RenameRequest(BaseModel):
@@ -208,7 +216,11 @@ async def vision_cache_clear():
 async def _stream_chat(request: ChatRequest):
     """SSE generator that streams pipeline progress + LLM tokens."""
     session_id = request.session_id
-    session = _load_session(session_id)
+    session = _load_session(session_id) if request.persist else {
+        "id": session_id,
+        "title": "New chat",
+        "messages": []
+    }
     history = session["messages"]
 
     query = request.message
@@ -225,16 +237,17 @@ async def _stream_chat(request: ChatRequest):
         ):
             if event["type"] == "done":
                 final_response = event.get("final_response", "")
-                # Save session history (include image URL if present)
-                user_entry = {"role": "user", "content": request.message}
-                img_url = _image_url(request.image_path)
-                if img_url:
-                    user_entry["image"] = img_url
-                history.append(user_entry)
-                history.append({"role": "assistant", "content": final_response})
-                if session["title"] == "New chat" and request.message.strip():
-                    session["title"] = _auto_title(request.message)
-                _save_session(session_id, session)
+                if request.persist:
+                    # Save session history (include image URL if present)
+                    user_entry = {"role": "user", "content": request.message}
+                    img_url = _image_url(request.image_path)
+                    if img_url:
+                        user_entry["image"] = img_url
+                    history.append(user_entry)
+                    history.append({"role": "assistant", "content": final_response})
+                    if session["title"] == "New chat" and request.message.strip():
+                        session["title"] = _auto_title(request.message)
+                    _save_session(session_id, session)
                 # Send done with session metadata
                 done_event = {
                     "type": "done",
@@ -270,7 +283,11 @@ async def chat(request: ChatRequest):
     History is persisted to disk per session.
     """
     session_id = request.session_id
-    session = _load_session(session_id)
+    session = _load_session(session_id) if request.persist else {
+        "id": session_id,
+        "title": "New chat",
+        "messages": []
+    }
     history = session["messages"]
 
     # Build query with image attachment if present
@@ -284,24 +301,25 @@ async def chat(request: ChatRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    # Update history (include image URL if present)
-    user_entry = {"role": "user", "content": request.message}
-    img_url = _image_url(request.image_path)
-    if img_url:
-        user_entry["image"] = img_url
-    history.append(user_entry)
-    history.append({"role": "assistant", "content": response})
+    if request.persist:
+        # Update history (include image URL if present)
+        user_entry = {"role": "user", "content": request.message}
+        img_url = _image_url(request.image_path)
+        if img_url:
+            user_entry["image"] = img_url
+        history.append(user_entry)
+        history.append({"role": "assistant", "content": response})
 
-    # Auto-title from first user message
-    if session["title"] == "New chat" and request.message.strip():
-        session["title"] = _auto_title(request.message)
+        # Auto-title from first user message
+        if session["title"] == "New chat" and request.message.strip():
+            session["title"] = _auto_title(request.message)
 
-    # Keep last 50 messages (25 exchanges) for context
-    if len(history) > 50:
-        session["messages"] = history[-50:]
+        # Keep last 50 messages (25 exchanges) for context
+        if len(history) > 50:
+            session["messages"] = history[-50:]
 
-    # Persist to disk
-    _save_session(session_id, session)
+        # Persist to disk
+        _save_session(session_id, session)
 
     return ChatResponse(
         response=response,
@@ -345,7 +363,13 @@ async def soap_note(request: SOAPRequest):
         raise HTTPException(status_code=400, detail="No conversation history found")
 
     try:
-        note = await asyncio.to_thread(generate_soap_note, history, "N/A", "N/A")
+        patient_context = "N/A"
+        if request.patient_id:
+            patient_context = await asyncio.to_thread(get_patient_context, request.patient_id)
+            if not patient_context:
+                patient_context = f"No patient context found for ID {request.patient_id}"
+
+        note = await asyncio.to_thread(generate_soap_note, history, patient_context, "N/A")
         if "error" in note:
             raise HTTPException(status_code=400, detail=note["error"])
         return note
@@ -551,6 +575,277 @@ Patient Data:
 {patient_data}"""
 
 
+def _normalize_next_steps(value) -> List[str]:
+    """Coerce mixed LLM output into a clean list of brief next-step strings."""
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+
+    if isinstance(value, str):
+        candidates = []
+        for raw_line in value.splitlines():
+            line = raw_line.strip().lstrip("-*•0123456789. )").strip()
+            if line:
+                candidates.append(line)
+        if candidates:
+            return candidates[:5]
+        if value.strip():
+            return [value.strip()]
+
+    return []
+
+
+def _normalize_patient_summary_payload(payload) -> dict:
+    """Return a stable frontend-safe summary payload regardless of LLM formatting."""
+    if not isinstance(payload, dict):
+        payload = {}
+
+    next_steps = _normalize_next_steps(payload.get("next_steps"))
+    if not next_steps:
+        next_steps = [
+            "Review these results with your care team at your next visit.",
+            "Ask your clinician if any follow-up tests or medication changes are needed.",
+        ]
+
+    return {
+        "summary": str(payload.get("summary") or "We could not generate a detailed summary right now.").strip(),
+        "vitals_explanation": str(
+            payload.get("vitals_explanation")
+            or "Your vital signs are available in your chart, but a plain-language explanation was not generated."
+        ).strip(),
+        "medications_explanation": str(
+            payload.get("medications_explanation")
+            or "Your medication list is available in your chart, but a plain-language explanation was not generated."
+        ).strip(),
+        "next_steps": next_steps,
+    }
+
+
+def _is_placeholder_summary_text(value: str) -> bool:
+    """Detect generic fallback strings that should not be shown as patient content."""
+    if not isinstance(value, str):
+        return True
+
+    normalized = value.strip().lower()
+    if not normalized:
+        return True
+
+    placeholders = [
+        "explanation unavailable. please consult your physician.",
+        "we could not generate a detailed summary right now.",
+        "unable to generate summary.",
+        "please ask your care team about your vital signs.",
+        "please review your medications with your care team.",
+        "plain-language explanation was not generated.",
+    ]
+    return any(phrase in normalized for phrase in placeholders)
+
+
+def _friendly_condition_name(title: str) -> str:
+    """Translate common diagnosis labels into more patient-friendly names."""
+    raw = (title or "").strip()
+    lower = raw.lower()
+
+    replacements = [
+        ("pneumonia", "a lung infection"),
+        ("hypercholesterolemia", "high cholesterol"),
+        ("hypertension", "high blood pressure"),
+        ("hypothyroidism", "low thyroid function"),
+        ("respiratory failure", "a breathing problem"),
+        ("pleural effusion", "fluid around the lungs"),
+        ("gastrointestinal hemorrhage", "bleeding in the stomach or intestines"),
+        ("gastroenteritis", "stomach or bowel irritation"),
+        ("cough", "a cough"),
+        ("laryngitis", "voice box irritation"),
+        ("femur", "a hip or thigh bone injury"),
+    ]
+    for needle, replacement in replacements:
+        if needle in lower:
+            return replacement
+
+    cleaned = raw.replace("_", " ").replace(",", ", ")
+    if cleaned.isupper():
+        cleaned = cleaned.title()
+    return cleaned
+
+
+def _describe_vitals(vitals: dict) -> List[str]:
+    """Create brief plain-language statements for the latest vitals."""
+    if not vitals:
+        return ["Your chart does not show any recent vital signs yet."]
+
+    statements: List[str] = []
+
+    heart_rate = vitals.get("heart_rate")
+    if isinstance(heart_rate, (int, float)):
+        if 60 <= heart_rate <= 100:
+            statements.append(f"Your heart rate was {round(heart_rate)} beats per minute, which is in a usual adult range.")
+        elif heart_rate > 100:
+            statements.append(f"Your heart rate was {round(heart_rate)} beats per minute, which is a little faster than expected.")
+        else:
+            statements.append(f"Your heart rate was {round(heart_rate)} beats per minute, which is a little lower than usual.")
+
+    oxygen = vitals.get("o2_saturation")
+    if isinstance(oxygen, (int, float)):
+        if oxygen >= 95:
+            statements.append(f"Your oxygen level was {round(oxygen)}%, which is reassuring.")
+        elif oxygen >= 90:
+            statements.append(f"Your oxygen level was {round(oxygen)}%, which is slightly below the ideal range and worth watching.")
+        else:
+            statements.append(f"Your oxygen level was {round(oxygen)}%, which is lower than expected.")
+
+    systolic = vitals.get("systolic_bp")
+    diastolic = vitals.get("diastolic_bp")
+    if isinstance(systolic, (int, float)) and isinstance(diastolic, (int, float)):
+        if systolic >= 140:
+            statements.append(f"Your blood pressure was {round(systolic)}/{round(diastolic)}, which is on the high side.")
+        elif systolic < 90:
+            statements.append(f"Your blood pressure was {round(systolic)}/{round(diastolic)}, which is a bit low.")
+        else:
+            statements.append(f"Your blood pressure was {round(systolic)}/{round(diastolic)}, which is in an acceptable range.")
+
+    temperature = vitals.get("temperature")
+    if isinstance(temperature, (int, float)):
+        if 97 <= temperature <= 99:
+            statements.append(f"Your temperature was {temperature:.1f} degrees Fahrenheit, which is within a typical range.")
+        elif temperature > 100.4:
+            statements.append(f"Your temperature was {temperature:.1f} degrees Fahrenheit, which can suggest a fever.")
+        else:
+            statements.append(f"Your temperature was {temperature:.1f} degrees Fahrenheit.")
+
+    respiratory_rate = vitals.get("respiratory_rate")
+    if isinstance(respiratory_rate, (int, float)):
+        if 12 <= respiratory_rate <= 20:
+            statements.append(f"Your breathing rate was {round(respiratory_rate)} breaths per minute, which is within a common adult range.")
+        elif respiratory_rate > 20:
+            statements.append(f"Your breathing rate was {round(respiratory_rate)} breaths per minute, which is a little faster than usual.")
+        else:
+            statements.append(f"Your breathing rate was {round(respiratory_rate)} breaths per minute, which is a little slower than usual.")
+
+    return statements or ["Your care team has recent vital signs on file, but there was not enough detail to summarize them cleanly."]
+
+
+def _describe_medications(medications: list) -> str:
+    """Explain charted medications in plain language without relying on the LLM."""
+    if not medications:
+        return "There are no active medications listed in your chart right now."
+
+    explanation_map = [
+        ("ace inhibitor", "often used to support blood pressure and heart health"),
+        ("diuretic", "used to help the body remove extra fluid"),
+        ("corticosteroid", "used to calm inflammation"),
+        ("gastric acid", "used to lower stomach acid and reduce irritation"),
+        ("proton pump inhibitor", "used to lower stomach acid and reduce irritation"),
+        ("histamine h2-receptor antagonist", "used to reduce stomach acid"),
+        ("antidepressant", "used to support mood and sometimes sleep or appetite"),
+        ("adhd", "used to support focus and alertness"),
+        ("stimulant", "used to support focus and alertness"),
+        ("analgesic", "used for pain relief"),
+        ("antipyretic", "used to reduce fever or body aches"),
+    ]
+
+    parts: List[str] = []
+    for med in medications[:4]:
+        name = str(med.get("name") or "This medicine").strip()
+        desc = str(med.get("description") or "").strip()
+        desc_lower = desc.lower()
+
+        explanation = None
+        for needle, friendly in explanation_map:
+            if needle in desc_lower:
+                explanation = friendly
+                break
+
+        if explanation:
+            parts.append(f"{name} is {explanation}.")
+        elif desc:
+            parts.append(f"{name} is listed in your chart as {desc.lower()}.")
+        else:
+            parts.append(f"{name} is one of the medicines currently listed in your chart.")
+
+    if len(medications) > 4:
+        parts.append(f"Your chart also lists {len(medications) - 4} additional medicines.")
+
+    return " ".join(parts)
+
+
+def _build_patient_summary_fallback(patient_data: dict) -> dict:
+    """Build a patient-specific summary without depending on an external model call."""
+    vitals = patient_data.get("vitals") or {}
+    diagnoses = patient_data.get("diagnoses") or []
+    medications = patient_data.get("medications") or []
+
+    diagnosis_names: List[str] = []
+    for diagnosis in diagnoses:
+        friendly = _friendly_condition_name(diagnosis.get("title", ""))
+        if friendly and friendly not in diagnosis_names:
+            diagnosis_names.append(friendly)
+
+    abnormal_flags: List[str] = []
+    oxygen = vitals.get("o2_saturation")
+    systolic = vitals.get("systolic_bp")
+    respiratory_rate = vitals.get("respiratory_rate")
+    temperature = vitals.get("temperature")
+
+    if isinstance(oxygen, (int, float)) and oxygen < 95:
+        abnormal_flags.append("a slightly low oxygen level")
+    if isinstance(systolic, (int, float)) and systolic >= 140:
+        abnormal_flags.append("higher blood pressure")
+    if isinstance(respiratory_rate, (int, float)) and respiratory_rate > 20:
+        abnormal_flags.append("a faster breathing rate")
+    if isinstance(temperature, (int, float)) and temperature > 100.4:
+        abnormal_flags.append("a fever")
+
+    if diagnosis_names:
+        top_conditions = ", ".join(diagnosis_names[:3])
+        summary = f"Your chart shows active health issues including {top_conditions}."
+    else:
+        summary = "Your chart includes recent health information from your care team."
+
+    if abnormal_flags:
+        if len(abnormal_flags) == 1:
+            summary += f" Your most recent vital signs also show {abnormal_flags[0]}, so your team is likely watching that closely."
+        else:
+            summary += f" Your most recent vital signs show {', '.join(abnormal_flags[:-1])} and {abnormal_flags[-1]}, so those areas may need closer follow-up."
+    elif vitals:
+        summary += " Your latest vital signs are mostly within a reassuring range."
+    elif medications:
+        summary += " Your current medicine list is also available in the chart."
+
+    next_steps: List[str] = []
+    if abnormal_flags:
+        next_steps.append("Ask whether your recent vital signs should be rechecked soon.")
+    if medications:
+        next_steps.append("Bring your medication list to your next visit and ask what each medicine is for.")
+    if any("lung infection" in item or "breathing problem" in item or "fluid around the lungs" in item for item in diagnosis_names):
+        next_steps.append("Tell your care team right away if breathing feels worse, especially if you are more short of breath than usual.")
+    next_steps.append("Keep your next follow-up appointment so your care team can review these results with you.")
+
+    deduped_steps: List[str] = []
+    for step in next_steps:
+        if step not in deduped_steps:
+            deduped_steps.append(step)
+
+    return {
+        "summary": summary,
+        "vitals_explanation": " ".join(_describe_vitals(vitals)),
+        "medications_explanation": _describe_medications(medications),
+        "next_steps": deduped_steps[:4],
+    }
+
+
+def _merge_summary_with_fallback(payload: dict, fallback: dict) -> dict:
+    """Use the model output when available, but replace placeholders with local patient-specific text."""
+    merged = _normalize_patient_summary_payload(payload)
+    for key in ("summary", "vitals_explanation", "medications_explanation"):
+        if _is_placeholder_summary_text(merged.get(key)):
+            merged[key] = fallback[key]
+
+    if not merged.get("next_steps"):
+        merged["next_steps"] = fallback["next_steps"]
+
+    return merged
+
+
 @app.post("/patient/{patient_id}/summary")
 async def patient_summary(patient_id: str):
     """
@@ -559,16 +854,21 @@ async def patient_summary(patient_id: str):
     """
     try:
         # Get raw clinical data
-        patient_data = get_patient_data_json(patient_id)
+        patient_data = await asyncio.to_thread(get_patient_data_json, patient_id)
         if not patient_data or "error" in str(patient_data).lower():
             raise HTTPException(status_code=404, detail="Patient not found")
+
+        fallback_result = _build_patient_summary_fallback(patient_data)
 
         # Format the data as a readable string for the LLM
         data_str = json.dumps(patient_data, indent=2, default=str)
 
-        # Call the LLM via the existing ask_trustmed function
+        # Use the direct path here; this endpoint only needs summarization, not full RAG.
         prompt = PATIENT_SUMMARY_PROMPT.format(patient_data=data_str)
-        response = await asyncio.to_thread(ask_trustmed, prompt)
+        response = await ask_trustmed_direct(prompt)
+
+        if _is_placeholder_summary_text(response):
+            return fallback_result
 
         # Try to parse as JSON; if it fails, wrap in a structured response
         try:
@@ -579,15 +879,10 @@ async def patient_summary(patient_id: str):
                 if cleaned.endswith("```"):
                     cleaned = cleaned[:-3]
                 cleaned = cleaned.strip()
-            result = json.loads(cleaned)
+            result = _merge_summary_with_fallback(json.loads(cleaned), fallback_result)
         except (json.JSONDecodeError, ValueError):
-            # LLM didn't return valid JSON — wrap the response
-            result = {
-                "summary": response[:500] if response else "Unable to generate summary.",
-                "vitals_explanation": "Please ask your care team about your vital signs.",
-                "medications_explanation": "Please review your medications with your care team.",
-                "next_steps": "Schedule a follow-up with your primary care provider."
-            }
+            # LLM didn't return valid JSON — fall back to local patient-specific content.
+            result = fallback_result
 
         return result
 

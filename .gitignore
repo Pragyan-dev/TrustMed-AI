@@ -1,8 +1,12 @@
 .env
 data/
 __pycache__/
+*.py[cod]
+.pytest_cache/
 .DS_Store
 chat_history/
 uploads/
 temp_scan.jpg
 frontend/node_modules/
+out.log
+.codex/

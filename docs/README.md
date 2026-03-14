@@ -1,302 +1,222 @@
-# TrustMed AI 🏥🤖
+# TrustMed AI
 
-**Neuro-Symbolic Clinical Decision Support System**
+TrustMed AI is a multimodal clinical decision support system built around a FastAPI backend and a React/Vite frontend. It combines patient context, a medical knowledge graph, medical literature retrieval, and medical image analysis into a single application with two current product surfaces:
 
-A multimodal medical AI assistant that combines patient records, knowledge graphs, medical literature, and medical imaging into one comprehensive clinical tool.
+- `Clinician dashboard` at `/clinician`
+- `Patient portal` at `/patient`
 
-![System Architecture](system_architecture_clinical_assistant.png)
+The current primary app is the `FastAPI + React` stack. The older `Streamlit` app still exists in the repo as a legacy path, but it is not the main interface documented here.
 
----
+![System Architecture](system_architecture_gemini_nemotron.png)
 
-## 🎯 What It Does
+## Current Product Surface
 
-TrustMed AI is designed to address three clinical pain points: **Time**, **Trust**, and **Liability**.
+### Clinician dashboard
+- Streaming chat with multi-session history
+- Text and vision model selection
+- Temperature control
+- Patient-aware context loading from the MIMIC demo database
+- Image upload and multimodal analysis
+- Compound figure detection and per-panel analysis
+- Context-aware knowledge graph tab
+- Drug alert tab
+- SOAP note generation
 
-| Feature | Problem Solved | How |
-|---------|---------------|-----|
-| **4-Brain Architecture** | Fragmented information | Combines patient data, knowledge graphs, literature, and imaging |
-| **Safety Critic Layer** | AI hallucinations | Every response reviewed for contraindications before display |
-| **SOAP Note Generator** | Documentation burden | One-click clinical note generation |
-| **Visual-RAG** | Missing historical context | Finds similar cases from image database |
-| **Cross-Encoder Reranking** | Irrelevant search results | Deep semantic filtering (30 → 3 most relevant) |
-| **Compound Figure Detection** | Multi-panel medical images | Auto-splits grids, analyzes each panel independently |
+### Patient portal
+- Separate patient-facing workflow at `/patient`
+- Profile, vitals, medications, imaging, and care-plan tabs
+- Patient-friendly assistant constrained to visit/chart questions
+- Personalized care-plan summary from current chart data
+- Vitals trend cards with hover tooltips
+- Medication interaction checks in plain language
 
----
+## Runtime Architecture
 
-## 🧠 The Four Knowledge Sources
+### Frontend
+- `React 19`
+- `Vite 7`
+- `React Router`
+- `react-force-graph-2d`
+- `react-markdown`
 
-| Brain | Data Source | Example Output |
-|-------|-------------|----------------|
-| **Patient Context** | MIMIC-IV (SQLite) | "Patient 10002428: BP 145/92, on Lisinopril" |
-| **Knowledge Graph** | Neo4j (AuraDB) | "Pneumonia → HAS_SYMPTOM → Cough, Fever" |
-| **Medical Literature** | ChromaDB (Vector) | "WHO guidelines recommend..." |
-| **Vision Agent** | BiomedCLIP + LLaMA 3.2 | "X-ray shows bilateral infiltrates, 92% similar to 5 pneumonia cases" |
+### Backend
+- `FastAPI`
+- Server-sent event streaming for chat responses
+- Local session persistence in `chat_history/`
+- Uploaded file handling in `uploads/`
 
----
+### Clinical / AI stack
+- `LangChain` orchestration
+- `OpenRouter` text generation
+- `Vertex AI MedGemma` support for text/vision flows
+- `ChromaDB` for retrieval
+- `Neo4j` for the knowledge graph
+- `Sentence Transformers` reranking/retrieval support
+- `BiomedCLIP`-style image retrieval pipeline in the vision path
+- `MIMIC demo SQLite` patient context in `data/mimic_demo.db`
 
-## 🔄 Complete Pipeline (Query + Image)
+## Repo Layout
 
-```
-User Input (Query + Image)
-       ↓
-┌─────────────────────────────────────┐
-│ 🔲 COMPOUND FIGURE DETECTOR        │
-│  • Detects multi-panel grids       │
-│  • Splits into individual panels   │
-│  • Labels: A, B, C, D...           │
-└─────────────────────────────────────┘
-       ↓ (for each panel)
-┌─────────────────────────────────────┐
-│ VISION AGENT (Multimodal)          │
-│  • LLaMA 3.2 Vision → Findings     │
-│  • Text-RAG → Guidelines           │
-│  • Visual-RAG → Similar Cases      │
-└─────────────────────────────────────┘
-       ↓
-┌─────────────────────────────────────┐
-│ CROSS-PANEL SYNTHESIS              │
-│  • Combines all panel analyses     │
-│  • Generates unified report        │
-└─────────────────────────────────────┘
-       ↓
-┌─────────────────────────────────────┐
-│ PARALLEL RETRIEVAL                 │
-│  • Patient Context (MIMIC)         │
-│  • Knowledge Graph (Neo4j)         │
-│  • Vector Search (ChromaDB)        │
-└─────────────────────────────────────┘
-       ↓
-┌─────────────────────────────────────┐
-│ RERANKER (Cross-Encoder)           │
-│  • 30 candidates → Top 3 relevant  │
-└─────────────────────────────────────┘
-       ↓
-┌─────────────────────────────────────┐
-│ DRAFT GENERATION (LLM)             │
-│  • Synthesizes all contexts        │
-└─────────────────────────────────────┘
-       ↓
-┌─────────────────────────────────────┐
-│ 🛡️ SAFETY CRITIC LAYER            │
-│  • Checks contraindications        │
-│  • Validates dosages               │
-│  • Adds warnings if needed         │
-└─────────────────────────────────────┘
-       ↓
-Final Response → User
-```
-
----
-
-## �️ Safety Features
-
-### Self-Reflective Safety Layer
-Every AI response passes through a second LLM review:
-1. **Draft Generated** → Main LLM creates response
-2. **Critic Reviews** → Safety agent checks for:
-   - Dosage errors
-   - Drug contraindications (vs patient meds)
-   - Hallucinated treatments
-3. **Safe Response** → Modified if needed, delivered to user
-
-### SOAP Note Generator
-One-click clinical documentation:
-- **S**ubjective: Patient symptoms from chat
-- **O**bjective: Vitals, imaging findings
-- **A**ssessment: AI diagnosis/reasoning
-- **P**lan: Recommendations
-
----
-
-## � Compound Figure Detection
-
-Medical publications often contain multi-panel images (e.g., 2×2 X-ray grids, pre/post comparisons). TrustMed AI automatically handles these:
-
-### How It Works
-1. **Detection**: OpenCV analyzes whitespace/borders to detect panel grids
-2. **Splitting**: Each panel (A, B, C, D...) is cropped as a separate image
-3. **Independent Analysis**: Full Vision+RAG pipeline runs on each panel
-4. **Cross-Panel Synthesis**: AI generates a unified report comparing all panels
-
-### Example
-```
-You: [Upload 2×2 chest X-ray grid] "Compare these scans"
-
-UI: "Compound figure detected: 4 panels (2×2 grid)"
-
-AI: "📋 Multi-Panel Analysis:
-
-Panel A (Top-Left): Baseline chest X-ray, clear lung fields
-Panel B (Top-Right): Day 3 - Early infiltrates in RLL
-Panel C (Bottom-Left): Day 7 - Progressive consolidation
-Panel D (Bottom-Right): Day 14 post-treatment - Resolving
-
-🔗 Cross-Panel Synthesis:
-This series shows progression and resolution of right lower
-lobe pneumonia over 14 days with appropriate treatment response."
+```text
+TrustMed-AI/
+├── api/
+│   └── main.py                    # FastAPI app and API routes
+├── frontend/
+│   ├── src/pages/
+│   │   ├── ClinicianDashboard.jsx
+│   │   ├── PatientPortal.jsx
+│   │   └── RoleSelector.jsx
+│   ├── src/components/
+│   │   ├── KnowledgeGraphPanel.jsx
+│   │   ├── PatientInfoPanel.jsx
+│   │   ├── SOAPNoteModal.jsx
+│   │   └── VitalTrendChart.jsx
+│   └── vite.config.js
+├── src/
+│   ├── trustmed_brain.py          # Main orchestration logic
+│   ├── patient_context_tool.py    # MIMIC demo patient data access
+│   ├── graph_visualizer.py        # Neo4j graph JSON generation
+│   ├── vision_agent.py            # Vision + retrieval pipeline
+│   ├── vision_tool.py             # Vision model integration
+│   └── subfigure_detector.py      # Compound figure detection
+├── data/
+│   ├── mimic_demo.db              # Demo patient database
+│   ├── chroma_db/                 # Retrieval store
+│   └── medical_images/            # Image corpus
+├── chat_history/                  # Saved chat sessions
+├── uploads/                       # Uploaded images and split panels
+├── docs/
+│   ├── README.md                  # This file
+│   ├── ARCHITECTURE.md
+│   └── README_KNOWLEDGE_GRAPH.md
+├── run_dev.sh                     # Starts backend + frontend together
+└── app.py                         # Legacy Streamlit UI
 ```
 
-### During Ingestion
-When batch-ingesting images, compound figures are automatically split and each subfigure is stored with:
-- Its own BiomedCLIP embedding for Visual-RAG
-- Parent-child metadata linking back to the original image
+## Current Routes
 
----
+### Frontend routes
+- `/` role selector
+- `/clinician` clinician dashboard
+- `/patient` patient portal
 
-## �🖼️ Visual-RAG: Finding Similar Cases
+### Core backend routes
+- `POST /chat/stream` streaming chat
+- `POST /chat` non-streaming chat
+- `POST /upload-image` image upload
+- `POST /soap-note` SOAP note generation
+- `GET /patient/{patient_id}` patient data
+- `POST /patient/{patient_id}/summary` patient-facing summary
+- `GET /graph` graph data for the right panel
+- `GET /sessions` list saved sessions
+- `POST /sessions/new` create a session
+- `DELETE /sessions/{session_id}` delete a session
+- `POST /sessions/rename` rename a session
+- `POST /detect-panels` compound figure detection
+- `GET /panels/{filename}` serve generated panel images
+- `GET /explain-term` medical term explanation
 
-When you upload a medical scan:
+## Local Development
 
-1. **BiomedCLIP** embeds the image into a vector
-2. **ChromaDB** searches 1,800+ labeled medical images
-3. **Returns**: Top 5 similar cases with diagnoses
-4. **Example**: "This X-ray is 92% similar to 3 confirmed pneumonia cases"
-
----
-
-## 📊 Tech Stack
-
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| Frontend | Streamlit | Interactive clinical UI |
-| Orchestrator | Python (LangChain) | Combines all knowledge sources |
-| Knowledge Graph | Neo4j AuraDB | Disease-symptom-treatment relationships |
-| Vector DB | ChromaDB | Text & image semantic search |
-| Embeddings | Sentence Transformers | Text embeddings (all-MiniLM-L6-v2) |
-| Medical Image AI | BiomedCLIP | Medical image embeddings |
-| Vision Model | LLaMA 3.2 Vision / Gemini | Image analysis |
-| Subfigure Detection | OpenCV + PIL | Compound figure grid detection |
-| LLM | OpenRouter (Nemotron) | Response generation |
-| Reranker | Cross-Encoder (ms-marco) | Deep relevance scoring |
-| Patient Data | MIMIC-IV (SQLite) | Real ICU records (anonymized) |
-
----
-
-## 🚀 Quick Start
-
-### 1. Install Dependencies
+### 1. Backend dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Configure Environment
+### 2. Frontend dependencies
 ```bash
-cp .env.example .env
-# Add your API keys: OPENROUTER_API_KEY, NEO4J_URI, etc.
+cd frontend
+npm install
+cd ..
 ```
 
-### 3. Run the App
+### 3. Environment
+Create a `.env` file in the project root. Current runtime expects these values:
+
+Required for core LLM responses:
+- `OPENROUTER_API_KEY`
+
+Required for knowledge graph features:
+- `NEO4J_URI`
+- `NEO4J_USERNAME`
+- `NEO4J_PASSWORD`
+
+Optional for Vertex / MedGemma flows:
+- `VERTEX_PROJECT_ID`
+- `VERTEX_ENDPOINT_ID`
+- `VERTEX_REGION`
+- `VERTEX_SERVICE_ACCOUNT_JSON`
+- `VERTEX_DEDICATED_DOMAIN`
+
+Optional:
+- `OPENROUTER_MODEL`
+- `SAFETY_CRITIC_MODEL`
+- `UMLS_API_KEY`
+
+### 4. Run the app
+Preferred local dev path:
 ```bash
-python3 -m streamlit run app.py
+./run_dev.sh
 ```
 
-### 4. Try These Queries
-- **Patient Assessment**: "Assess patient 10002428 for any risks"
-- **Drug Interaction**: "What are interactions between Lisinopril and Ibuprofen?"
-- **Image Analysis**: Upload X-ray + "What does this scan show?"
-- **Generate Notes**: Click "📄 Generate Clinical Note (SOAP)" after a conversation
+That starts:
+- frontend on `http://localhost:5173`
+- backend on `http://localhost:8000`
+- API docs on `http://localhost:8000/docs`
 
----
-
-## 📁 Project Structure
-
-```
-TrustMed-AI/
-├── app.py                      # Streamlit frontend
-├── src/
-│   ├── trustmed_brain.py       # Main orchestrator (4 brains + safety)
-│   ├── vision_agent.py         # Vision + Text-RAG + Visual-RAG + Compound support
-│   ├── vision_tool.py          # LLaMA/Gemini vision model
-│   ├── subfigure_detector.py   # OpenCV compound figure detection
-│   ├── patient_context_tool.py # MIMIC-IV patient data
-│   ├── reranker.py             # Cross-encoder reranking
-│   └── graph_visualizer.py     # Neo4j → Streamlit-agraph
-├── ingestion/
-│   ├── ingest_diseases.py      # Disease/symptom data → Neo4j
-│   ├── ingest_images.py        # Medical images → ChromaDB
-│   └── ingest_xrays.py         # Labeled X-rays → ChromaDB
-├── data/
-│   ├── chroma_db/              # Vector store
-│   └── mimic_iv.db             # Patient SQLite database
-└── docs/
-    ├── README.md               # This file
-    └── system_architecture_*.png
+### 5. Run manually
+Backend:
+```bash
+cd api
+python3 -m uvicorn main:app --reload --port 8000
 ```
 
----
-
-## ✅ Completed Features
-
-- [x] **Neuro-Symbolic Architecture** - Graph + Vector + Patient context fusion
-- [x] **Advanced RAG** - Cross-encoder reranking for better retrieval
-- [x] **Multimodal Vision Agent** - Vision + Text-RAG + Visual-RAG pipeline
-- [x] **Knowledge Graph Visualization** - Interactive Neo4j graph in UI
-- [x] **Self-Reflective Safety Layer** - Critic agent for contraindication checking
-- [x] **SOAP Note Generator** - Automated clinical documentation
-- [x] **BiomedCLIP Integration** - Medical image embeddings + similarity search
-- [x] **Labeled X-ray Dataset** - 1,800 images with PNEUMONIA/NORMAL labels
-- [x] **Compound Figure Detection** - Auto-split multi-panel images with cross-panel synthesis
-
----
-
-## 🔮 Future Roadmap
-
-- [ ] **DICOM Support** - Direct hospital image format ingestion
-- [ ] **Uncertainty Quantification** - "80% confident this is pneumonia"
-- [ ] **Drug Interaction API** - Real-time DrugBank/RxNorm integration
-- [ ] **Voice Interface** - Speech-to-text for hands-free queries
-- [ ] **Federated Learning** - Privacy-preserving model updates
-- [ ] **FHIR Integration** - Connect to real EHR systems
-
----
-
-## 📚 Data Sources
-
-| Dataset | Size | Use |
-|---------|------|-----|
-| MIMIC-IV | 40K+ patients | Patient vitals, diagnoses, medications |
-| ROCO | 2,000 images | Medical image similarity search |
-| Kaggle Pneumonia | 1,800 images | Labeled X-ray training data |
-| Disease-Symptom DB | 400+ diseases | Knowledge graph construction |
-
----
-
-## 🎬 Demo Examples
-
-### Patient Assessment
-```
-You: "Assess patient 10002428 for medication risks"
-
-AI: "Patient 10002428 (65yo):
-- BP: 145/92 (elevated)
-- Current: Lisinopril 10mg, Metformin 500mg
-- Diagnosis: Hypertension, Type 2 Diabetes
-
-⚠️ Note: BP above target. Consider dose adjustment.
-No drug interactions detected between current medications."
+Frontend:
+```bash
+cd frontend
+npm run dev
 ```
 
-### Image Analysis with Similar Cases
-```
-You: [Upload chest X-ray] "Analyze this scan"
+## Frontend / Backend Integration
 
-AI: "📋 Imaging Analysis:
-Bilateral infiltrates visible in lower lobes.
+The frontend uses Vite proxying in `frontend/vite.config.js`:
+- browser requests go to `/api/...`
+- Vite proxies them to `http://localhost:8000`
 
-🖼️ Similar Cases (Top 3):
-1. Bacterial pneumonia (92% match)
-2. Viral pneumonia (87% match)  
-3. Aspiration pneumonia (81% match)
+That means local frontend code should call API routes through `/api` rather than hard-coding the backend host.
 
-📖 Guidelines: CDC recommends empiric antibiotic 
-therapy pending culture results..."
-```
+## Data Currently Used
 
----
+### Patient data
+- Demo patient data comes from `data/mimic_demo.db`
+- The patient portal and clinician patient context use this database for:
+  - latest vitals
+  - vitals history
+  - diagnoses
+  - medications
 
-## 👤 Author
+### Retrieval / graph
+- Vector retrieval store lives in `data/chroma_db/`
+- Graph queries are backed by Neo4j through `src/graph_visualizer.py`
 
-**Pragyan Borthakur**  
-ASU Capstone Project - Spring 2026
+### Files generated at runtime
+- chat sessions: `chat_history/`
+- uploaded images: `uploads/`
+- split panel images: `uploads/panels/`
 
----
+## Notes on Legacy Code
+
+These files still exist but are not the primary current product path:
+- `app.py` legacy Streamlit UI
+- Streamlit dependencies in `requirements.txt`
+- older docs that still mention Streamlit where not yet updated
+
+If you continue cleanup, remove those only together with their remaining docs/dependency references.
+
+## What To Update Next
+
+The README is now aligned to the current app entrypoints and stack, but these repo-level follow-ups are still worth doing:
+- remove or archive the legacy Streamlit path if it is no longer needed
+- tighten backend auth/CORS before any external deployment
+- split the frontend bundle to reduce the large Vite build warning
+- update the other docs in `docs/` so they match the FastAPI + React architecture

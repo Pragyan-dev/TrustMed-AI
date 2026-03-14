@@ -65,6 +65,19 @@ function formatTimeLabel(value, sameDay) {
     ).format(parsed)
 }
 
+function formatDetailedTimeLabel(value, sameDay) {
+    if (!value) return ''
+
+    const timestamp = parseLabelTimestamp(value)
+    if (timestamp === null) return value
+    const parsed = new Date(timestamp)
+
+    return new Intl.DateTimeFormat(undefined, sameDay
+        ? { hour: 'numeric', minute: '2-digit' }
+        : { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }
+    ).format(parsed)
+}
+
 function formatTooltipLabel(value) {
     if (!value) return ''
 
@@ -90,6 +103,20 @@ function formatTooltipValue(value, unit) {
     return `${value.toFixed(1)} ${unit}`
 }
 
+function buildAxisLabels(series, sampleIndices, sameDay) {
+    const baseLabels = sampleIndices.map(index => formatTimeLabel(series[index].label, sameDay))
+    const labelCounts = baseLabels.reduce((acc, label) => {
+        acc[label] = (acc[label] || 0) + 1
+        return acc
+    }, {})
+
+    return sampleIndices.map((sampleIndex, idx) => (
+        labelCounts[baseLabels[idx]] > 1
+            ? formatDetailedTimeLabel(series[sampleIndex].label, sameDay)
+            : baseLabels[idx]
+    ))
+}
+
 function createSampleIndices(length) {
     if (length <= 4) return Array.from({ length }, (_, index) => index)
 
@@ -110,6 +137,7 @@ export default function VitalTrendChart({
     lowerBound = null,
     upperBound = null,
     pointColor = '#16A34A',
+    tooltipValueFormatter = null,
 }) {
     const clipId = useId().replace(/:/g, '')
     const [hoveredIndex, setHoveredIndex] = useState(null)
@@ -148,6 +176,7 @@ export default function VitalTrendChart({
     const range = domainMax - domainMin || 1
     const ticks = computeTicks(domainMin, domainMax, 5)
     const sampleIndices = createSampleIndices(series.length)
+    const axisLabels = buildAxisLabels(series, sampleIndices, sameDay)
 
     const xForIndex = (index) => MARGIN.left + (series.length === 1 ? chartWidth / 2 : (chartWidth * index) / (series.length - 1))
     const yForValue = (value) => MARGIN.top + chartHeight - ((value - domainMin) / range) * chartHeight
@@ -239,7 +268,7 @@ export default function VitalTrendChart({
                         )
                     })}
 
-                    {sampleIndices.map(sampleIndex => {
+                    {sampleIndices.map((sampleIndex, samplePosition) => {
                         const x = xForIndex(sampleIndex)
                         return (
                             <g key={sampleIndex}>
@@ -251,7 +280,7 @@ export default function VitalTrendChart({
                                     className="pp-trend-chart__grid pp-trend-chart__grid--vertical"
                                 />
                                 <text x={x} y={VIEWBOX_HEIGHT - 12} textAnchor="middle" className="pp-trend-chart__x-label">
-                                    {formatTimeLabel(series[sampleIndex].label, sameDay)}
+                                    {axisLabels[samplePosition]}
                                 </text>
                             </g>
                         )
@@ -292,7 +321,9 @@ export default function VitalTrendChart({
                                     onFocus={() => setHoveredIndex(index)}
                                     onBlur={() => setHoveredIndex(current => (current === index ? null : current))}
                                     tabIndex="0"
-                                    aria-label={`${title} on ${formatTooltipLabel(point.label)}: ${formatTooltipValue(point.value, unit)}`}
+                                    aria-label={`${title} on ${formatTooltipLabel(point.label)}: ${typeof tooltipValueFormatter === 'function'
+                                        ? tooltipValueFormatter(point.value)
+                                        : formatTooltipValue(point.value, unit)}`}
                                 />
                             </g>
                         ))}
@@ -316,7 +347,9 @@ export default function VitalTrendChart({
                         <div className="pp-trend-chart__tooltip-date">{formatTooltipLabel(hoveredPoint.label)}</div>
                         <div className="pp-trend-chart__tooltip-value">
                             <span className="pp-trend-chart__tooltip-swatch" style={{ backgroundColor: pointColor }} />
-                            {formatTooltipValue(hoveredPoint.value, unit)}
+                            {typeof tooltipValueFormatter === 'function'
+                                ? tooltipValueFormatter(hoveredPoint.value)
+                                : formatTooltipValue(hoveredPoint.value, unit)}
                         </div>
                     </div>
                 )}

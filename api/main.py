@@ -10,6 +10,7 @@ import json
 import asyncio
 import uuid
 import time
+import re
 from typing import Optional, List, Dict
 from pathlib import Path
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query
@@ -157,6 +158,136 @@ def _auto_title(message: str) -> str:
     return title
 
 
+PATIENT_ASSISTANT_SCOPE_REPLY = (
+    "I can only help with your health record, medications, vitals, imaging, "
+    "lab results, and care plan. Ask me about your visit or chart data."
+)
+
+_PATIENT_ALWAYS_BLOCK_PATTERNS = [
+    re.compile(r"\b(write|generate|create|make|build)\s+(a\s+)?(python|javascript|java|c\+\+|c#|html|css|sql|code|program|script)\b", re.I),
+    re.compile(r"\b(python|javascript|typescript|java|c\+\+|rust|golang|node\.?js|react)\b", re.I),
+    re.compile(r"\b(prime numbers?|leetcode|binary tree|algorithm|sort an array)\b", re.I),
+]
+
+_PATIENT_OFF_TOPIC_PATTERNS = [
+    re.compile(r"\b(recipe|weather|movie|song|poem|essay|resume|cover letter|crypto|stock market)\b", re.I),
+    re.compile(r"\btranslate\b", re.I),
+]
+
+_PATIENT_MEDICAL_SCOPE_PATTERNS = [
+    re.compile(
+        r"\b(health|visit|record|chart|doctor|care team|medical|diagnosis|diagnoses|condition|symptom|symptoms|"
+        r"medication|medications|medicine|drug|drugs|dose|side effect|interaction|allergy|vitals?|blood pressure|"
+        r"heart rate|pulse|oxygen|spo2|temperature|fever|breathing|respiratory|lab|labs|test result|results|"
+        r"imaging|x-ray|ct|mri|scan|ultrasound|report|care plan|follow-up|treatment|infection|pain|cough|"
+        r"glucose|cholesterol)\b",
+        re.I,
+    )
+]
+
+
+def _get_assistant_mode(request, session: dict) -> str:
+    return (request.assistant_mode or session.get("source") or "clinician").lower()
+
+
+def _is_off_topic_patient_question(message: str) -> bool:
+    normalized = (message or "").strip()
+    if not normalized:
+        return False
+    if any(pattern.search(normalized) for pattern in _PATIENT_ALWAYS_BLOCK_PATTERNS):
+        return True
+    if any(pattern.search(normalized) for pattern in _PATIENT_MEDICAL_SCOPE_PATTERNS):
+        return False
+    return any(pattern.search(normalized) for pattern in _PATIENT_OFF_TOPIC_PATTERNS)
+
+
+def _build_patient_portal_context(patient_data: dict, patient_id: Optional[str]) -> str:
+    if not patient_data:
+        return ""
+
+    resolved_patient_id = patient_data.get("patient_id") or patient_id
+    parts = [f"Patient {resolved_patient_id}"] if resolved_patient_id else []
+
+    vitals = patient_data.get("vitals") or {}
+    vitals_parts = []
+    if vitals.get("heart_rate") is not None:
+        vitals_parts.append(f"HR {round(vitals['heart_rate'])} bpm")
+    if vitals.get("temperature") is not None:
+        vitals_parts.append(f"Temp {vitals['temperature']:.1f}°F")
+    if vitals.get("respiratory_rate") is not None:
+        vitals_parts.append(f"RR {round(vitals['respiratory_rate'])}/min")
+    if vitals.get("o2_saturation") is not None:
+        vitals_parts.append(f"SpO₂ {round(vitals['o2_saturation'])}%")
+    if vitals.get("systolic_bp") is not None:
+        diastolic = vitals.get("diastolic_bp")
+        if diastolic is not None:
+            vitals_parts.append(f"BP {round(vitals['systolic_bp'])}/{round(diastolic)} mmHg")
+        else:
+            vitals_parts.append(f"BP {round(vitals['systolic_bp'])} mmHg")
+    if vitals_parts:
+        parts.append(f"Vitals: {', '.join(vitals_parts)}")
+
+    diagnoses = patient_data.get("diagnoses") or []
+    if diagnoses:
+        parts.append(f"Diagnoses: {', '.join(d.get('title', '') for d in diagnoses if d.get('title'))}")
+
+    medications = patient_data.get("medications") or []
+    if medications:
+        parts.append(f"Current Medications: {', '.join(m.get('name', '') for m in medications if m.get('name'))}")
+
+    if not parts:
+        return ""
+    return "\n\nPatient clinical context:\n" + "\n".join(parts)
+
+
+async def _prepare_chat_query(request, session: dict) -> tuple[str, Optional[str]]:
+    visible_message = request.message.strip()
+    mode = _get_assistant_mode(request, session)
+    if mode != "patient":
+        return visible_message, None
+
+    if _is_off_topic_patient_question(visible_message):
+        return "", PATIENT_ASSISTANT_SCOPE_REPLY
+
+    patient_context = ""
+    if request.patient_id:
+        patient_data = await asyncio.to_thread(get_patient_data_json, request.patient_id)
+        patient_context = _build_patient_portal_context(patient_data, request.patient_id)
+
+    wrapped_message = (
+        "[PATIENT PORTAL] You are TrustMed AI's patient visit assistant. "
+        "You may only answer questions about this patient's visit, chart, diagnoses, "
+        f"medications, vitals, lab results, imaging, symptoms, or care plan.{patient_context}\n\n"
+        "If the patient asks for anything outside that scope, do not answer the request. "
+        f'Respond exactly with:\n"{PATIENT_ASSISTANT_SCOPE_REPLY}"\n\n'
+        f'Patient question: "{visible_message}"\n\n'
+        "Explain in plain language at an 8th-grade reading level. Avoid medical jargon. "
+        "Be warm, direct, and concise. Use short sentences and bullet points when helpful. "
+        "Answer specifically about this patient's data when relevant."
+    )
+    return wrapped_message, None
+
+
+def _persist_session_turn(session_id: str, session: dict, request, assistant_response: str):
+    visible_message = request.message.strip()
+    user_entry = {"role": "user", "content": visible_message}
+    img_url = _image_url(request.image_path)
+    if img_url:
+        user_entry["image"] = img_url
+
+    history = session["messages"]
+    history.append(user_entry)
+    history.append({"role": "assistant", "content": assistant_response})
+
+    if session["title"] == "New chat" and visible_message:
+        session["title"] = _auto_title(visible_message)
+
+    if len(history) > 50:
+        session["messages"] = history[-50:]
+
+    _save_session(session_id, session)
+
+
 # =============================================================================
 # Pydantic Models
 # =============================================================================
@@ -165,6 +296,8 @@ class ChatRequest(BaseModel):
     message: str
     session_id: str = "default"
     image_path: Optional[str] = None
+    patient_id: Optional[str] = None
+    assistant_mode: Optional[str] = None
     temperature: Optional[float] = None  # 0.0–1.0, overrides default
     model: Optional[str] = None          # OpenRouter model ID override
     vision_model: Optional[str] = None   # Vision model ID override
@@ -223,9 +356,21 @@ async def _stream_chat(request: ChatRequest):
     }
     history = session["messages"]
 
-    query = request.message
+    query, direct_response = await _prepare_chat_query(request, session)
     if request.image_path and os.path.exists(request.image_path):
         query += f" [ATTACHMENT: {request.image_path}]"
+
+    if direct_response is not None:
+        if request.persist:
+            _persist_session_turn(session_id, session, request, direct_response)
+        done_event = {
+            "type": "done",
+            "session_id": session_id,
+            "title": session["title"],
+            "final_response": direct_response
+        }
+        yield f"data: {json.dumps(done_event)}\n\n"
+        return
 
     final_response = ""
     try:
@@ -238,16 +383,7 @@ async def _stream_chat(request: ChatRequest):
             if event["type"] == "done":
                 final_response = event.get("final_response", "")
                 if request.persist:
-                    # Save session history (include image URL if present)
-                    user_entry = {"role": "user", "content": request.message}
-                    img_url = _image_url(request.image_path)
-                    if img_url:
-                        user_entry["image"] = img_url
-                    history.append(user_entry)
-                    history.append({"role": "assistant", "content": final_response})
-                    if session["title"] == "New chat" and request.message.strip():
-                        session["title"] = _auto_title(request.message)
-                    _save_session(session_id, session)
+                    _persist_session_turn(session_id, session, request, final_response)
                 # Send done with session metadata
                 done_event = {
                     "type": "done",
@@ -291,9 +427,19 @@ async def chat(request: ChatRequest):
     history = session["messages"]
 
     # Build query with image attachment if present
-    query = request.message
+    query, direct_response = await _prepare_chat_query(request, session)
     if request.image_path and os.path.exists(request.image_path):
         query += f" [ATTACHMENT: {request.image_path}]"
+
+    if direct_response is not None:
+        response = direct_response
+        if request.persist:
+            _persist_session_turn(session_id, session, request, response)
+        return ChatResponse(
+            response=response,
+            session_id=session_id,
+            title=session["title"]
+        )
 
     # Call TrustMed Brain (already async)
     try:
@@ -302,24 +448,7 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
     if request.persist:
-        # Update history (include image URL if present)
-        user_entry = {"role": "user", "content": request.message}
-        img_url = _image_url(request.image_path)
-        if img_url:
-            user_entry["image"] = img_url
-        history.append(user_entry)
-        history.append({"role": "assistant", "content": response})
-
-        # Auto-title from first user message
-        if session["title"] == "New chat" and request.message.strip():
-            session["title"] = _auto_title(request.message)
-
-        # Keep last 50 messages (25 exchanges) for context
-        if len(history) > 50:
-            session["messages"] = history[-50:]
-
-        # Persist to disk
-        _save_session(session_id, session)
+        _persist_session_turn(session_id, session, request, response)
 
     return ChatResponse(
         response=response,

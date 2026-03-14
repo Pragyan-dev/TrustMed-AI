@@ -108,8 +108,26 @@ function KnowledgeGraphPanel({
   const [hoveredNode, setHoveredNode] = useState(null)
   const graphRef = useRef()
   const canvasWrapRef = useRef()
+  const fitTimerRef = useRef(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 500 })
   const syncedTerms = useMemo(() => extractGraphTerms(syncedSearchTerm), [syncedSearchTerm])
+
+  const queueGraphFit = useCallback((delay = 180) => {
+    if (fitTimerRef.current) {
+      window.clearTimeout(fitTimerRef.current)
+    }
+
+    fitTimerRef.current = window.setTimeout(() => {
+      if (!graphRef.current || graphData.nodes.length === 0) return
+
+      const padding = isExpanded
+        ? 130
+        : Math.max(52, Math.min(dimensions.width * 0.14, 92))
+
+      graphRef.current.centerAt(0, 0, 0)
+      graphRef.current.zoomToFit(480, padding)
+    }, delay)
+  }, [dimensions.width, graphData.nodes.length, isExpanded])
 
   // Observe the actual canvas area so the graph uses the full remaining space.
   useEffect(() => {
@@ -124,6 +142,14 @@ function KnowledgeGraphPanel({
     })
     observer.observe(canvasWrapRef.current)
     return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (fitTimerRef.current) {
+        window.clearTimeout(fitTimerRef.current)
+      }
+    }
   }, [])
 
   const fetchGraph = useCallback(async (term, activePatientId = patientId) => {
@@ -169,17 +195,13 @@ function KnowledgeGraphPanel({
 
       setGraphData({ nodes, links })
       setStats(data.stats || null)
-
-      // Zoom to fit
-      setTimeout(() => {
-        graphRef.current?.zoomToFit(400, 60)
-      }, 600)
+      queueGraphFit(260)
     } catch (err) {
       setError(err.message)
     } finally {
       setIsLoading(false)
     }
-  }, [patientId])
+  }, [patientId, queueGraphFit])
 
   useEffect(() => {
     setManualOverride(false)
@@ -216,8 +238,15 @@ function KnowledgeGraphPanel({
     if (graphRef.current) {
       graphRef.current.d3Force('charge')?.strength(-200)
       graphRef.current.d3Force('link')?.distance(80)
+      graphRef.current.d3Force('center')?.x(0)
+      graphRef.current.d3Force('center')?.y(0)
     }
   }, [graphData])
+
+  useEffect(() => {
+    if (!graphData.nodes.length) return
+    queueGraphFit(160)
+  }, [dimensions.width, dimensions.height, graphData.nodes.length, isExpanded, queueGraphFit])
 
   useEffect(() => {
     if (!isExpanded) return undefined
@@ -522,6 +551,7 @@ function KnowledgeGraphPanel({
               cooldownTicks={100}
               d3AlphaDecay={0.03}
               d3VelocityDecay={0.3}
+              onEngineStop={() => queueGraphFit(0)}
             />
           </div>
 

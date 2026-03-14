@@ -118,31 +118,6 @@ const cleanContent = (text) => {
     return t
 }
 
-const PATIENT_ASSISTANT_SCOPE_REPLY = 'I can only help with your health record, medications, vitals, imaging, lab results, and care plan. Ask me about your visit or chart data.'
-
-const OFF_TOPIC_PATTERNS = [
-    /\b(write|generate|create|make|build)\s+(a\s+)?(python|javascript|java|c\+\+|c#|html|css|sql|code|program|script)\b/i,
-    /\b(python|javascript|typescript|java|c\+\+|rust|golang|node\.?js|react)\b/i,
-    /\b(prime numbers?|leetcode|binary tree|algorithm|sort an array)\b/i,
-    /\b(recipe|weather|movie|song|poem|essay|resume|cover letter|crypto|stock market)\b/i,
-    /\btranslate\b/i,
-]
-
-const MEDICAL_SCOPE_PATTERNS = [
-    /\b(health|visit|record|chart|doctor|care team|medical|diagnosis|diagnoses|condition|symptom|symptoms|medication|medications|medicine|drug|drugs|dose|side effect|interaction|allergy|vitals?|blood pressure|heart rate|pulse|oxygen|spo2|temperature|fever|breathing|respiratory|lab|labs|test result|results|imaging|x-ray|ct|mri|scan|ultrasound|report|care plan|follow-up|treatment|infection|pain|cough|glucose|cholesterol)\b/i,
-]
-
-function shouldBlockOffTopicPatientQuestion(text) {
-    if (!text) return false
-    const normalized = text.trim()
-    if (!normalized) return false
-
-    const looksMedical = MEDICAL_SCOPE_PATTERNS.some(pattern => pattern.test(normalized))
-    if (looksMedical) return false
-
-    return OFF_TOPIC_PATTERNS.some(pattern => pattern.test(normalized))
-}
-
 const streamSseEvents = async (response, onEvent) => {
     const reader = response.body?.getReader()
     if (!reader) throw new Error('Streaming response unavailable')
@@ -272,72 +247,37 @@ export default function PatientPortal() {
         if (!rawMessage.trim() || chatLoading) return
 
         const userMsg = rawMessage.trim()
-        setChatInput('')
-
-        if (shouldBlockOffTopicPatientQuestion(userMsg)) {
-            setChatMessages(prev => [
-                ...prev,
-                { role: 'user', content: userMsg },
-                { role: 'assistant', content: PATIENT_ASSISTANT_SCOPE_REPLY },
-            ])
-            return
-        }
 
         let sid = sessionId
         if (!sid) {
             try {
                 const res = await fetch(`${API_BASE}/sessions/new?source=patient`, { method: 'POST' })
+                if (!res.ok) throw new Error('Failed to create patient session')
                 const data = await res.json()
                 sid = data.id
                 setSessionId(data.id)
-            } catch { return }
+            } catch {
+                return
+            }
         }
 
+        setChatInput('')
         setChatMessages(prev => [...prev, { role: 'user', content: userMsg }])
         setChatLoading(true)
-
-        // Wrap with plain-language system prompt + patient context
-        let patientContext = ''
-        if (patientData) {
-            const parts = [`Patient ${patientData.patient_id || selectedPatient}`]
-            if (patientData.vitals) {
-                const v = patientData.vitals
-                const vitals = []
-                if (v.heart_rate != null) vitals.push(`HR ${Math.round(v.heart_rate)} bpm`)
-                if (v.temperature != null) vitals.push(`Temp ${v.temperature.toFixed(1)}°F`)
-                if (v.respiratory_rate != null) vitals.push(`RR ${Math.round(v.respiratory_rate)}/min`)
-                if (v.o2_saturation != null) vitals.push(`SpO₂ ${Math.round(v.o2_saturation)}%`)
-                if (v.systolic_bp != null) vitals.push(`BP ${Math.round(v.systolic_bp)}/${Math.round(v.diastolic_bp)} mmHg`)
-                if (vitals.length) parts.push(`Vitals: ${vitals.join(', ')}`)
-            }
-            if (patientData.diagnoses?.length) {
-                parts.push(`Diagnoses: ${patientData.diagnoses.map(d => d.title).join(', ')}`)
-            }
-            if (patientData.medications?.length) {
-                parts.push(`Current Medications: ${patientData.medications.map(m => m.name).join(', ')}`)
-            }
-            patientContext = `\n\nPatient clinical context:\n${parts.join('\n')}`
-        }
-
-        const wrappedMessage = `[PATIENT PORTAL] You are TrustMed AI's patient visit assistant. You may only answer questions about this patient's visit, chart, diagnoses, medications, vitals, lab results, imaging, symptoms, or care plan.${patientContext}
-
-If the patient asks for anything outside that scope, do not answer the request. Respond exactly with:
-"${PATIENT_ASSISTANT_SCOPE_REPLY}"
-
-Patient question: "${userMsg}"
-
-Explain in plain language at an 8th-grade reading level. Avoid medical jargon. Be warm, direct, and concise. Use short sentences and bullet points when helpful. Answer specifically about this patient's data when relevant.`
 
         try {
             const res = await fetch(`${API_BASE}/chat/stream`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    message: wrappedMessage,
+                    message: userMsg,
                     session_id: sid,
+                    patient_id: patientData?.patient_id || selectedPatient || null,
+                    assistant_mode: 'patient',
                     temperature: 0.3,
                 })
             })
+            if (!res.ok) throw new Error('Failed to send patient message')
 
             let added = false
 
@@ -372,13 +312,7 @@ Explain in plain language at an 8th-grade reading level. Avoid medical jargon. B
         setCheckingMed(medName)
         setInteractionResult(null)
         try {
-            let sid = sessionId
-            if (!sid) {
-                const res = await fetch(`${API_BASE}/sessions/new?source=patient`, { method: 'POST' })
-                const data = await res.json()
-                sid = data.id
-                setSessionId(data.id)
-            }
+            const sid = sessionId || `patient-drug-check-${patientData?.patient_id || selectedPatient || 'guest'}`
             const otherMeds = patientData?.medications
                 ?.filter(m => m.name !== medName)
                 ?.map(m => m.name)
@@ -389,10 +323,13 @@ Explain in plain language at an 8th-grade reading level. Avoid medical jargon. B
                 body: JSON.stringify({
                     message: `Check drug interactions for ${medName}. The patient's other current medications are: ${otherMeds}. List any interactions in plain language. Be brief.`,
                     session_id: sid,
+                    patient_id: patientData?.patient_id || selectedPatient || null,
+                    assistant_mode: 'patient',
                     temperature: 0.1,
                     persist: false,
                 })
             })
+            if (!res.ok) throw new Error('Failed to check interactions')
             let result = ''
             await streamSseEvents(res, (event) => {
                 if (event.type === 'token') result += event.content
@@ -439,7 +376,8 @@ Explain in plain language at an 8th-grade reading level. Avoid medical jargon. B
             labels: vitalsHistory.map(row => row.recorded_at),
             lowerBound: 90,
             upperBound: 140,
-            referenceText: 'Target systolic range: 90-140 mmHg',
+            referenceText: 'Trend shows systolic blood pressure. Latest reading includes diastolic pressure.',
+            tooltipValueFormatter: (value) => `${Math.round(value)} mmHg systolic`,
         },
         {
             key: 'oxygenSaturation',
@@ -479,6 +417,7 @@ Explain in plain language at an 8th-grade reading level. Avoid medical jargon. B
         'What are the key things in my medical history?',
         'Are there any concerning trends in my health data?',
     ]
+    const activePatientId = patientData?.patient_id || selectedPatient || null
     const profileFacts = [
         { label: 'Patient ID', value: patientData?.patient_id || selectedPatient || 'Unknown' },
         { label: 'Active conditions', value: diagnoses?.length ? `${diagnoses.length}` : '0' },
@@ -658,6 +597,7 @@ Explain in plain language at an 8th-grade reading level. Avoid medical jargon. B
                                                             lowerBound={chart.lowerBound}
                                                             upperBound={chart.upperBound}
                                                             pointColor={VITAL_STATUS_COLORS[chart.statusTone]}
+                                                            tooltipValueFormatter={chart.tooltipValueFormatter}
                                                         />
                                                     ))}
                                                 </div>
@@ -872,7 +812,7 @@ Explain in plain language at an 8th-grade reading level. Avoid medical jargon. B
                             <div className="pp-assistant__badge"><Stethoscope size={24} strokeWidth={2.2} /></div>
                             <div>
                                 <div className="pp-assistant__title">TrustMed AI</div>
-                                <div className="pp-assistant__subtitle">Ask anything about your visit</div>
+                                <div className="pp-assistant__subtitle">Ask about your health record</div>
                             </div>
                             <div className="pp-assistant__controls">
                                 <button
@@ -901,7 +841,7 @@ Explain in plain language at an 8th-grade reading level. Avoid medical jargon. B
                                         <div className="pp-assistant__hero-icon"><Stethoscope size={42} strokeWidth={2.15} /></div>
                                         <div className="pp-assistant__hero-title">Your visit assistant</div>
                                         <div className="pp-assistant__hero-pill">Patient Record</div>
-                                        <p>Ask me anything about your health.</p>
+                                        <p>Ask about your chart, medications, vitals, imaging, or care plan.</p>
                                     </div>
                                     <div className="pp-assistant__suggestions">
                                         {assistantPrompts.map(prompt => (
@@ -956,7 +896,7 @@ Explain in plain language at an 8th-grade reading level. Avoid medical jargon. B
                                 className="pp-chat__input"
                                 value={chatInput}
                                 onChange={e => setChatInput(e.target.value)}
-                                placeholder={patientData ? 'Ask about your visit…' : 'Select a patient profile to begin…'}
+                                placeholder={patientData ? `Ask about Patient ${activePatientId}…` : 'Select a patient profile to begin…'}
                                 disabled={chatLoading || !patientData}
                             />
                             <button className="pp-chat__send pp-chat__send--label" type="submit" disabled={!chatInput.trim() || chatLoading || !patientData}>

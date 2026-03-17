@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_database": "TrustMed_AI",
+  "project_id": "2ce6e977-bd25-41db-adb3-5ded1238d2cd"
+}

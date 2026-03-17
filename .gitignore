@@ -10,3 +10,7 @@ temp_scan.jpg
 frontend/node_modules/
 out.log
 .codex/
+
+# Dolt database files (added by bd init)
+.dolt/
+*.db

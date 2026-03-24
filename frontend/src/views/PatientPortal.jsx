@@ -192,6 +192,73 @@ const streamSseEvents = async (response, onEvent) => {
     }
 }
 
+function toSentenceList(value, { splitSemicolons = false, maxItems = 6 } = {}) {
+    if (!value || typeof value !== 'string') return []
+
+    const normalized = value.replace(/\s+/g, ' ').trim()
+    if (!normalized) return []
+
+    const fragments = splitSemicolons
+        ? normalized.split(/\s*;\s*/)
+        : normalized.split(/(?<=[.!?])\s+/)
+
+    return fragments
+        .map(fragment => fragment.trim())
+        .filter(Boolean)
+        .slice(0, maxItems)
+}
+
+function normalizeCarePlanSteps(steps = []) {
+    const baseSteps = Array.isArray(steps)
+        ? steps.map(step => String(step || '').trim()).filter(Boolean)
+        : []
+
+    if (baseSteps.length !== 1) return baseSteps
+
+    const expanded = baseSteps[0]
+        .replace(/\s+and call\b/ig, '. Call')
+        .replace(/\s+and keep\b/ig, '. Keep')
+        .replace(/\s+and ask\b/ig, '. Ask')
+        .replace(/\s+and bring\b/ig, '. Bring')
+        .replace(/\s+and tell\b/ig, '. Tell')
+        .split(/(?<=[.!?])\s+|;\s+/)
+        .flatMap(step => step.split(/,\s+(?=(review|keep|call|ask|bring|tell|track|watch)\b)/i))
+        .map(step => step.trim())
+        .filter(Boolean)
+
+    return expanded.length > 1 ? expanded : baseSteps
+}
+
+function getCareStepMeta(step, index) {
+    const lower = String(step || '').toLowerCase()
+
+    if (/(call|right away|urgent|short of breath|fever rises|breathing feels worse|worse)/.test(lower)) {
+        return {
+            label: 'Watch Closely',
+            tone: 'alert',
+        }
+    }
+
+    if (/(medication|medicine|bring your medication list|what each medicine is for)/.test(lower)) {
+        return {
+            label: 'Medication Check',
+            tone: 'calm',
+        }
+    }
+
+    if (/(follow-up|follow up|appointment|review these results|next visit)/.test(lower)) {
+        return {
+            label: 'Follow-Up',
+            tone: 'primary',
+        }
+    }
+
+    return {
+        label: `Step ${index + 1}`,
+        tone: 'primary',
+    }
+}
+
 export default function PatientPortal() {
     const [selectedPatient, setSelectedPatient] = useState('')
     const [patientData, setPatientData] = useState(null)
@@ -482,6 +549,29 @@ export default function PatientPortal() {
         { label: 'Active conditions', value: diagnoses?.length ? `${diagnoses.length}` : '0' },
         { label: 'Medications', value: medications?.length ? `${medications.length}` : '0' },
         { label: 'Latest update', value: formatRecordedAt(latestVitalsRecordedAt) },
+    ]
+    const carePlanVitalsPoints = toSentenceList(patientSummary?.vitals_explanation, { maxItems: 6 })
+    const carePlanMedicationPoints = toSentenceList(patientSummary?.medications_explanation, {
+        splitSemicolons: true,
+        maxItems: 8,
+    })
+    const carePlanSteps = normalizeCarePlanSteps(patientSummary?.next_steps)
+    const carePlanHighlights = [
+        {
+            label: 'Focus areas',
+            value: `${Math.max(carePlanVitalsPoints.length, 1)} clinical notes`,
+            tone: 'emerald',
+        },
+        {
+            label: 'Medication items',
+            value: `${medications?.length || carePlanMedicationPoints.length || 0} on file`,
+            tone: 'blue',
+        },
+        {
+            label: 'Next steps',
+            value: `${carePlanSteps.length || 0} recommended`,
+            tone: 'amber',
+        },
     ]
     const askAboutSection = (question) => submitChatMessage(question)
 
@@ -972,45 +1062,96 @@ export default function PatientPortal() {
                                                 </div>
                                             </div>
                                         ) : patientSummary ? (
-                                            <div className="pp-care-plan pp-care-plan--v2">
-                                                <div className="pp-care-summary pp-care-summary--v2">
-                                                    <div className="pp-care-summary__icon">
-                                                        <FileHeart size={20} />
-                                                    </div>
-                                                    <div className="pp-care-summary__text">{patientSummary.summary}</div>
-                                                </div>
-
-                                                <div className="pp-care-explainers pp-care-explainers--v2">
-                                                    <div className="pp-care-explainer pp-care-explainer--v2">
-                                                        <div className="pp-care-explainer__icon" style={{ background: '#FEF2F2', color: '#DC2626' }}>
-                                                            <Heart size={16} />
+                                            <div className="pp-care-plan pp-care-plan--v3">
+                                                <div className="pp-care-hero">
+                                                    <div className="pp-care-hero__summary">
+                                                        <div className="pp-care-summary__icon">
+                                                            <FileHeart size={20} />
                                                         </div>
-                                                        <div>
-                                                            <div className="pp-care-explainer__title">Vitals Overview</div>
-                                                            <div className="pp-care-explainer__body">{patientSummary.vitals_explanation}</div>
+                                                        <div className="pp-care-hero__copy">
+                                                            <div className="pp-care-hero__eyebrow">Today&apos;s Snapshot</div>
+                                                            <div className="pp-care-summary__text">{patientSummary.summary}</div>
                                                         </div>
                                                     </div>
-                                                    <div className="pp-care-explainer pp-care-explainer--v2">
-                                                        <div className="pp-care-explainer__icon" style={{ background: '#EFF6FF', color: '#2563EB' }}>
-                                                            <Pill size={16} />
-                                                        </div>
-                                                        <div>
-                                                            <div className="pp-care-explainer__title">Medications Overview</div>
-                                                            <div className="pp-care-explainer__body">{patientSummary.medications_explanation}</div>
-                                                        </div>
+                                                    <div className="pp-care-hero__highlights">
+                                                        {carePlanHighlights.map(item => (
+                                                            <div key={item.label} className={`pp-care-highlight pp-care-highlight--${item.tone}`}>
+                                                                <span>{item.label}</span>
+                                                                <strong>{item.value}</strong>
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 </div>
 
-                                                {patientSummary.next_steps?.length > 0 && (
-                                                    <div className="pp-care-steps">
-                                                        <div className="pp-care-steps__title">Recommended Next Steps</div>
-                                                        <div className="pp-care-steps__list">
-                                                            {patientSummary.next_steps.map((step, index) => (
-                                                                <div key={`${step}-${index}`} className="pp-care-step">
-                                                                    <div className="pp-care-step__number">{index + 1}</div>
-                                                                    <div className="pp-care-step__text">{step}</div>
-                                                                </div>
-                                                            ))}
+                                                <div className="pp-care-columns">
+                                                    <div className="pp-care-explainer pp-care-explainer--v3">
+                                                        <div className="pp-care-explainer__head">
+                                                            <div className="pp-care-explainer__icon" style={{ background: '#FEF2F2', color: '#DC2626' }}>
+                                                                <Heart size={16} />
+                                                            </div>
+                                                            <div>
+                                                                <div className="pp-care-explainer__title">Vitals Overview</div>
+                                                                <div className="pp-care-explainer__lede">A clearer explanation of what your recent vital signs may mean.</div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="pp-care-explainer__body">
+                                                            {carePlanVitalsPoints.length > 0 ? (
+                                                                <ul className="pp-care-bullets">
+                                                                    {carePlanVitalsPoints.map((point, index) => (
+                                                                        <li key={`${point}-${index}`}>{point}</li>
+                                                                    ))}
+                                                                </ul>
+                                                            ) : (
+                                                                patientSummary.vitals_explanation
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="pp-care-explainer pp-care-explainer--v3">
+                                                        <div className="pp-care-explainer__head">
+                                                            <div className="pp-care-explainer__icon" style={{ background: '#EFF6FF', color: '#2563EB' }}>
+                                                                <Pill size={16} />
+                                                            </div>
+                                                            <div>
+                                                                <div className="pp-care-explainer__title">Medications Overview</div>
+                                                                <div className="pp-care-explainer__lede">Your charted medicines, translated into plain language.</div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="pp-care-explainer__body">
+                                                            {carePlanMedicationPoints.length > 0 ? (
+                                                                <ul className="pp-care-bullets pp-care-bullets--dense">
+                                                                    {carePlanMedicationPoints.map((point, index) => (
+                                                                        <li key={`${point}-${index}`}>{point}</li>
+                                                                    ))}
+                                                                </ul>
+                                                            ) : (
+                                                                patientSummary.medications_explanation
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {carePlanSteps.length > 0 && (
+                                                    <div className="pp-care-steps pp-care-steps--v3">
+                                                        <div className="pp-care-steps__header">
+                                                            <div>
+                                                                <div className="pp-care-steps__title">Recommended Next Steps</div>
+                                                                <div className="pp-care-steps__subtitle">Use these as conversation prompts for your next visit, not as stand-alone medical advice.</div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="pp-care-steps__list pp-care-steps__list--v3">
+                                                            {carePlanSteps.map((step, index) => {
+                                                                const meta = getCareStepMeta(step, index)
+                                                                return (
+                                                                    <div key={`${step}-${index}`} className={`pp-care-step pp-care-step--${meta.tone}`}>
+                                                                        <div className="pp-care-step__number">{index + 1}</div>
+                                                                        <div className="pp-care-step__content">
+                                                                            <div className="pp-care-step__label">{meta.label}</div>
+                                                                            <div className="pp-care-step__text">{step}</div>
+                                                                        </div>
+                                                                    </div>
+                                                                )
+                                                            })}
                                                         </div>
                                                     </div>
                                                 )}

@@ -769,18 +769,46 @@ export default function ClinicianDashboard() {
                                     <div className="cd-empty__icon">
                                         <Stethoscope size={28} />
                                     </div>
+                                    <div className="cd-empty__kicker">
+                                        {activePatientId ? `Patient ${activePatientId}` : 'Clinical workspace'}
+                                    </div>
                                     <h3>TrustMed Clinical Assistant</h3>
                                     <p>
-                                        Select a patient, upload imaging, or start a new conversation with a focused assessment prompt.
+                                        Ground the next response with patient context, optional imaging, and one focused clinical question.
                                     </p>
-                                    <div className="cd-empty__actions">
-                                        <button className="cd-chat-new cd-chat-new--hero" onClick={createNewSession}>
-                                            <Plus size={16} />
-                                            New Chat
-                                        </button>
-                                        <div className="cd-empty__hint">
-                                            {activePatientId ? `Patient ${activePatientId} is ready for review.` : 'No patient selected yet.'}
+                                    <div className="cd-empty__readiness">
+                                        <div className={`cd-empty__readiness-card ${activePatientId ? 'is-ready' : ''}`}>
+                                            <Activity size={16} />
+                                            <div className="cd-empty__readiness-copy">
+                                                <span className="cd-empty__readiness-label">Patient context</span>
+                                                <strong>{activePatientId ? `Patient ${activePatientId} linked` : 'Select a patient'}</strong>
+                                                <small>
+                                                    {activePatientId
+                                                        ? 'Answers will stay grounded in the linked chart and recent vitals.'
+                                                        : 'Choose a patient from the sidebar to pull diagnoses, meds, and vitals into the next turn.'}
+                                                </small>
+                                            </div>
                                         </div>
+                                        <div className={`cd-empty__readiness-card ${imagePreview || uploadedImagePath ? 'is-ready' : ''}`}>
+                                            <ImageIcon size={16} />
+                                            <div className="cd-empty__readiness-copy">
+                                                <span className="cd-empty__readiness-label">Imaging review</span>
+                                                <strong>{imagePreview || uploadedImagePath ? 'Scan attached and ready' : 'Upload imaging if needed'}</strong>
+                                                <small>
+                                                    {imagePreview || uploadedImagePath
+                                                        ? 'The next question can use multimodal image analysis automatically.'
+                                                        : 'Attach a chest X-ray or other medical image to add vision, panel detection, and graph evidence.'}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="cd-empty__prompt-header">
+                                        <span>Suggested launch prompts</span>
+                                        <span>
+                                            {activePatientId
+                                                ? 'Tap a prompt to preload the composer, or type your own assessment question below.'
+                                                : 'These prompts preload the composer. Link a patient first for fully grounded clinical answers.'}
+                                        </span>
                                     </div>
                                     <div className="cd-empty__prompts">
                                         {STARTER_PROMPTS.map((prompt) => (

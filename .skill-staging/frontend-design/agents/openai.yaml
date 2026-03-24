@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend Design"
+  short_description: "Create distinctive, polished frontend UI"
+  default_prompt: "Use $frontend-design to build a distinctive landing page for a fintech startup."

@@ -1,24 +1,49 @@
-import { X, Heart, Thermometer, Wind, Droplets, Activity, Pill, Stethoscope, ChevronDown, ChevronUp } from 'lucide-react'
+import { X, Heart, Thermometer, Wind, Droplets, Activity, Pill, Stethoscope, ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { useState } from 'react'
 
 const VITAL_CONFIG = [
     {
-        key: 'temperature', label: 'Temp', unit: '°F', icon: Thermometer, color: '#F59E0B',
-        normal: [97, 99.5], format: v => v?.toFixed(1)
+        key: 'temperature', label: 'Temperature', unit: '°F', icon: Thermometer, color: '#F59E0B',
+        colorBg: 'rgba(245, 158, 11, 0.08)', normal: [97, 99.5], format: v => v?.toFixed(1),
+        range: [95, 104]
     },
     {
-        key: 'heart_rate', label: 'HR', unit: 'bpm', icon: Heart, color: '#EF4444',
-        normal: [60, 100], format: v => Math.round(v)
+        key: 'heart_rate', label: 'Heart Rate', unit: 'bpm', icon: Heart, color: '#EF4444',
+        colorBg: 'rgba(239, 68, 68, 0.08)', normal: [60, 100], format: v => Math.round(v),
+        range: [40, 160], pulse: true
     },
     {
-        key: 'respiratory_rate', label: 'RR', unit: '/min', icon: Wind, color: '#3B82F6',
-        normal: [12, 20], format: v => Math.round(v)
+        key: 'respiratory_rate', label: 'Resp. Rate', unit: 'breaths/min', icon: Wind, color: '#3B82F6',
+        colorBg: 'rgba(59, 130, 246, 0.08)', normal: [12, 20], format: v => Math.round(v),
+        range: [8, 35]
     },
     {
         key: 'o2_saturation', label: 'SpO₂', unit: '%', icon: Droplets, color: '#10B981',
-        normal: [95, 100], format: v => Math.round(v)
+        colorBg: 'rgba(16, 185, 129, 0.08)', normal: [95, 100], format: v => Math.round(v),
+        range: [80, 100]
     },
 ]
+
+function VitalGauge({ value, min, max, normalMin, normalMax, color, status }) {
+    const pct = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100))
+    const normalStartPct = ((normalMin - min) / (max - min)) * 100
+    const normalEndPct = ((normalMax - min) / (max - min)) * 100
+
+    return (
+        <div className="vital-gauge">
+            <div className="vital-gauge-track">
+                <div
+                    className="vital-gauge-normal"
+                    style={{ left: `${normalStartPct}%`, width: `${normalEndPct - normalStartPct}%` }}
+                />
+                <div
+                    className={`vital-gauge-indicator vital-gauge-${status}`}
+                    style={{ left: `${pct}%`, background: status === 'normal' ? color : undefined }}
+                />
+            </div>
+        </div>
+    )
+}
 
 function PatientInfoPanel({ patientData, onClose }) {
     const [collapsed, setCollapsed] = useState(false)
@@ -43,6 +68,18 @@ function PatientInfoPanel({ patientData, onClose }) {
         return 'normal'
     }
 
+    const StatusIcon = ({ status }) => {
+        if (status === 'high') return <TrendingUp size={10} />
+        if (status === 'low') return <TrendingDown size={10} />
+        return <Minus size={10} />
+    }
+
+    const statusLabel = (status) => {
+        if (status === 'high') return 'HIGH'
+        if (status === 'low') return 'LOW'
+        return 'Normal'
+    }
+
     return (
         <div className={`patient-info-panel ${collapsed ? 'collapsed' : ''}`}>
             <div className="patient-info-header" onClick={() => setCollapsed(!collapsed)}>
@@ -61,7 +98,7 @@ function PatientInfoPanel({ patientData, onClose }) {
 
             {!collapsed && (
                 <div className="patient-info-body">
-                    {/* Vitals Row */}
+                    {/* Vitals */}
                     {vitals && (
                         <div className="patient-section">
                             <div className="patient-section-label">
@@ -71,37 +108,79 @@ function PatientInfoPanel({ patientData, onClose }) {
                                     <span className="patient-timestamp">{vitals.recorded_at}</span>
                                 )}
                             </div>
-                            <div className="vitals-grid">
+                            <div className="vitals-grid-v2">
                                 {VITAL_CONFIG.map(vc => {
                                     const val = vitals[vc.key]
                                     if (val == null) return null
                                     const status = getVitalStatus(val, vc.normal)
                                     const Icon = vc.icon
                                     return (
-                                        <div key={vc.key} className={`vital-card vital-${status}`}>
-                                            <div className="vital-icon" style={{ color: vc.color }}>
-                                                <Icon size={14} />
+                                        <div key={vc.key} className={`vital-card-v2 vital-${status}`}>
+                                            <div className="vital-card-top">
+                                                <div className="vital-icon-v2" style={{ background: vc.colorBg, color: vc.color }}>
+                                                    <Icon size={16} />
+                                                </div>
+                                                <div className={`vital-status-badge vital-status-${status}`}>
+                                                    <StatusIcon status={status} />
+                                                    <span>{statusLabel(status)}</span>
+                                                </div>
                                             </div>
-                                            <div className="vital-value">{vc.format(val)}</div>
-                                            <div className="vital-meta">
-                                                <span className="vital-unit">{vc.unit}</span>
-                                                <span className="vital-label">{vc.label}</span>
+                                            <div className="vital-card-body">
+                                                <div className={`vital-value-v2 ${vc.pulse && status === 'normal' ? 'vital-pulse' : ''}`}>
+                                                    {vc.format(val)}
+                                                </div>
+                                                <div className="vital-unit-v2">{vc.unit}</div>
+                                            </div>
+                                            <div className="vital-card-footer">
+                                                <span className="vital-label-v2">{vc.label}</span>
+                                                <VitalGauge
+                                                    value={val}
+                                                    min={vc.range[0]}
+                                                    max={vc.range[1]}
+                                                    normalMin={vc.normal[0]}
+                                                    normalMax={vc.normal[1]}
+                                                    color={vc.color}
+                                                    status={status}
+                                                />
+                                                <span className="vital-range-label">
+                                                    {vc.normal[0]}–{vc.normal[1]}
+                                                </span>
                                             </div>
                                         </div>
                                     )
                                 })}
                                 {/* Blood Pressure */}
                                 {vitals.systolic_bp != null && (
-                                    <div className={`vital-card vital-${bpStatus()}`}>
-                                        <div className="vital-icon" style={{ color: '#8B5CF6' }}>
-                                            <Activity size={14} />
+                                    <div className={`vital-card-v2 vital-bp vital-${bpStatus()}`}>
+                                        <div className="vital-card-top">
+                                            <div className="vital-icon-v2" style={{ background: 'rgba(139, 92, 246, 0.08)', color: '#8B5CF6' }}>
+                                                <Activity size={16} />
+                                            </div>
+                                            <div className={`vital-status-badge vital-status-${bpStatus()}`}>
+                                                <StatusIcon status={bpStatus()} />
+                                                <span>{statusLabel(bpStatus())}</span>
+                                            </div>
                                         </div>
-                                        <div className="vital-value">
-                                            {Math.round(vitals.systolic_bp)}/{Math.round(vitals.diastolic_bp)}
+                                        <div className="vital-card-body">
+                                            <div className="vital-value-v2 vital-bp-value">
+                                                <span className="bp-systolic">{Math.round(vitals.systolic_bp)}</span>
+                                                <span className="bp-slash">/</span>
+                                                <span className="bp-diastolic">{Math.round(vitals.diastolic_bp)}</span>
+                                            </div>
+                                            <div className="vital-unit-v2">mmHg</div>
                                         </div>
-                                        <div className="vital-meta">
-                                            <span className="vital-unit">mmHg</span>
-                                            <span className="vital-label">BP</span>
+                                        <div className="vital-card-footer">
+                                            <span className="vital-label-v2">Blood Pressure</span>
+                                            <VitalGauge
+                                                value={vitals.systolic_bp}
+                                                min={70}
+                                                max={200}
+                                                normalMin={90}
+                                                normalMax={140}
+                                                color="#8B5CF6"
+                                                status={bpStatus()}
+                                            />
+                                            <span className="vital-range-label">90–140 sys</span>
                                         </div>
                                     </div>
                                 )}

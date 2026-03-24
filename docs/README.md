@@ -1,6 +1,6 @@
 # TrustMed AI
 
-TrustMed AI is a multimodal clinical decision support system built around a FastAPI backend and a React/Vite frontend. It combines patient context, a medical knowledge graph, medical literature retrieval, and medical image analysis into a single application with two current product surfaces:
+TrustMed AI is a multimodal clinical decision support system built around a FastAPI backend and a React/Next.js frontend. It combines patient context, a medical knowledge graph, medical literature retrieval, and medical image analysis into a single application with two current product surfaces:
 
 - `Clinician dashboard` at `/clinician`
 - `Patient portal` at `/patient`
@@ -34,8 +34,8 @@ The current primary app is the `FastAPI + React` stack. The older `Streamlit` ap
 
 ### Frontend
 - `React 19`
-- `Vite 7`
-- `React Router`
+- `Next.js`
+- `Next.js App Router`
 - `react-force-graph-2d`
 - `react-markdown`
 
@@ -62,7 +62,7 @@ TrustMed-AI/
 ├── api/
 │   └── main.py                    # FastAPI app and API routes
 ├── frontend/
-│   ├── src/pages/
+│   ├── src/views/
 │   │   ├── ClinicianDashboard.jsx
 │   │   ├── PatientPortal.jsx
 │   │   └── RoleSelector.jsx
@@ -71,7 +71,7 @@ TrustMed-AI/
 │   │   ├── PatientInfoPanel.jsx
 │   │   ├── SOAPNoteModal.jsx
 │   │   └── VitalTrendChart.jsx
-│   └── vite.config.js
+│   └── next.config.mjs
 ├── src/
 │   ├── trustmed_brain.py          # Main orchestration logic
 │   ├── patient_context_tool.py    # MIMIC demo patient data access
@@ -179,9 +179,9 @@ npm run dev
 
 ## Frontend / Backend Integration
 
-The frontend uses Vite proxying in `frontend/vite.config.js`:
+The frontend uses Next.js rewrites in `frontend/next.config.mjs`:
 - browser requests go to `/api/...`
-- Vite proxies them to `http://localhost:8000`
+- Next.js forwards them to `http://localhost:8000`
 
 That means local frontend code should call API routes through `/api` rather than hard-coding the backend host.
 
@@ -218,5 +218,5 @@ If you continue cleanup, remove those only together with their remaining docs/de
 The README is now aligned to the current app entrypoints and stack, but these repo-level follow-ups are still worth doing:
 - remove or archive the legacy Streamlit path if it is no longer needed
 - tighten backend auth/CORS before any external deployment
-- split the frontend bundle to reduce the large Vite build warning
+- split the clinician and patient bundles further if the Next client bundle remains heavy
 - update the other docs in `docs/` so they match the FastAPI + React architecture

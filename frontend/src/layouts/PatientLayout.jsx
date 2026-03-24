@@ -1,14 +1,12 @@
-import { Outlet, Link, useNavigate } from 'react-router-dom'
+import Link from 'next/link'
 import { Stethoscope, MessageSquare, Info, LogOut } from 'lucide-react'
 
-export default function PatientLayout() {
-    const navigate = useNavigate()
-
+export default function PatientLayout({ children }) {
     return (
         <div className="patient-layout">
             {/* Top navbar */}
             <header className="pt-navbar">
-                <Link to="/patient" className="pt-navbar__brand">
+                <Link href="/patient" className="pt-navbar__brand">
                     <div className="pt-navbar__logo">
                         <Stethoscope />
                     </div>
@@ -18,27 +16,24 @@ export default function PatientLayout() {
                 </Link>
 
                 <nav className="pt-navbar__links">
-                    <Link to="/patient" className="pt-nav-link active">
+                    <Link href="/patient" className="pt-nav-link active">
                         <MessageSquare size={16} />
                         Chat
                     </Link>
-                    <Link to="/patient" className="pt-nav-link">
+                    <Link href="/patient" className="pt-nav-link">
                         <Info size={16} />
                         About
                     </Link>
-                    <button
-                        className="pt-nav-link"
-                        onClick={() => navigate('/')}
-                    >
+                    <Link href="/" className="pt-nav-link">
                         <LogOut size={16} />
                         Switch Role
-                    </button>
+                    </Link>
                 </nav>
             </header>
 
             {/* Centered content */}
             <div className="pt-main">
-                <Outlet />
+                {children}
             </div>
         </div>
     )

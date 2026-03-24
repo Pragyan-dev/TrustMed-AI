@@ -1429,90 +1429,236 @@
     letter-spacing: 0;
 }
 
-/* ── Vitals Grid ── */
-.cd .vitals-grid {
+/* ── Vitals Grid V2 ── */
+.cd .vitals-grid-v2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 5px;
+    gap: 6px;
 }
 
-.cd .vital-card {
-    padding: 7px 8px;
-    border-radius: 8px;
-    gap: 6px;
+.cd .vital-card-v2 {
+    padding: 10px;
+    border-radius: 10px;
     background: var(--cd-surface2);
     border: 1px solid var(--cd-border);
     display: flex;
-    align-items: center;
-    transition: border-color 0.15s;
+    flex-direction: column;
+    gap: 6px;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+    position: relative;
+    overflow: hidden;
 }
 
-/* Last odd vital card (BP) spans full width */
-.cd .vital-card:last-child:nth-child(odd) {
+.cd .vital-card-v2:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* BP card spans full width */
+.cd .vital-card-v2.vital-bp {
     grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
 }
 
-.cd .vital-icon {
-    display: flex;
+.cd .vital-card-v2.vital-bp .vital-card-top {
+    width: auto;
     flex-shrink: 0;
-    width: 18px;
-    height: 18px;
+}
+
+.cd .vital-card-v2.vital-bp .vital-card-body {
+    flex: 1;
+    text-align: center;
+}
+
+.cd .vital-card-v2.vital-bp .vital-card-footer {
+    width: 100%;
+}
+
+/* Top row: icon + status */
+.cd .vital-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.cd .vital-icon-v2 {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
-.cd .vital-icon svg {
-    width: 14px;
-    height: 14px;
+.cd .vital-icon-v2 svg {
+    width: 16px;
+    height: 16px;
 }
 
-.cd .vital-value {
-    font-size: 15px;
-    font-weight: 700;
+/* Status badge */
+.cd .vital-status-badge {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.cd .vital-status-normal {
+    color: #22c55e;
+    background: rgba(34, 197, 94, 0.08);
+}
+
+.cd .vital-status-high {
+    color: #DC2626;
+    background: rgba(239, 68, 68, 0.10);
+}
+
+.cd .vital-status-low {
+    color: #2563EB;
+    background: rgba(59, 130, 246, 0.10);
+}
+
+/* Body: value + unit */
+.cd .vital-card-body {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.cd .vital-value-v2 {
+    font-size: 22px;
+    font-weight: 800;
     color: var(--cd-text);
     line-height: 1;
-    white-space: nowrap;
+    letter-spacing: -0.5px;
+    font-variant-numeric: tabular-nums;
 }
 
-.cd .vital-meta {
+.cd .vital-unit-v2 {
+    font-size: 10px;
+    color: var(--cd-text-muted);
+    font-weight: 500;
+}
+
+/* BP special value styling */
+.cd .bp-systolic {
+    color: var(--cd-text);
+}
+
+.cd .bp-slash {
+    color: var(--cd-text-muted);
+    font-weight: 400;
+    margin: 0 1px;
+}
+
+.cd .bp-diastolic {
+    font-size: 18px;
+    color: var(--cd-text-dim);
+    font-weight: 600;
+}
+
+/* Footer: label + gauge + range */
+.cd .vital-card-footer {
     display: flex;
     flex-direction: column;
-    min-width: 0;
+    gap: 3px;
 }
 
-.cd .vital-unit {
-    font-size: 9px;
+.cd .vital-label-v2 {
+    font-size: 10px;
     color: var(--cd-text-dim);
-    line-height: 1.1;
+    font-weight: 500;
 }
 
-.cd .vital-label {
-    font-size: 9px;
+.cd .vital-range-label {
+    font-size: 8px;
     color: var(--cd-text-muted);
-    line-height: 1.1;
+    text-align: right;
 }
 
-/* Vital status colors */
-.cd .vital-card.vital-normal {
+/* Gauge bar */
+.cd .vital-gauge {
+    width: 100%;
+    height: 4px;
+    position: relative;
+}
+
+.cd .vital-gauge-track {
+    width: 100%;
+    height: 100%;
+    background: var(--cd-surface3);
+    border-radius: 2px;
+    position: relative;
+    overflow: visible;
+}
+
+.cd .vital-gauge-normal {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    background: rgba(34, 197, 94, 0.18);
+    border-radius: 2px;
+}
+
+.cd .vital-gauge-indicator {
+    position: absolute;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    border: 2px solid var(--cd-surface);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+    z-index: 1;
+}
+
+.cd .vital-gauge-high {
+    background: #DC2626 !important;
+}
+
+.cd .vital-gauge-low {
+    background: #2563EB !important;
+}
+
+/* Status border colors */
+.cd .vital-card-v2.vital-normal {
     border-color: var(--cd-border);
 }
 
-.cd .vital-card.vital-high {
-    border-color: rgba(239, 68, 68, 0.4);
-    background: rgba(239, 68, 68, 0.04);
+.cd .vital-card-v2.vital-high {
+    border-color: rgba(239, 68, 68, 0.35);
+    background: rgba(239, 68, 68, 0.03);
 }
 
-.cd .vital-card.vital-high .vital-value {
+.cd .vital-card-v2.vital-high .vital-value-v2 {
     color: #DC2626;
 }
 
-.cd .vital-card.vital-low {
-    border-color: rgba(59, 130, 246, 0.4);
-    background: rgba(59, 130, 246, 0.04);
+.cd .vital-card-v2.vital-low {
+    border-color: rgba(59, 130, 246, 0.35);
+    background: rgba(59, 130, 246, 0.03);
 }
 
-.cd .vital-card.vital-low .vital-value {
+.cd .vital-card-v2.vital-low .vital-value-v2 {
     color: #2563EB;
+}
+
+/* Heart rate pulse animation */
+@keyframes vitalPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.cd .vital-pulse {
+    animation: vitalPulse 1.2s ease-in-out infinite;
 }
 
 /* ── Tag lists (diagnoses & meds) ── */

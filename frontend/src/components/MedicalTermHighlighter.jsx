@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { BookOpen, X, Loader2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
-import './MedicalTermHighlighter.css'
 
 const API_BASE = '/api'
 
@@ -256,24 +255,19 @@ export default function MedicalTermHighlighter({ text, enabled = true, children 
  * rather than modifying the raw markdown string before parsing.
  */
 export function MarkdownWithHighlight({ children, enabled = true }) {
-    const renderWithHighlighter = ({ node, ...props }) => {
-        const Tag = node.tagName || 'span'
-        return <Tag><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></Tag>
-    }
-
     return (
         <ReactMarkdown
             components={{
-                p: ({ node, ...props }) => <p {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></p>,
-                li: ({ node, ...props }) => <li {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></li>,
-                td: ({ node, ...props }) => <td {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></td>,
-                span: ({ node, ...props }) => <span {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></span>,
-                strong: ({ node, ...props }) => <strong {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></strong>,
-                em: ({ node, ...props }) => <em {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></em>,
-                h1: ({ node, ...props }) => <h1 {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></h1>,
-                h2: ({ node, ...props }) => <h2 {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></h2>,
-                h3: ({ node, ...props }) => <h3 {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></h3>,
-                h4: ({ node, ...props }) => <h4 {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></h4>,
+                p: ({ node: _node, ...props }) => <p {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></p>,
+                li: ({ node: _node, ...props }) => <li {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></li>,
+                td: ({ node: _node, ...props }) => <td {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></td>,
+                span: ({ node: _node, ...props }) => <span {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></span>,
+                strong: ({ node: _node, ...props }) => <strong {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></strong>,
+                em: ({ node: _node, ...props }) => <em {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></em>,
+                h1: ({ node: _node, ...props }) => <h1 {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></h1>,
+                h2: ({ node: _node, ...props }) => <h2 {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></h2>,
+                h3: ({ node: _node, ...props }) => <h3 {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></h3>,
+                h4: ({ node: _node, ...props }) => <h4 {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></h4>,
             }}
         >
             {children}

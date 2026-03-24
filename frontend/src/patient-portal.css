@@ -50,6 +50,34 @@
     .pp-shell {
         grid-template-columns: 1fr;
     }
+
+    .pp-assistant__header {
+        flex-wrap: wrap;
+    }
+
+    .pp-assistant__controls {
+        margin-left: auto;
+    }
+
+    .pp-patient-bar {
+        flex-wrap: wrap;
+    }
+
+    .pp-settings {
+        width: 100%;
+    }
+
+    .pp-settings__button {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .pp-settings__popover {
+        right: auto;
+        left: 0;
+        width: 100%;
+        min-width: 0;
+    }
 }
 
 .pp-main {
@@ -169,6 +197,75 @@
 
 .pp-patient-bar select:focus {
     border-color: var(--pp-green);
+}
+
+.pp-settings {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.pp-settings__button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.58rem 0.85rem;
+    border-radius: 12px;
+    border: 1px solid rgba(17, 24, 39, 0.08);
+    background: #f8fafc;
+    color: #475569;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.pp-settings__button:hover {
+    border-color: rgba(46, 125, 82, 0.2);
+    color: var(--pp-green);
+}
+
+.pp-settings__popover {
+    position: absolute;
+    top: calc(100% + 0.65rem);
+    right: 0;
+    z-index: 12;
+    width: 240px;
+    padding: 0.85rem;
+    border-radius: 16px;
+    border: 1px solid rgba(17, 24, 39, 0.08);
+    background: #ffffff;
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+}
+
+.pp-settings__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.pp-settings__field span {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--pp-text-dim);
+}
+
+.pp-settings__field select {
+    width: 100%;
+    min-width: 0;
+    padding: 0.6rem 0.7rem;
+    border-radius: 12px;
+    border: 1px solid rgba(17, 24, 39, 0.08);
+    background: #f8fafc;
+    color: var(--pp-text);
+    font-size: 0.84rem;
+    font-family: var(--font-body);
+    outline: none;
+}
+
+.pp-settings__field select:focus {
+    border-color: rgba(46, 125, 82, 0.38);
+    box-shadow: 0 0 0 3px rgba(46, 125, 82, 0.12);
 }
 
 .pp-page-hero {
@@ -450,6 +547,10 @@
     border-bottom: 1px solid var(--pp-border);
 }
 
+.pp-assistant__header-copy {
+    min-width: 0;
+}
+
 .pp-assistant__badge {
     width: 40px;
     height: 40px;
@@ -474,10 +575,10 @@
 }
 
 .pp-assistant__controls {
-    margin-left: auto;
     display: flex;
     align-items: center;
     gap: 0.35rem;
+    margin-left: auto;
 }
 
 .pp-assistant__control-btn {
@@ -1740,5 +1841,867 @@
 
     .pp-chat__input {
         padding: 0.85rem 1rem;
+    }
+}
+
+/* ==========================================================================
+   V2 Enhancements – Hero, Badges, Tabs, Welcome
+   ========================================================================== */
+
+/* ── Welcome / Empty State ──────────────────────────────────────────────── */
+.pp-welcome {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 4rem 2rem;
+    background: var(--pp-card);
+    border-radius: 24px;
+    border: 1px solid rgba(17, 24, 39, 0.06);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.04);
+}
+
+.pp-welcome__icon-ring {
+    width: 88px;
+    height: 88px;
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--pp-green-light) 0%, #f0fdf4 100%);
+    color: var(--pp-green);
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(46, 125, 82, 0.1);
+}
+
+.pp-welcome__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 0.6rem;
+    color: var(--pp-text);
+}
+
+.pp-welcome__desc {
+    max-width: 440px;
+    color: var(--pp-text-dim);
+    font-size: 1rem;
+    line-height: 1.6;
+    margin: 0 0 1.8rem;
+}
+
+.pp-welcome__features {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    width: 100%;
+    max-width: 380px;
+}
+
+.pp-welcome__feature {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem;
+    border-radius: 14px;
+    background: var(--pp-bg);
+    border: 1px solid rgba(17, 24, 39, 0.06);
+    color: var(--pp-text-dim);
+    font-size: 0.88rem;
+    font-weight: 500;
+}
+
+.pp-welcome__feature svg {
+    color: var(--pp-green);
+    flex-shrink: 0;
+}
+
+/* ── Hero V2 ────────────────────────────────────────────────────────────── */
+.pp-page-hero--v2 {
+    background: linear-gradient(135deg, #f0faf3 0%, #f7fafc 50%, #eef6ff 100%);
+    border: 1px solid rgba(46, 125, 82, 0.08);
+    border-radius: 24px;
+    padding: 1.75rem 1.75rem 1.5rem;
+    margin-bottom: 1rem;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.pp-hero-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.pp-hero-avatar-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.pp-hero-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--pp-green) 0%, #3a9d68 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 6px 16px rgba(46, 125, 82, 0.2);
+}
+
+.pp-page-hero--v2 .pp-page-kicker {
+    margin-bottom: 0;
+}
+
+.pp-page-hero--v2 .pp-page-title {
+    font-size: 1.8rem;
+    margin: 0;
+}
+
+.pp-page-hero--v2 .pp-page-subtitle {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.6;
+}
+
+/* ── Badges V2 ──────────────────────────────────────────────────────────── */
+.pp-page-badges--v2 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.65rem;
+    min-width: 0;
+}
+
+.pp-page-badges--v2 .pp-page-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.8rem 0.9rem;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(17, 24, 39, 0.06);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.pp-page-badges--v2 .pp-page-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+}
+
+.pp-page-badge__icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pp-page-badge--accent .pp-page-badge__icon {
+    background: var(--pp-green-light);
+    color: var(--pp-green);
+}
+
+.pp-page-badge--red .pp-page-badge__icon {
+    background: var(--pp-red-light);
+    color: var(--pp-red);
+}
+
+.pp-page-badge--blue .pp-page-badge__icon {
+    background: var(--pp-blue-light);
+    color: var(--pp-blue);
+}
+
+.pp-page-badge--green .pp-page-badge__icon {
+    background: var(--pp-green-light);
+    color: var(--pp-green);
+}
+
+.pp-page-badges--v2 .pp-page-badge__label {
+    font-size: 0.68rem;
+    margin-bottom: 0.15rem;
+}
+
+.pp-page-badges--v2 .pp-page-badge__value {
+    font-size: 0.9rem;
+}
+
+/* ── Section Tabs V2 ────────────────────────────────────────────────────── */
+.pp-section-tabs--v2 {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(17, 24, 39, 0.06);
+    border-radius: 16px;
+    padding: 0.35rem;
+    gap: 0.25rem;
+}
+
+.pp-section-tab--v2 {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.65rem 1rem;
+    border-radius: 12px;
+    border: none;
+    background: transparent;
+    font-size: 0.88rem;
+}
+
+.pp-section-tab--v2:hover {
+    background: rgba(46, 125, 82, 0.04);
+    border-color: transparent;
+}
+
+.pp-section-tab--v2.pp-section-tab--active {
+    background: var(--pp-green);
+    color: white;
+    box-shadow: 0 4px 12px rgba(46, 125, 82, 0.2);
+}
+
+.pp-section-tab--v2.pp-section-tab--active svg {
+    color: white;
+}
+
+.pp-section-tab--v2 svg {
+    color: var(--pp-text-muted);
+    flex-shrink: 0;
+}
+
+.pp-section-tab--v2:hover svg {
+    color: var(--pp-green);
+}
+
+/* ── Responsive V2 ──────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+    .pp-page-badges--v2 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .pp-page-hero--v2 {
+        padding: 1.25rem;
+    }
+
+    .pp-page-badges--v2 {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .pp-hero-avatar-row {
+        gap: 0.75rem;
+    }
+
+    .pp-page-hero--v2 .pp-page-title {
+        font-size: 1.4rem;
+    }
+
+    .pp-welcome__features {
+        grid-template-columns: 1fr;
+    }
+
+    .pp-section-tabs--v2 {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .pp-section-tab--v2 {
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+}
+
+/* ==========================================================================
+   V2 Trend Chart – Modern gradient area chart
+   ========================================================================== */
+
+.pp-trend-card--v2 {
+    border-radius: 20px;
+    border: 1px solid rgba(17, 24, 39, 0.06);
+    background: #ffffff;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
+    overflow: hidden;
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.pp-trend-card--v2:hover {
+    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.07);
+    transform: translateY(-1px);
+}
+
+.pp-trend-card__header--v2 {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.15rem 1.25rem 0.5rem;
+    margin-bottom: 0;
+    border-bottom: none;
+}
+
+.pp-trend-card__header-left .pp-trend-card__title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--pp-text);
+    letter-spacing: -0.01em;
+}
+
+.pp-trend-card__header-left .pp-trend-card__date {
+    font-size: 0.78rem;
+    color: var(--pp-text-muted);
+    margin-top: 0.15rem;
+}
+
+.pp-trend-card__summary--v2 {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.3rem;
+}
+
+.pp-trend-card--v2 .pp-trend-card__value {
+    font-size: 1.65rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.pp-trend-card--v2 .pp-trend-card__status {
+    font-size: 0.68rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+}
+
+.pp-trend-card__reference--v2 {
+    padding: 0 1.25rem 0.4rem;
+    font-size: 0.78rem;
+    color: var(--pp-text-muted);
+    margin-top: 0;
+    max-width: none;
+}
+
+.pp-trend-card__plot--v2 {
+    height: 220px;
+    padding: 0 0.25rem 0.25rem;
+    margin-top: 0;
+}
+
+/* Chart SVG */
+.pp-trend-chart--v2 .pp-trend-chart__plot-bg {
+    display: none;
+}
+
+.pp-trend-chart__grid--v2 {
+    stroke: rgba(148, 163, 184, 0.15) !important;
+    stroke-width: 1;
+    stroke-dasharray: none;
+}
+
+.pp-trend-chart__y-label--v2 {
+    fill: #94A3B8;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.pp-trend-chart__x-label--v2 {
+    fill: #94A3B8;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.pp-trend-chart__unit--v2 {
+    fill: #94A3B8;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+
+/* Threshold lines */
+.pp-trend-chart__threshold--v2 {
+    stroke-width: 1.5;
+    stroke-dasharray: 6 4;
+    opacity: 0.5;
+}
+
+.pp-trend-chart__threshold--v2.pp-trend-chart__threshold--low {
+    stroke: #60A5FA;
+}
+
+.pp-trend-chart__threshold--v2.pp-trend-chart__threshold--high {
+    stroke: #F87171;
+}
+
+/* Hover line */
+.pp-trend-chart__hover-line--v2 {
+    stroke: rgba(46, 125, 82, 0.2);
+    stroke-width: 1.5;
+    stroke-dasharray: none;
+}
+
+/* Points */
+.pp-trend-chart__point--v2 {
+    transition: r 0.18s ease, stroke-width 0.18s ease;
+    filter: none;
+}
+
+.pp-trend-chart__point--v2.pp-trend-chart__point--active {
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.12));
+}
+
+/* Tooltip */
+.pp-trend-chart__tooltip--v2 {
+    border-radius: 10px;
+    padding: 0.55rem 0.7rem;
+    background: rgba(15, 23, 42, 0.88);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+}
+
+.pp-trend-chart__tooltip--v2 .pp-trend-chart__tooltip-date {
+    font-size: 0.7rem;
+    font-weight: 600;
+    opacity: 0.75;
+}
+
+.pp-trend-chart__tooltip--v2 .pp-trend-chart__tooltip-value {
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-top: 0.2rem;
+}
+
+.pp-trend-chart__tooltip--v2 .pp-trend-chart__tooltip-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+/* ==========================================================================
+   Vitals Summary Grid – Quick-glance cards with sparklines
+   ========================================================================== */
+
+.pp-vitals-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.pp-vital-summary {
+    background: #ffffff;
+    border: 1px solid rgba(17, 24, 39, 0.06);
+    border-radius: 16px;
+    padding: 0.9rem 1rem 0.6rem;
+    transition: box-shadow 0.2s, transform 0.2s;
+    display: flex;
+    flex-direction: column;
+}
+
+.pp-vital-summary:hover {
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+    transform: translateY(-1px);
+}
+
+.pp-vital-summary__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.pp-vital-summary__icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pp-vital-summary__badge {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.15rem 0.45rem;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+}
+
+.pp-vital-summary__badge--normal {
+    background: rgba(22, 163, 74, 0.08);
+    color: #16A34A;
+}
+
+.pp-vital-summary__badge--warning {
+    background: rgba(217, 119, 6, 0.08);
+    color: #D97706;
+}
+
+.pp-vital-summary__badge--danger {
+    background: rgba(220, 38, 38, 0.08);
+    color: #DC2626;
+}
+
+.pp-vital-summary__value {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--pp-text);
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+
+.pp-vital-summary__label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--pp-text-muted);
+    margin-top: 0.15rem;
+}
+
+.pp-vital-summary__spark {
+    height: 40px;
+    margin-top: 0.4rem;
+}
+
+.pp-vital-summary__spark .pp-sparkline {
+    height: 100%;
+    width: 100%;
+}
+
+/* ==========================================================================
+   Medications Grid – Card-based layout
+   ========================================================================== */
+
+.pp-med-count {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--pp-text-muted);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid rgba(17, 24, 39, 0.05);
+}
+
+.pp-med-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0.65rem;
+}
+
+.pp-med-card {
+    background: #ffffff;
+    border: 1px solid rgba(17, 24, 39, 0.06);
+    border-radius: 14px;
+    padding: 0.85rem 1rem;
+    transition: box-shadow 0.2s, transform 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.pp-med-card:hover {
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+    transform: translateY(-1px);
+}
+
+.pp-med-card__header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pp-med-card__icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: #EFF6FF;
+    color: #3B82F6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pp-med-card__title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--pp-text);
+    line-height: 1.2;
+}
+
+.pp-med-card__desc {
+    font-size: 0.75rem;
+    color: var(--pp-text-muted);
+    line-height: 1.4;
+}
+
+.pp-med-card__check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--pp-green);
+    background: var(--pp-green-light);
+    border: none;
+    border-radius: 8px;
+    padding: 0.35rem 0.65rem;
+    cursor: pointer;
+    margin-top: auto;
+    align-self: flex-start;
+    transition: background 0.15s, color 0.15s;
+}
+
+.pp-med-card__check:hover {
+    background: var(--pp-green);
+    color: #fff;
+}
+
+.pp-med-card__check:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.pp-inline-result--v2 {
+    margin-top: 0.75rem;
+    border-radius: 14px;
+    border: 1px solid rgba(46, 125, 82, 0.15);
+    background: #F8FDF9;
+}
+
+/* ==========================================================================
+   Imaging Grid – Card layout
+   ========================================================================== */
+
+.pp-imaging-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.pp-imaging-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.8rem;
+    padding: 0.9rem 1rem;
+    background: #ffffff;
+    border: 1px solid rgba(17, 24, 39, 0.06);
+    border-radius: 14px;
+    transition: box-shadow 0.2s;
+}
+
+.pp-imaging-card:hover {
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+}
+
+.pp-imaging-card__icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pp-imaging-card__body {
+    flex: 1;
+    min-width: 0;
+}
+
+.pp-imaging-card__title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--pp-text);
+    line-height: 1.2;
+}
+
+.pp-imaging-card__desc {
+    font-size: 0.78rem;
+    color: var(--pp-text-muted);
+    margin-top: 0.2rem;
+    line-height: 1.4;
+}
+
+.pp-imaging-card__status {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.pp-imaging-card__status--normal {
+    background: rgba(22, 163, 74, 0.08);
+    color: #16A34A;
+}
+
+.pp-imaging-card__status--attention {
+    background: rgba(217, 119, 6, 0.08);
+    color: #D97706;
+}
+
+.pp-imaging-card__status--abnormal {
+    background: rgba(220, 38, 38, 0.08);
+    color: #DC2626;
+}
+
+/* ==========================================================================
+   Care Plan V2 – Better visual hierarchy
+   ========================================================================== */
+
+.pp-care-plan--v2 {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.pp-care-summary--v2 {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem 1.1rem;
+    background: var(--pp-green-bg);
+    border-radius: 14px;
+    border: 1px solid rgba(46, 125, 82, 0.1);
+}
+
+.pp-care-summary__icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--pp-green-light);
+    color: var(--pp-green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pp-care-summary__text {
+    font-size: 0.88rem;
+    color: var(--pp-text);
+    line-height: 1.55;
+}
+
+.pp-care-explainers--v2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.pp-care-explainer--v2 {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    padding: 0.85rem 1rem;
+    background: #ffffff;
+    border: 1px solid rgba(17, 24, 39, 0.06);
+    border-radius: 14px;
+}
+
+.pp-care-explainer__icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pp-care-explainer--v2 .pp-care-explainer__title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--pp-text);
+    margin-bottom: 0.25rem;
+}
+
+.pp-care-explainer--v2 .pp-care-explainer__body {
+    font-size: 0.78rem;
+    color: var(--pp-text-muted);
+    line-height: 1.5;
+}
+
+.pp-care-steps {
+    padding-top: 0.25rem;
+}
+
+.pp-care-steps__title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--pp-text);
+    margin-bottom: 0.6rem;
+}
+
+.pp-care-steps__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.pp-care-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    padding: 0.7rem 0.85rem;
+    background: #ffffff;
+    border: 1px solid rgba(17, 24, 39, 0.06);
+    border-radius: 12px;
+    transition: box-shadow 0.15s;
+}
+
+.pp-care-step:hover {
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+}
+
+.pp-care-step__number {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--pp-green);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+.pp-care-step__text {
+    font-size: 0.82rem;
+    color: var(--pp-text);
+    line-height: 1.5;
+    padding-top: 0.15rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    .pp-vitals-summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .pp-med-grid {
+        grid-template-columns: 1fr;
+    }
+    .pp-care-explainers--v2 {
+        grid-template-columns: 1fr;
     }
 }

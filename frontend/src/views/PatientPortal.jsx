@@ -4,12 +4,15 @@ import {
     Pill, Stethoscope, Send, Loader2, Image as ImageIcon,
     ClipboardList, Shield, AlertTriangle, CheckCircle2,
     FileHeart, MessageCircle, Smile,
-    Plus, Maximize2, Minimize2, X
+    Plus, Maximize2, Minimize2, X, SlidersHorizontal,
+    User, TrendingUp, TrendingDown, Minus, Calendar, Beaker,
+    Clock, Scan, CircleDot, Gauge
 } from 'lucide-react'
+import VitalSparkline from '../components/VitalSparkline'
 import { MarkdownWithHighlight } from '../components/MedicalTermHighlighter'
 import SafeMarkdownWrapper from '../components/SafeMarkdownWrapper'
 import VitalTrendChart from '../components/VitalTrendChart'
-import '../patient-portal.css'
+import { AVAILABLE_TEXT_MODELS, DEFAULT_TEXT_MODEL } from '../lib/modelOptions'
 
 const API_BASE = '/api'
 const SAMPLE_PATIENTS = ['10002428', '10025463', '10027602', '10009049', '10007058', '10020640', '10018081', '10023239', '10035631']
@@ -68,6 +71,19 @@ const VITAL_STATUS_COLORS = {
     danger: '#DC2626',
 }
 
+const VITAL_ICONS = {
+    heartRate: Heart,
+    bloodPressure: Activity,
+    oxygenSaturation: Droplets,
+    temperature: Thermometer,
+}
+
+const VITAL_STATUS_ICON = {
+    normal: Minus,
+    warning: TrendingUp,
+    danger: AlertTriangle,
+}
+
 function formatRecordedAt(value) {
     if (!value) return 'Latest reading'
 
@@ -80,21 +96,6 @@ function formatRecordedAt(value) {
         hour: 'numeric',
         minute: '2-digit',
     }).format(parsed)
-}
-
-function formatMetricValue(value, decimals = 0) {
-    if (!Number.isFinite(value)) return null
-    return decimals > 0 ? value.toFixed(decimals) : Math.round(value).toString()
-}
-
-function buildRangeLabel(values, formatter, prefix = 'Range') {
-    const validValues = values.filter(Number.isFinite)
-    if (!validValues.length) return 'No trend data yet'
-    if (validValues.length === 1) return 'Single recent reading'
-
-    const minValue = Math.min(...validValues)
-    const maxValue = Math.max(...validValues)
-    return `${prefix} ${formatter(minValue)}-${formatter(maxValue)}`
 }
 
 function formatTrendDate(value) {
@@ -116,6 +117,41 @@ const cleanContent = (text) => {
     let t = text.trim()
     if (t.startsWith('"') && t.endsWith('"')) t = t.slice(1, -1)
     return t
+}
+
+async function readApiError(response, fallbackMessage) {
+    const contentType = response.headers.get('content-type') || ''
+
+    try {
+        if (contentType.includes('application/json')) {
+            const data = await response.json()
+            if (typeof data?.detail === 'string' && data.detail.trim()) {
+                return data.detail.trim()
+            }
+            if (typeof data?.message === 'string' && data.message.trim()) {
+                return data.message.trim()
+            }
+        } else {
+            const text = (await response.text()).trim()
+            if (text) {
+                return response.status >= 500
+                    ? fallbackMessage
+                    : text.slice(0, 220)
+            }
+        }
+    } catch {
+        // Fall through to fallback message.
+    }
+
+    return fallbackMessage
+}
+
+function normalizeFetchError(error, fallbackMessage) {
+    const message = error instanceof Error ? error.message : ''
+    if (message.includes('Failed to fetch') || message.includes('NetworkError')) {
+        return 'TrustMed AI could not reach the backend. Start the FastAPI server on http://localhost:8000 and try again.'
+    }
+    return fallbackMessage
 }
 
 const streamSseEvents = async (response, onEvent) => {
@@ -163,6 +199,7 @@ export default function PatientPortal() {
     const [patientSummary, setPatientSummary] = useState(null)
     const [summaryLoading, setSummaryLoading] = useState(false)
     const [summaryError, setSummaryError] = useState('')
+    const [loadError, setLoadError] = useState('')
 
     // Chat state
     const [chatMessages, setChatMessages] = useState([])
@@ -173,6 +210,8 @@ export default function PatientPortal() {
     const [activeSection, setActiveSection] = useState('profile')
     const [assistantMinimized, setAssistantMinimized] = useState(false)
     const [assistantExpanded, setAssistantExpanded] = useState(false)
+    const [selectedModel, setSelectedModel] = useState(DEFAULT_TEXT_MODEL)
+    const [settingsOpen, setSettingsOpen] = useState(false)
 
     // Interaction check
     const [checkingMed, setCheckingMed] = useState(null)
@@ -194,6 +233,7 @@ export default function PatientPortal() {
         setPatientData(null)
         setPatientSummary(null)
         setSummaryError('')
+        setLoadError('')
         setSummaryLoading(false)
         if (!patId) {
             return
@@ -201,19 +241,30 @@ export default function PatientPortal() {
         setLoading(true)
         try {
             const res = await fetch(`${API_BASE}/patient/${patId}`)
-            if (!res.ok) throw new Error('Failed to load patient data')
+            if (!res.ok) {
+                throw new Error(await readApiError(
+                    res,
+                    'Patient data could not be loaded. Make sure the FastAPI backend is running on http://localhost:8000.'
+                ))
+            }
 
             const data = await res.json()
             if (summaryRequestRef.current !== requestId) return
             setPatientData(data)
             setLoading(false)
+            setLoadError('')
 
             setSummaryLoading(true)
             try {
                 const summaryRes = await fetch(`${API_BASE}/patient/${patId}/summary`, {
                     method: 'POST',
                 })
-                if (!summaryRes.ok) throw new Error('Failed to load patient summary')
+                if (!summaryRes.ok) {
+                    throw new Error(await readApiError(
+                        summaryRes,
+                        'Personalized care plan unavailable right now.'
+                    ))
+                }
 
                 const summaryData = await summaryRes.json()
                 if (summaryRequestRef.current !== requestId) return
@@ -223,7 +274,7 @@ export default function PatientPortal() {
                 console.error('Failed to load patient summary:', summaryErr)
                 if (summaryRequestRef.current === requestId) {
                     setPatientSummary(null)
-                    setSummaryError('Personalized care plan unavailable right now.')
+                    setSummaryError(normalizeFetchError(summaryErr, 'Personalized care plan unavailable right now.'))
                 }
             } finally {
                 if (summaryRequestRef.current === requestId) {
@@ -236,6 +287,12 @@ export default function PatientPortal() {
                 setPatientData(null)
                 setPatientSummary(null)
                 setSummaryError('')
+                setLoadError(normalizeFetchError(
+                    err,
+                    err instanceof Error && err.message
+                        ? err.message
+                        : 'Patient data could not be loaded.'
+                ))
                 setSummaryLoading(false)
                 setLoading(false)
             }
@@ -275,6 +332,7 @@ export default function PatientPortal() {
                     patient_id: patientData?.patient_id || selectedPatient || null,
                     assistant_mode: 'patient',
                     temperature: 0.3,
+                    model: selectedModel,
                 })
             })
             if (!res.ok) throw new Error('Failed to send patient message')
@@ -326,6 +384,7 @@ export default function PatientPortal() {
                     patient_id: patientData?.patient_id || selectedPatient || null,
                     assistant_mode: 'patient',
                     temperature: 0.1,
+                    model: selectedModel,
                     persist: false,
                 })
             })
@@ -406,11 +465,11 @@ export default function PatientPortal() {
         },
     ].filter(chart => Number.isFinite(chart.value)) : []
     const sectionTabs = [
-        { key: 'profile', label: 'Health Profile' },
-        { key: 'vitals', label: 'Vitals' },
-        { key: 'medications', label: 'Medications' },
-        { key: 'imaging', label: 'Imaging' },
-        { key: 'carePlan', label: 'Care Plan' },
+        { key: 'profile', label: 'Health Profile', icon: Stethoscope },
+        { key: 'vitals', label: 'Vitals', icon: Heart },
+        { key: 'medications', label: 'Medications', icon: Pill },
+        { key: 'imaging', label: 'Imaging', icon: ImageIcon },
+        { key: 'carePlan', label: 'Care Plan', icon: ClipboardList },
     ]
     const assistantPrompts = [
         'Give me an overview of my health record.',
@@ -440,48 +499,135 @@ export default function PatientPortal() {
                             <option value="">Select your profile…</option>
                             {SAMPLE_PATIENTS.map(p => <option key={p} value={p}>Patient {p}</option>)}
                         </select>
+                        <div className="pp-settings">
+                            <button
+                                type="button"
+                                className="pp-settings__button"
+                                onClick={() => setSettingsOpen(prev => !prev)}
+                                aria-expanded={settingsOpen}
+                                aria-label="Open patient assistant settings"
+                            >
+                                <SlidersHorizontal size={16} />
+                                Settings
+                            </button>
+                            {settingsOpen && (
+                                <div className="pp-settings__popover">
+                                    <label className="pp-settings__field">
+                                        <span>Text Model</span>
+                                        <select
+                                            value={selectedModel}
+                                            onChange={e => setSelectedModel(e.target.value)}
+                                            disabled={chatLoading}
+                                        >
+                                            {AVAILABLE_TEXT_MODELS.map(model => (
+                                                <option key={model.id} value={model.id}>{model.label}</option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                </div>
+                            )}
+                        </div>
                         {loading && <Loader2 size={18} className="pp-spin" style={{ color: 'var(--pp-green)' }} />}
                     </div>
 
                     {!patientData ? (
-                        <div className="pp-empty pp-empty--hero">
-                            <FileHeart size={52} style={{ color: 'var(--pp-text-muted)' }} />
-                            <p style={{ fontSize: '1.1rem', marginTop: '1rem' }}>
-                                Welcome to your Patient Portal
+                        <div className="pp-welcome">
+                            <div className="pp-welcome__icon-ring">
+                                <FileHeart size={48} />
+                            </div>
+                            <h2 className="pp-welcome__title">
+                                {loadError ? 'Unable to load patient profile' : 'Welcome to your Patient Portal'}
+                            </h2>
+                            <p className="pp-welcome__desc">
+                                {loadError
+                                    ? loadError
+                                    : 'Select a patient profile above to view your health record, vitals, medications, and personalized care plan.'}
                             </p>
-                            <p>Select a patient profile to load the health record, vitals, medications, and care plan.</p>
+                            {!loadError && (
+                                <div className="pp-welcome__features">
+                                    <div className="pp-welcome__feature">
+                                        <Heart size={18} />
+                                        <span>Vital Signs & Trends</span>
+                                    </div>
+                                    <div className="pp-welcome__feature">
+                                        <Pill size={18} />
+                                        <span>Medication Safety</span>
+                                    </div>
+                                    <div className="pp-welcome__feature">
+                                        <ClipboardList size={18} />
+                                        <span>Care Plan</span>
+                                    </div>
+                                    <div className="pp-welcome__feature">
+                                        <MessageCircle size={18} />
+                                        <span>AI Assistant</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <>
-                            <div className="pp-page-hero">
-                                <div>
-                                    <div className="pp-page-kicker">Patient panel</div>
-                                    <h1 className="pp-page-title">My Health</h1>
+                            <div className="pp-page-hero pp-page-hero--v2">
+                                <div className="pp-hero-left">
+                                    <div className="pp-hero-avatar-row">
+                                        <div className="pp-hero-avatar">
+                                            <User size={28} />
+                                        </div>
+                                        <div>
+                                            <div className="pp-page-kicker">Patient Portal</div>
+                                            <h1 className="pp-page-title">My Health</h1>
+                                        </div>
+                                    </div>
                                     <p className="pp-page-subtitle">
                                         {patientSummary?.summary || 'A patient-friendly view of your current chart data and recent trends.'}
                                     </p>
                                 </div>
-                                <div className="pp-page-badges">
-                                    {profileFacts.map(item => (
-                                        <div key={item.label} className="pp-page-badge">
-                                            <span className="pp-page-badge__label">{item.label}</span>
-                                            <span className="pp-page-badge__value">{item.value}</span>
+                                <div className="pp-page-badges pp-page-badges--v2">
+                                    <div className="pp-page-badge pp-page-badge--accent">
+                                        <div className="pp-page-badge__icon"><User size={16} /></div>
+                                        <div>
+                                            <span className="pp-page-badge__label">Patient ID</span>
+                                            <span className="pp-page-badge__value">{patientData?.patient_id || selectedPatient || 'Unknown'}</span>
                                         </div>
-                                    ))}
+                                    </div>
+                                    <div className="pp-page-badge pp-page-badge--red">
+                                        <div className="pp-page-badge__icon"><AlertTriangle size={16} /></div>
+                                        <div>
+                                            <span className="pp-page-badge__label">Active Conditions</span>
+                                            <span className="pp-page-badge__value">{diagnoses?.length || 0}</span>
+                                        </div>
+                                    </div>
+                                    <div className="pp-page-badge pp-page-badge--blue">
+                                        <div className="pp-page-badge__icon"><Pill size={16} /></div>
+                                        <div>
+                                            <span className="pp-page-badge__label">Medications</span>
+                                            <span className="pp-page-badge__value">{medications?.length || 0}</span>
+                                        </div>
+                                    </div>
+                                    <div className="pp-page-badge pp-page-badge--green">
+                                        <div className="pp-page-badge__icon"><Calendar size={16} /></div>
+                                        <div>
+                                            <span className="pp-page-badge__label">Latest Update</span>
+                                            <span className="pp-page-badge__value">{formatRecordedAt(latestVitalsRecordedAt)}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="pp-section-tabs">
-                                {sectionTabs.map(tab => (
-                                    <button
-                                        key={tab.key}
-                                        className={`pp-section-tab ${activeSection === tab.key ? 'pp-section-tab--active' : ''}`}
-                                        onClick={() => setActiveSection(tab.key)}
-                                        type="button"
-                                    >
-                                        {tab.label}
-                                    </button>
-                                ))}
+                            <div className="pp-section-tabs pp-section-tabs--v2">
+                                {sectionTabs.map(tab => {
+                                    const TabIcon = tab.icon
+                                    return (
+                                        <button
+                                            key={tab.key}
+                                            className={`pp-section-tab pp-section-tab--v2 ${activeSection === tab.key ? 'pp-section-tab--active' : ''}`}
+                                            onClick={() => setActiveSection(tab.key)}
+                                            type="button"
+                                        >
+                                            <TabIcon size={15} />
+                                            {tab.label}
+                                        </button>
+                                    )
+                                })}
                             </div>
 
                             <div className="pp-content-stack">
@@ -581,6 +727,53 @@ export default function PatientPortal() {
                                                     <span className="pp-vitals-meta__stamp">Latest charted {formatRecordedAt(latestVitalsRecordedAt)}</span>
                                                     <span className="pp-vitals-meta__window">{recentReadingLabel}</span>
                                                 </div>
+
+                                                {/* Quick-glance vitals summary cards */}
+                                                <div className="pp-vitals-summary-grid">
+                                                    {vitalsTrendCharts.map(chart => {
+                                                        const VIcon = VITAL_ICONS[chart.key] || Heart
+                                                        const SIcon = VITAL_STATUS_ICON[chart.statusTone] || Minus
+                                                        const color = VITAL_STATUS_COLORS[chart.statusTone]
+                                                        return (
+                                                            <div key={chart.key} className={`pp-vital-summary pp-vital-summary--${chart.statusTone}`}>
+                                                                <div className="pp-vital-summary__top">
+                                                                    <div className="pp-vital-summary__icon" style={{ background: `${color}12`, color }}>
+                                                                        <VIcon size={18} />
+                                                                    </div>
+                                                                    <div className={`pp-vital-summary__badge pp-vital-summary__badge--${chart.statusTone}`}>
+                                                                        <SIcon size={10} />
+                                                                        {VITAL_STATUS_LABELS[chart.statusTone]}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="pp-vital-summary__value">{chart.valueText}</div>
+                                                                <div className="pp-vital-summary__label">{chart.title}</div>
+                                                                <div className="pp-vital-summary__spark">
+                                                                    <VitalSparkline
+                                                                        points={chart.points}
+                                                                        color={color}
+                                                                        ariaLabel={`${chart.title} trend`}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    })}
+                                                    {vitals.respiratory_rate != null && (
+                                                        <div className={`pp-vital-summary pp-vital-summary--${vitalStatus('respiratory_rate', vitals.respiratory_rate)}`}>
+                                                            <div className="pp-vital-summary__top">
+                                                                <div className="pp-vital-summary__icon" style={{ background: `${VITAL_STATUS_COLORS[vitalStatus('respiratory_rate', vitals.respiratory_rate)]}12`, color: VITAL_STATUS_COLORS[vitalStatus('respiratory_rate', vitals.respiratory_rate)] }}>
+                                                                    <Wind size={18} />
+                                                                </div>
+                                                                <div className={`pp-vital-summary__badge pp-vital-summary__badge--${vitalStatus('respiratory_rate', vitals.respiratory_rate)}`}>
+                                                                    {VITAL_STATUS_LABELS[vitalStatus('respiratory_rate', vitals.respiratory_rate)]}
+                                                                </div>
+                                                            </div>
+                                                            <div className="pp-vital-summary__value">{Math.round(vitals.respiratory_rate)}/min</div>
+                                                            <div className="pp-vital-summary__label">Respiratory Rate</div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Detailed trend charts */}
                                                 <div className="pp-vitals-trends">
                                                     {vitalsTrendCharts.map(chart => (
                                                         <VitalTrendChart
@@ -602,15 +795,9 @@ export default function PatientPortal() {
                                                     ))}
                                                 </div>
                                                 <div className="pp-vitals-footnote">
-                                                    {vitals.respiratory_rate != null && (
-                                                        <div className={`pp-vitals-footnote__item pp-vitals-footnote__item--${vitalStatus('respiratory_rate', vitals.respiratory_rate)}`}>
-                                                            <Wind size={14} />
-                                                            <span>Breathing rate {Math.round(vitals.respiratory_rate)}/min</span>
-                                                        </div>
-                                                    )}
                                                     {latestVitalsRecordedAt && (
                                                         <div className="pp-vitals-footnote__item">
-                                                            <Heart size={14} />
+                                                            <Clock size={14} />
                                                             <span>Trends reflect recent bedside charting</span>
                                                         </div>
                                                     )}
@@ -641,29 +828,37 @@ export default function PatientPortal() {
                                     </div>
                                     <div className="pp-card__body">
                                         {medications && medications.length > 0 ? (
-                                            <div className="pp-med-list">
-                                                {medications.map((m, i) => (
-                                                    <div key={i} className="pp-med">
-                                                        <div className="pp-med__pill"><Pill size={16} /></div>
-                                                        <div className="pp-med__info">
-                                                            <div className="pp-med__name">{m.name}</div>
-                                                            <div className="pp-med__desc">{m.description || 'Prescribed by your care team'}</div>
+                                            <>
+                                                <div className="pp-med-count">
+                                                    <Pill size={14} />
+                                                    <span>{medications.length} active medication{medications.length !== 1 ? 's' : ''}</span>
+                                                </div>
+                                                <div className="pp-med-grid">
+                                                    {medications.map((m, i) => (
+                                                        <div key={i} className="pp-med-card">
+                                                            <div className="pp-med-card__header">
+                                                                <div className="pp-med-card__icon">
+                                                                    <Pill size={16} />
+                                                                </div>
+                                                                <div className="pp-med-card__title">{m.name}</div>
+                                                            </div>
+                                                            <div className="pp-med-card__desc">{m.description || 'Prescribed by your care team'}</div>
+                                                            <button
+                                                                className="pp-med-card__check"
+                                                                onClick={() => checkInteraction(m.name)}
+                                                                disabled={checkingMed === m.name}
+                                                            >
+                                                                {checkingMed === m.name ? (
+                                                                    <><Loader2 size={12} className="pp-spin" /> Checking…</>
+                                                                ) : (
+                                                                    <><Shield size={12} /> Safety Check</>
+                                                                )}
+                                                            </button>
                                                         </div>
-                                                        <button
-                                                            className="pp-med__check-btn"
-                                                            onClick={() => checkInteraction(m.name)}
-                                                            disabled={checkingMed === m.name}
-                                                        >
-                                                            {checkingMed === m.name ? (
-                                                                <><Loader2 size={12} className="pp-spin" /> Checking…</>
-                                                            ) : (
-                                                                <><Shield size={12} /> Check</>
-                                                            )}
-                                                        </button>
-                                                    </div>
-                                                ))}
+                                                    ))}
+                                                </div>
                                                 {interactionResult && (
-                                                    <div className="pp-inline-result">
+                                                    <div className="pp-inline-result pp-inline-result--v2">
                                                         <strong className="pp-inline-result__title">
                                                             <Shield size={14} />
                                                             Interaction Check Result
@@ -675,7 +870,7 @@ export default function PatientPortal() {
                                                         </div>
                                                     </div>
                                                 )}
-                                            </div>
+                                            </>
                                         ) : (
                                             <div className="pp-empty"><p>No medications on file.</p></div>
                                         )}
@@ -701,22 +896,39 @@ export default function PatientPortal() {
                                     </div>
                                     <div className="pp-card__body">
                                         {imagingResults ? (
-                                            imagingResults.map((r, i) => (
-                                                <div key={i} className="pp-imaging-result">
-                                                    <span className={`pp-imaging-badge pp-imaging-badge--${r.status}`}>
-                                                        {r.status === 'normal' ? <CheckCircle2 size={12} /> : r.status === 'attention' ? <AlertTriangle size={12} /> : <AlertTriangle size={12} />}
-                                                        {' '}{r.label}
-                                                    </span>
-                                                    <span className="pp-imaging-text">
-                                                        {r.status === 'normal' ? 'Your recent imaging looks good.' :
-                                                            r.status === 'attention' ? 'Your doctor will discuss this finding with you.' :
-                                                                'Your care team is reviewing this result carefully.'}
-                                                    </span>
-                                                </div>
-                                            ))
+                                            <div className="pp-imaging-grid">
+                                                {imagingResults.map((r, i) => {
+                                                    const statusConfig = {
+                                                        normal: { icon: CheckCircle2, color: '#16A34A', bg: '#F0FDF4', label: 'Normal' },
+                                                        attention: { icon: AlertTriangle, color: '#D97706', bg: '#FFFBEB', label: 'Needs Review' },
+                                                        abnormal: { icon: AlertTriangle, color: '#DC2626', bg: '#FEF2F2', label: 'Abnormal' },
+                                                    }
+                                                    const cfg = statusConfig[r.status] || statusConfig.normal
+                                                    const StatusIcon = cfg.icon
+                                                    return (
+                                                        <div key={i} className={`pp-imaging-card pp-imaging-card--${r.status}`}>
+                                                            <div className="pp-imaging-card__icon" style={{ background: cfg.bg, color: cfg.color }}>
+                                                                <Scan size={20} />
+                                                            </div>
+                                                            <div className="pp-imaging-card__body">
+                                                                <div className="pp-imaging-card__title">{r.label}</div>
+                                                                <div className="pp-imaging-card__desc">
+                                                                    {r.status === 'normal' ? 'Your recent imaging looks good.' :
+                                                                        r.status === 'attention' ? 'Your doctor will discuss this finding with you.' :
+                                                                            'Your care team is reviewing this result carefully.'}
+                                                                </div>
+                                                            </div>
+                                                            <div className={`pp-imaging-card__status pp-imaging-card__status--${r.status}`}>
+                                                                <StatusIcon size={12} />
+                                                                {cfg.label}
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
                                         ) : (
                                             <div className="pp-empty">
-                                                <ImageIcon size={24} />
+                                                <Scan size={24} />
                                                 <p>No imaging results yet. Results will appear here after your scans are reviewed.</p>
                                             </div>
                                         )}
@@ -760,33 +972,48 @@ export default function PatientPortal() {
                                                 </div>
                                             </div>
                                         ) : patientSummary ? (
-                                            <div className="pp-care-plan">
-                                                <div className="pp-care-summary">{patientSummary.summary}</div>
-
-                                                <div className="pp-care-explainers">
-                                                    <div className="pp-care-explainer">
-                                                        <div className="pp-care-explainer__title">Vitals</div>
-                                                        <div className="pp-care-explainer__body">{patientSummary.vitals_explanation}</div>
+                                            <div className="pp-care-plan pp-care-plan--v2">
+                                                <div className="pp-care-summary pp-care-summary--v2">
+                                                    <div className="pp-care-summary__icon">
+                                                        <FileHeart size={20} />
                                                     </div>
-                                                    <div className="pp-care-explainer">
-                                                        <div className="pp-care-explainer__title">Medications</div>
-                                                        <div className="pp-care-explainer__body">{patientSummary.medications_explanation}</div>
-                                                    </div>
+                                                    <div className="pp-care-summary__text">{patientSummary.summary}</div>
                                                 </div>
 
-                                                <div className="pp-care-list">
-                                                    {patientSummary.next_steps?.map((step, index) => (
-                                                        <div key={`${step}-${index}`} className="pp-care-item">
-                                                            <div className="pp-care-item__icon" style={{ background: 'var(--pp-green-light)', color: 'var(--pp-green)' }}>
-                                                                <CheckCircle2 size={16} />
-                                                            </div>
-                                                            <div className="pp-care-item__text">
-                                                                <div className="pp-care-item__title">Next Step {index + 1}</div>
-                                                                <div className="pp-care-item__detail">{step}</div>
-                                                            </div>
+                                                <div className="pp-care-explainers pp-care-explainers--v2">
+                                                    <div className="pp-care-explainer pp-care-explainer--v2">
+                                                        <div className="pp-care-explainer__icon" style={{ background: '#FEF2F2', color: '#DC2626' }}>
+                                                            <Heart size={16} />
                                                         </div>
-                                                    ))}
+                                                        <div>
+                                                            <div className="pp-care-explainer__title">Vitals Overview</div>
+                                                            <div className="pp-care-explainer__body">{patientSummary.vitals_explanation}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="pp-care-explainer pp-care-explainer--v2">
+                                                        <div className="pp-care-explainer__icon" style={{ background: '#EFF6FF', color: '#2563EB' }}>
+                                                            <Pill size={16} />
+                                                        </div>
+                                                        <div>
+                                                            <div className="pp-care-explainer__title">Medications Overview</div>
+                                                            <div className="pp-care-explainer__body">{patientSummary.medications_explanation}</div>
+                                                        </div>
+                                                    </div>
                                                 </div>
+
+                                                {patientSummary.next_steps?.length > 0 && (
+                                                    <div className="pp-care-steps">
+                                                        <div className="pp-care-steps__title">Recommended Next Steps</div>
+                                                        <div className="pp-care-steps__list">
+                                                            {patientSummary.next_steps.map((step, index) => (
+                                                                <div key={`${step}-${index}`} className="pp-care-step">
+                                                                    <div className="pp-care-step__number">{index + 1}</div>
+                                                                    <div className="pp-care-step__text">{step}</div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         ) : (
                                             <div className="pp-care-unavailable">
@@ -810,7 +1037,7 @@ export default function PatientPortal() {
                     <div className={`pp-assistant ${assistantExpanded ? 'pp-assistant--expanded' : ''}`}>
                         <div className="pp-assistant__header">
                             <div className="pp-assistant__badge"><Stethoscope size={24} strokeWidth={2.2} /></div>
-                            <div>
+                            <div className="pp-assistant__header-copy">
                                 <div className="pp-assistant__title">TrustMed AI</div>
                                 <div className="pp-assistant__subtitle">Ask about your health record</div>
                             </div>

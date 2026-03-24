@@ -50,7 +50,8 @@ NEO4J_USERNAME = os.getenv("NEO4J_USERNAME", "neo4j")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-nano-30b-a3b:free")
+DEFAULT_OPENROUTER_MODEL = "nvidia/nemotron-3-nano-30b-a3b:free"
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL") or DEFAULT_OPENROUTER_MODEL
 
 # Safety Critic: MUST be a DIFFERENT model from the synthesizer to avoid self-grading
 # Using a different architecture ensures genuinely independent review
@@ -311,12 +312,23 @@ def get_vector_context(query: str, k: int = 5, use_reranker: bool = True) -> str
     return "\n\n".join(all_results)
 
 
+def get_vector_context_fast(query: str, k: int = 5) -> str:
+    """
+    Faster vector search path for interactive streaming requests.
+
+    This skips the cross-encoder reranker to avoid long first-request stalls
+    from model loading/downloading and keeps the streaming pipeline responsive.
+    """
+    return get_vector_context(query=query, k=k, use_reranker=False)
+
+
 # =============================================================================
 # Left Brain: Graph Search (Neo4j)
 # =============================================================================
 
 _neo4j_graph = None
 _graph_chain = None
+_graph_chain_model = None
 
 # Custom Cypher prompt with fuzzy matching
 # NOTE: Only reference node types & relationships that EXIST in the graph.
@@ -348,11 +360,38 @@ CYPHER_PROMPT = PromptTemplate(
 )
 
 
-def get_graph_chain():
+def _resolve_graph_model(model_name: str = None) -> str:
+    """Use the selected OpenRouter text model for graph work when supported."""
+    if model_name and not model_name.startswith("vertex/"):
+        return model_name
+    return OPENROUTER_MODEL
+
+
+def get_graph_chain(model_name: str = None):
     """Lazily initialize Neo4j graph and chain."""
-    global _neo4j_graph, _graph_chain
+    global _neo4j_graph, _graph_chain, _graph_chain_model
+    resolved_model = _resolve_graph_model(model_name)
     
-    if _graph_chain is None:
+    if _graph_chain is None or _graph_chain_model != resolved_model:
+        try:
+            # Test connection first with a short timeout to avoid hanging
+            from neo4j import GraphDatabase
+            _test_driver = GraphDatabase.driver(
+                NEO4J_URI, auth=(NEO4J_USERNAME, NEO4J_PASSWORD),
+                connection_timeout=10,       # 10s connection timeout
+                max_transaction_retry_time=5, # 5s max retry
+            )
+            _test_driver.verify_connectivity()
+            _test_driver.close()
+            print("  ✓ Neo4j connectivity verified")
+        except Exception as conn_err:
+            print(f"  ✗ Neo4j connection failed: {conn_err}")
+            raise ConnectionError(
+                f"Cannot connect to Neo4j ({NEO4J_URI}). "
+                f"If using Aura Free Tier, the instance may be paused — "
+                f"resume it at https://console.neo4j.io"
+            ) from conn_err
+
         _neo4j_graph = Neo4jGraph(
             url=NEO4J_URI,
             username=NEO4J_USERNAME,
@@ -360,7 +399,7 @@ def get_graph_chain():
         )
         
         llm = ChatOpenAI(
-            model=OPENROUTER_MODEL,
+            model=resolved_model,
             openai_api_key=OPENROUTER_API_KEY,
             openai_api_base="https://openrouter.ai/api/v1",
             temperature=0,
@@ -376,18 +415,26 @@ def get_graph_chain():
             verbose=True,
             allow_dangerous_requests=True
         )
+        _graph_chain_model = resolved_model
     
     return _graph_chain
 
 
-def get_graph_context(query: str) -> str:
-    """Query the knowledge graph."""
+def get_graph_context(query: str, model_name: str = None) -> str:
+    """Query the knowledge graph. Fails gracefully if Neo4j is unavailable."""
     try:
-        chain = get_graph_chain()
+        chain = get_graph_chain(model_name)
         result = chain.invoke({"query": query})
         answer = result.get("result", "")
         return answer if answer else "No structured data found."
+    except ConnectionError as ce:
+        print(f"[GraphSearch] Connection Error: {ce}")
+        return "Knowledge graph unavailable (Neo4j instance may be paused). Using other sources."
     except Exception as e:
+        err_msg = str(e)
+        if "routing" in err_msg.lower() or "connect" in err_msg.lower():
+            print(f"[GraphSearch] Neo4j unreachable: {e}")
+            return "Knowledge graph unavailable (Neo4j instance may be paused). Using other sources."
         print(f"[GraphSearch] Error: {e}")
         return "No structured data found."
 
@@ -451,8 +498,12 @@ def _get_neo4j_driver():
                 connection_timeout=5,              # 5s connection timeout
                 max_transaction_retry_time=5,      # 5s max retry
             )
+            # Verify connectivity upfront so we fail fast instead of hanging on session.run()
+            _neo4j_driver.verify_connectivity()
+            print("[DrugChecker] ✓ Neo4j driver connected")
         except Exception as e:
-            print(f"[DrugChecker] Failed to create Neo4j driver: {e}")
+            print(f"[DrugChecker] Failed to connect to Neo4j: {e}")
+            _neo4j_driver = None  # Reset so next call retries
     return _neo4j_driver
 
 
@@ -1360,7 +1411,7 @@ async def ask_trustmed(query: str, chat_history: list = None, temperature: float
     print("🔗📚 Steps B+C: Querying Knowledge Graph & Medical Literature (parallel)...")
     try:
         graph_task = asyncio.wait_for(
-            asyncio.to_thread(get_graph_context, graph_query),
+            asyncio.to_thread(get_graph_context, graph_query, model),
             timeout=30.0  # 30s hard timeout for graph chain (LLM + Neo4j)
         )
         vector_task = asyncio.to_thread(get_vector_context, vector_query)
@@ -1551,12 +1602,12 @@ async def ask_trustmed_direct(query: str, model: str = None) -> str:
     }
 
     try:
-        async with aiohttp.ClientSession() as session:
+        timeout = aiohttp.ClientTimeout(total=20)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers=headers,
                 json=payload,
-                timeout=20
             ) as response:
                 if response.status != 200:
                     error_text = await response.text()
@@ -1672,10 +1723,13 @@ async def ask_trustmed_streaming(query: str, chat_history: list = None,
         yield {"type": "progress", "step": "search", "message": "🔗 Searching knowledge graph & medical literature…"}
         try:
             graph_task = asyncio.wait_for(
-                asyncio.to_thread(get_graph_context, graph_query),
+                asyncio.to_thread(get_graph_context, graph_query, model),
                 timeout=30.0
             )
-            vector_task = asyncio.to_thread(get_vector_context, vector_query)
+            vector_task = asyncio.wait_for(
+                asyncio.to_thread(get_vector_context_fast, vector_query),
+                timeout=12.0
+            )
             graph_context, vector_context = await asyncio.gather(
                 graph_task, vector_task, return_exceptions=True
             )
@@ -1719,18 +1773,6 @@ async def ask_trustmed_streaming(query: str, chat_history: list = None,
                     alert_lines[-1] += "\n" + line
             if alert_lines:
                 yield {"type": "drug_alerts", "alerts": alert_lines}
-
-        # ── Step C2: Rerank vector results ────────────────────────────────
-        try:
-            reranker = get_reranker()
-            if reranker and vector_context and "No relevant" not in vector_context:
-                chunks = [c.strip() for c in vector_context.split("---") if c.strip()]
-                if chunks:
-                    reranked = rerank_documents(clean_query, chunks)
-                    if reranked:
-                        vector_context = "\n---\n".join(reranked)
-        except Exception:
-            pass
 
         # ── Step D: Construct prompt ──────────────────────────────────────
         enriched_graph_context = graph_context

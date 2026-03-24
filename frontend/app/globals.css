@@ -1,0 +1,16 @@
+@import '../src/index.css';
+@import '../src/layouts.css';
+@import '../src/clinician.css';
+@import '../src/patient-portal.css';
+@import '../src/components/MedicalTermHighlighter.css';
+
+.tm-next-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 1rem;
+}

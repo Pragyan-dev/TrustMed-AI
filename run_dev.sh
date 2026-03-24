@@ -1,6 +1,6 @@
 #!/bin/bash
 # TrustMed AI - Development Server
-# Runs both FastAPI backend and React frontend
+# Runs both FastAPI backend and Next.js frontend
 
 echo "🩺 Starting TrustMed AI..."
 
@@ -31,7 +31,7 @@ cd ..
 sleep 3
 
 # Start frontend
-echo "🎨 Starting React frontend on port 5173..."
+echo "🎨 Starting Next.js frontend on port 5173..."
 cd frontend
 npm run dev &
 FRONTEND_PID=$!

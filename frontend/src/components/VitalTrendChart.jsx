@@ -1,12 +1,12 @@
 import { useId, useState } from 'react'
 
-const VIEWBOX_WIDTH = 960
-const VIEWBOX_HEIGHT = 312
+const VIEWBOX_WIDTH = 860
+const VIEWBOX_HEIGHT = 280
 const MARGIN = {
-    top: 22,
-    right: 24,
-    bottom: 60,
-    left: 78,
+    top: 18,
+    right: 20,
+    bottom: 50,
+    left: 64,
 }
 
 function isFiniteNumber(value) {
@@ -215,22 +215,31 @@ export default function VitalTrendChart({
         )
     }
 
+    // Build area path (fill under the line)
+    const areaPath = series.length > 1
+        ? linePath + ` L ${xForIndex(series.length - 1).toFixed(2)} ${(MARGIN.top + chartHeight).toFixed(2)} L ${xForIndex(0).toFixed(2)} ${(MARGIN.top + chartHeight).toFixed(2)} Z`
+        : null
+
+    // Normal range band
+    const normalBandY1 = isFiniteNumber(upperBound) ? yForValue(upperBound) : null
+    const normalBandY2 = isFiniteNumber(lowerBound) ? yForValue(lowerBound) : null
+
     return (
-        <div className={`pp-trend-card pp-trend-card--${statusTone}`}>
-            <div className="pp-trend-card__header">
-                <div>
+        <div className={`pp-trend-card pp-trend-card--v2 pp-trend-card--${statusTone}`}>
+            <div className="pp-trend-card__header pp-trend-card__header--v2">
+                <div className="pp-trend-card__header-left">
                     <div className="pp-trend-card__title">{title}</div>
                     <div className="pp-trend-card__date">{recordedAt}</div>
                 </div>
-                <div className="pp-trend-card__summary">
+                <div className="pp-trend-card__summary pp-trend-card__summary--v2">
                     <div className="pp-trend-card__value">{valueText}</div>
                     <div className={`pp-trend-card__status pp-trend-card__status--${statusTone}`}>{statusText}</div>
-                    {referenceText && <div className="pp-trend-card__reference">{referenceText}</div>}
                 </div>
             </div>
+            {referenceText && <div className="pp-trend-card__reference pp-trend-card__reference--v2">{referenceText}</div>}
 
-            <div className="pp-trend-card__plot" onMouseLeave={() => setHoveredIndex(null)}>
-                <svg className="pp-trend-chart" viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`} preserveAspectRatio="none" role="img" aria-label={`${title} trend`}>
+            <div className="pp-trend-card__plot pp-trend-card__plot--v2" onMouseLeave={() => setHoveredIndex(null)}>
+                <svg className="pp-trend-chart pp-trend-chart--v2" viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`} preserveAspectRatio="xMidYMid meet" role="img" aria-label={`${title} trend`}>
                     <defs>
                         <clipPath id={clipId}>
                             <rect
@@ -240,16 +249,18 @@ export default function VitalTrendChart({
                                 height={chartHeight}
                             />
                         </clipPath>
+                        <linearGradient id={`${clipId}-area`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={pointColor} stopOpacity="0.18" />
+                            <stop offset="100%" stopColor={pointColor} stopOpacity="0.01" />
+                        </linearGradient>
+                        <linearGradient id={`${clipId}-line`} x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stopColor={pointColor} stopOpacity="0.7" />
+                            <stop offset="50%" stopColor={pointColor} stopOpacity="1" />
+                            <stop offset="100%" stopColor={pointColor} stopOpacity="0.7" />
+                        </linearGradient>
                     </defs>
 
-                    <rect
-                        x={MARGIN.left}
-                        y={MARGIN.top}
-                        width={chartWidth}
-                        height={chartHeight}
-                        className="pp-trend-chart__plot-bg"
-                    />
-
+                    {/* Horizontal grid lines — subtle */}
                     {ticks.map(tick => {
                         const y = yForValue(tick)
                         return (
@@ -259,81 +270,107 @@ export default function VitalTrendChart({
                                     y1={y}
                                     x2={VIEWBOX_WIDTH - MARGIN.right}
                                     y2={y}
-                                    className="pp-trend-chart__grid"
+                                    className="pp-trend-chart__grid pp-trend-chart__grid--v2"
                                 />
-                                <text x={MARGIN.left - 10} y={y + 4} className="pp-trend-chart__y-label">
+                                <text x={MARGIN.left - 12} y={y + 4} className="pp-trend-chart__y-label pp-trend-chart__y-label--v2" textAnchor="end">
                                     {formatNumericTick(tick)}
                                 </text>
                             </g>
                         )
                     })}
 
+                    {/* X axis labels */}
                     {sampleIndices.map((sampleIndex, samplePosition) => {
                         const x = xForIndex(sampleIndex)
                         return (
-                            <g key={sampleIndex}>
-                                <line
-                                    x1={x}
-                                    y1={MARGIN.top}
-                                    x2={x}
-                                    y2={MARGIN.top + chartHeight}
-                                    className="pp-trend-chart__grid pp-trend-chart__grid--vertical"
-                                />
-                                <text x={x} y={VIEWBOX_HEIGHT - 12} textAnchor="middle" className="pp-trend-chart__x-label">
-                                    {axisLabels[samplePosition]}
-                                </text>
-                            </g>
+                            <text key={sampleIndex} x={x} y={VIEWBOX_HEIGHT - 12} textAnchor="middle" className="pp-trend-chart__x-label pp-trend-chart__x-label--v2">
+                                {axisLabels[samplePosition]}
+                            </text>
                         )
                     })}
 
                     <g clipPath={`url(#${clipId})`}>
-                        {renderThreshold(lowerBound, 'pp-trend-chart__threshold pp-trend-chart__threshold--low')}
-                        {renderThreshold(upperBound, 'pp-trend-chart__threshold pp-trend-chart__threshold--high')}
+                        {/* Normal range band (green zone) */}
+                        {normalBandY1 !== null && normalBandY2 !== null && (
+                            <rect
+                                x={MARGIN.left}
+                                y={normalBandY1}
+                                width={chartWidth}
+                                height={normalBandY2 - normalBandY1}
+                                fill="#22c55e"
+                                opacity="0.06"
+                                rx="4"
+                            />
+                        )}
 
+                        {/* Threshold lines */}
+                        {renderThreshold(lowerBound, 'pp-trend-chart__threshold pp-trend-chart__threshold--v2 pp-trend-chart__threshold--low')}
+                        {renderThreshold(upperBound, 'pp-trend-chart__threshold pp-trend-chart__threshold--v2 pp-trend-chart__threshold--high')}
+
+                        {/* Hover vertical line */}
                         {hoveredPoint && (
                             <line
                                 x1={hoveredX}
                                 y1={MARGIN.top}
                                 x2={hoveredX}
                                 y2={MARGIN.top + chartHeight}
-                                className="pp-trend-chart__hover-line"
+                                className="pp-trend-chart__hover-line pp-trend-chart__hover-line--v2"
                             />
                         )}
 
-                        <path d={linePath} className="pp-trend-chart__line" />
-                        {series.map((point, index) => (
-                            <g key={`${point.label}-${index}`}>
-                                <circle
-                                    cx={xForIndex(index)}
-                                    cy={yForValue(point.value)}
-                                    r={hoveredIndex === index ? '7' : '5.5'}
-                                    fill={pointColor}
-                                    className={`pp-trend-chart__point ${hoveredIndex === index ? 'pp-trend-chart__point--active' : ''}`}
-                                />
-                                <circle
-                                    cx={xForIndex(index)}
-                                    cy={yForValue(point.value)}
-                                    r="16"
-                                    fill="transparent"
-                                    className="pp-trend-chart__point-hitbox"
-                                    onMouseEnter={() => setHoveredIndex(index)}
-                                    onMouseLeave={() => setHoveredIndex(current => (current === index ? null : current))}
-                                    onFocus={() => setHoveredIndex(index)}
-                                    onBlur={() => setHoveredIndex(current => (current === index ? null : current))}
-                                    tabIndex="0"
-                                    aria-label={`${title} on ${formatTooltipLabel(point.label)}: ${typeof tooltipValueFormatter === 'function'
-                                        ? tooltipValueFormatter(point.value)
-                                        : formatTooltipValue(point.value, unit)}`}
-                                />
-                            </g>
-                        ))}
+                        {/* Area fill */}
+                        {areaPath && (
+                            <path d={areaPath} fill={`url(#${clipId}-area)`} />
+                        )}
+
+                        {/* Line */}
+                        <path d={linePath} fill="none" stroke={`url(#${clipId}-line)`} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+
+                        {/* Points */}
+                        {series.map((point, index) => {
+                            const cx = xForIndex(index)
+                            const cy = yForValue(point.value)
+                            const isActive = hoveredIndex === index
+                            return (
+                                <g key={`${point.label}-${index}`}>
+                                    {/* Glow ring on hover */}
+                                    {isActive && (
+                                        <circle cx={cx} cy={cy} r="14" fill={pointColor} opacity="0.1" />
+                                    )}
+                                    <circle
+                                        cx={cx}
+                                        cy={cy}
+                                        r={isActive ? '6' : '4.5'}
+                                        fill="#ffffff"
+                                        stroke={pointColor}
+                                        strokeWidth="2.5"
+                                        className={`pp-trend-chart__point pp-trend-chart__point--v2 ${isActive ? 'pp-trend-chart__point--active' : ''}`}
+                                    />
+                                    <circle
+                                        cx={cx}
+                                        cy={cy}
+                                        r="16"
+                                        fill="transparent"
+                                        className="pp-trend-chart__point-hitbox"
+                                        onMouseEnter={() => setHoveredIndex(index)}
+                                        onMouseLeave={() => setHoveredIndex(current => (current === index ? null : current))}
+                                        onFocus={() => setHoveredIndex(index)}
+                                        onBlur={() => setHoveredIndex(current => (current === index ? null : current))}
+                                        tabIndex="0"
+                                        aria-label={`${title} on ${formatTooltipLabel(point.label)}: ${typeof tooltipValueFormatter === 'function'
+                                            ? tooltipValueFormatter(point.value)
+                                            : formatTooltipValue(point.value, unit)}`}
+                                    />
+                                </g>
+                            )
+                        })}
                     </g>
 
                     <text
                         x="18"
                         y={MARGIN.top + chartHeight / 2}
                         transform={`rotate(-90 18 ${MARGIN.top + chartHeight / 2})`}
-                        className="pp-trend-chart__unit"
+                        className="pp-trend-chart__unit pp-trend-chart__unit--v2"
                     >
                         {unit}
                     </text>
@@ -341,7 +378,7 @@ export default function VitalTrendChart({
 
                 {hoveredPoint && (
                     <div
-                        className={`pp-trend-chart__tooltip ${tooltipXClass} ${tooltipYClass}`}
+                        className={`pp-trend-chart__tooltip pp-trend-chart__tooltip--v2 ${tooltipXClass} ${tooltipYClass}`}
                         style={{ left: tooltipLeft, top: tooltipTop }}
                     >
                         <div className="pp-trend-chart__tooltip-date">{formatTooltipLabel(hoveredPoint.label)}</div>

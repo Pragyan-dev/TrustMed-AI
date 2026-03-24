@@ -11,26 +11,14 @@ import PatientInfoPanel from '../components/PatientInfoPanel'
 import CompoundPanelViewer from '../components/CompoundPanelViewer'
 import { MarkdownWithHighlight } from '../components/MedicalTermHighlighter'
 import SafeMarkdownWrapper from '../components/SafeMarkdownWrapper'
-import '../clinician.css'
+import {
+    AVAILABLE_TEXT_MODELS,
+    AVAILABLE_VISION_MODELS,
+    DEFAULT_TEXT_MODEL,
+    DEFAULT_VISION_MODEL,
+} from '../lib/modelOptions'
 
 const API_BASE = '/api'
-
-const AVAILABLE_MODELS = [
-    { id: 'vertex/medgemma-27b-it', label: 'MedGemma 27B (Vertex AI)' },
-    { id: 'nvidia/llama-nemotron-embed-vl-1b-v2:free', label: 'Nemotron Embed VL 1B' },
-    { id: 'sourceful/riverflow-v2-pro', label: 'Riverflow V2 Pro' },
-    { id: 'nvidia/nemotron-3-nano-30b-a3b:free', label: 'Nemotron 30B' },
-    { id: 'qwen/qwen3-vl-235b-a22b-thinking', label: 'Qwen 3 VL 235B' },
-    { id: 'google/gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro' },
-]
-
-const AVAILABLE_VISION_MODELS = [
-    { id: 'vertex/medgemma-27b-it', label: 'MedGemma 27B (Vertex AI)' },
-    { id: 'google/gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro' },
-    { id: 'google/gemini-3-flash-preview', label: 'Gemini 3 Flash' },
-    { id: 'z-ai/glm-4.5-air:free', label: 'GLM 4.5 Air' },
-    { id: 'meta-llama/llama-3.2-90b-vision-instruct:free', label: 'Llama 90B Vision' },
-]
 
 const SAMPLE_PATIENTS = ['10002428', '10025463', '10027602', '10009049', '10007058', '10020640', '10018081', '10023239', '10035631']
 const STARTER_PROMPTS = [
@@ -119,8 +107,8 @@ export default function ClinicianDashboard() {
 
     // Settings
     const [temperature, setTemperature] = useState(0.1)
-    const [selectedModel, setSelectedModel] = useState(AVAILABLE_MODELS[0].id)
-    const [selectedVisionModel, setSelectedVisionModel] = useState(AVAILABLE_VISION_MODELS[0].id)
+    const [selectedModel, setSelectedModel] = useState(DEFAULT_TEXT_MODEL)
+    const [selectedVisionModel, setSelectedVisionModel] = useState(DEFAULT_VISION_MODEL)
 
     // Panels
     const [rightOpen, setRightOpen] = useState(true)
@@ -582,7 +570,7 @@ export default function ClinicianDashboard() {
                                     value={selectedModel}
                                     onChange={e => setSelectedModel(e.target.value)}
                                 >
-                                    {AVAILABLE_MODELS.map(m => (
+                                    {AVAILABLE_TEXT_MODELS.map(m => (
                                         <option key={m.id} value={m.id}>{m.label}</option>
                                     ))}
                                 </select>

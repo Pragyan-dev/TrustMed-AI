@@ -1,0 +1,4 @@
+interface:
+  display_name: "Find Skills"
+  short_description: "Discover and install agent skills"
+  default_prompt: "Use $find-skills to find a skill for improving React performance."

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import { Stethoscope, Heart, ArrowRight } from 'lucide-react'
 
 export default function RoleSelector() {
@@ -13,7 +13,7 @@ export default function RoleSelector() {
             </p>
 
             <div className="role-selector__cards">
-                <Link to="/clinician" className="role-card role-card--clinician">
+                <Link href="/clinician" className="role-card role-card--clinician">
                     <div className="role-card__icon">
                         <Stethoscope size={32} />
                     </div>
@@ -27,7 +27,7 @@ export default function RoleSelector() {
                     </div>
                 </Link>
 
-                <Link to="/patient" className="role-card role-card--patient">
+                <Link href="/patient" className="role-card role-card--patient">
                     <div className="role-card__icon">
                         <Heart size={32} />
                     </div>

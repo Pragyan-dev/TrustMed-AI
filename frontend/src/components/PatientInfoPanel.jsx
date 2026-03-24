@@ -45,6 +45,12 @@ function VitalGauge({ value, min, max, normalMin, normalMax, color, status }) {
     )
 }
 
+function StatusIcon({ status }) {
+    if (status === 'high') return <TrendingUp size={10} />
+    if (status === 'low') return <TrendingDown size={10} />
+    return <Minus size={10} />
+}
+
 function PatientInfoPanel({ patientData, onClose }) {
     const [collapsed, setCollapsed] = useState(false)
 
@@ -68,12 +74,6 @@ function PatientInfoPanel({ patientData, onClose }) {
         return 'normal'
     }
 
-    const StatusIcon = ({ status }) => {
-        if (status === 'high') return <TrendingUp size={10} />
-        if (status === 'low') return <TrendingDown size={10} />
-        return <Minus size={10} />
-    }
-
     const statusLabel = (status) => {
         if (status === 'high') return 'HIGH'
         if (status === 'low') return 'LOW'
@@ -82,15 +82,29 @@ function PatientInfoPanel({ patientData, onClose }) {
 
     return (
         <div className={`patient-info-panel ${collapsed ? 'collapsed' : ''}`}>
-            <div className="patient-info-header" onClick={() => setCollapsed(!collapsed)}>
+            <div className="patient-info-header">
                 <div className="patient-info-title">
                     <Activity size={16} />
                     <span>Patient {patient_id}</span>
                     <span className="patient-badge">MIMIC-IV</span>
                 </div>
                 <div className="patient-info-actions">
-                    {collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-                    <button className="patient-close-btn" onClick={(e) => { e.stopPropagation(); onClose(); }}>
+                    <button
+                        type="button"
+                        className="patient-info-action patient-toggle-btn"
+                        onClick={() => setCollapsed(!collapsed)}
+                        aria-label={collapsed ? 'Expand patient information' : 'Collapse patient information'}
+                        title={collapsed ? 'Expand patient information' : 'Collapse patient information'}
+                    >
+                        {collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                    </button>
+                    <button
+                        type="button"
+                        className="patient-info-action patient-close-btn"
+                        onClick={onClose}
+                        aria-label="Close patient information"
+                        title="Close patient information"
+                    >
                         <X size={14} />
                     </button>
                 </div>

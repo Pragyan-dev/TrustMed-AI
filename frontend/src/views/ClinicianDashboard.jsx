@@ -217,16 +217,26 @@ export default function ClinicianDashboard() {
     }
 
     // ── Image Handling ───────────────────────────────────────────────
-    const handleImageSelect = async (e) => {
-        const file = e.target.files?.[0]
-        if (!file) return
+    const uploadImageFile = async (rawFile, { fromClipboard = false } = {}) => {
+        if (!rawFile || !rawFile.type?.startsWith('image/')) return
 
-        setSelectedImage(file)
-        setImagePreview(URL.createObjectURL(file))
+        const clipboardFile = fromClipboard && rawFile.type
+            ? new File(
+                [rawFile],
+                `clipboard-image-${Date.now()}.${rawFile.type.split('/')[1] || 'png'}`,
+                { type: rawFile.type }
+            )
+            : rawFile
+
+        setSelectedImage(clipboardFile)
+        setImagePreview(URL.createObjectURL(clipboardFile))
+        setUploadedImagePath(null)
+        setPanelData(null)
         setIsUploading(true)
+        if (fileInputRef.current) fileInputRef.current.value = ''
 
         const formData = new FormData()
-        formData.append('file', file)
+        formData.append('file', clipboardFile)
 
         uploadPromiseRef.current = (async () => {
             try {
@@ -251,6 +261,23 @@ export default function ClinicianDashboard() {
                 return null
             } finally { setIsUploading(false) }
         })()
+    }
+
+    const handleImageSelect = async (e) => {
+        const file = e.target.files?.[0]
+        await uploadImageFile(file)
+    }
+
+    const handleComposerPaste = async (e) => {
+        const items = Array.from(e.clipboardData?.items || [])
+        const imageItem = items.find(item => item.type.startsWith('image/'))
+        if (!imageItem) return
+
+        const file = imageItem.getAsFile()
+        if (!file) return
+
+        e.preventDefault()
+        await uploadImageFile(file, { fromClipboard: true })
     }
 
     const removeImage = () => {
@@ -875,7 +902,10 @@ export default function ClinicianDashboard() {
                             value={input}
                             onChange={e => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder="Assess patient 10002428 for this chest X-ray…"
+                            onPaste={handleComposerPaste}
+                            placeholder={selectedImage
+                                ? 'Describe what you want analyzed in this image…'
+                                : 'Ask a focused clinical question, or paste a medical image from your clipboard…'}
                             rows={1}
                             disabled={isLoading}
                         />

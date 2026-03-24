@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import {
     Send, Plus, Image as ImageIcon, X, Loader2, MessageSquare,
@@ -505,6 +506,17 @@ export default function ClinicianDashboard() {
                 <div className="cd-topbar__divider" />
 
                 <div className="cd-topbar__spacer" />
+
+                <div className="cd-topbar__view-switch" aria-label="Current application view">
+                    <span className="cd-topbar__view-chip cd-topbar__view-chip--active">Clinician</span>
+                    <Link
+                        href="/patient"
+                        className="cd-topbar__view-chip cd-topbar__view-chip--link"
+                        title="Switch to patient portal"
+                    >
+                        Patient View
+                    </Link>
+                </div>
 
                 <button
                     className={`mth-toggle ${highlighterOn ? 'active' : ''}`}

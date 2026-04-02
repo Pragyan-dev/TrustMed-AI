@@ -17,8 +17,10 @@ import requests
 import json
 from langchain_core.tools import tool
 from dotenv import load_dotenv
+from src.ssl_bootstrap import configure_ssl_certificates, get_ssl_cert_path
 
 load_dotenv()
+configure_ssl_certificates()
 
 # =============================================================================
 # Vertex AI MedGemma 27B Integration
@@ -96,7 +98,13 @@ def call_medgemma_vertex(image_path: str, prompt: str) -> str:
         "max_tokens": 500,
     }
 
-    resp = requests.post(url, headers=headers, json=payload, timeout=120)
+    resp = requests.post(
+        url,
+        headers=headers,
+        json=payload,
+        timeout=120,
+        verify=get_ssl_cert_path() or True,
+    )
     if resp.status_code != 200:
         raise ValueError(
             f"MedGemma endpoint returned {resp.status_code}: {resp.text[:500]}"
@@ -372,7 +380,8 @@ def analyze_medical_image(image_path: str) -> str:
                     OPENROUTER_URL,
                     headers=headers,
                     json=payload,
-                    timeout=60
+                    timeout=60,
+                    verify=get_ssl_cert_path() or True,
                 )
                 
                 if response.status_code == 404:

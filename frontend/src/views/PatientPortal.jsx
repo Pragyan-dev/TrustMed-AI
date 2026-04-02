@@ -203,9 +203,28 @@ function toSentenceList(value, { splitSemicolons = false, maxItems = 6 } = {}) {
         : normalized.split(/(?<=[.!?])\s+/)
 
     return fragments
-        .map(fragment => fragment.trim())
+        .map(fragment => fragment.trim().replace(/^[-*•\d.)\s]+/, '').trim())
         .filter(Boolean)
         .slice(0, maxItems)
+}
+
+function parseStructuredSummaryString(value) {
+    if (!value || typeof value !== 'string') return []
+
+    const trimmed = value.trim()
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        const matches = [...trimmed.matchAll(/'[^']+'\s*:\s*'([^']+)'/g)]
+        return matches.map(([, text]) => text.trim()).filter(Boolean)
+    }
+
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+        const matches = [...trimmed.matchAll(/'name'\s*:\s*'([^']+)'\s*,\s*'explanation'\s*:\s*'([^']+)'/g)]
+        return matches
+            .map(([, name, explanation]) => `${name.trim()}: ${explanation.trim()}`)
+            .filter(Boolean)
+    }
+
+    return []
 }
 
 function normalizeCarePlanSteps(steps = []) {
@@ -551,10 +570,12 @@ export default function PatientPortal() {
         { label: 'Latest update', value: formatRecordedAt(latestVitalsRecordedAt) },
     ]
     const carePlanVitalsPoints = toSentenceList(patientSummary?.vitals_explanation, { maxItems: 6 })
+    const fallbackVitalsPoints = parseStructuredSummaryString(patientSummary?.vitals_explanation)
     const carePlanMedicationPoints = toSentenceList(patientSummary?.medications_explanation, {
         splitSemicolons: true,
         maxItems: 8,
     })
+    const fallbackMedicationPoints = parseStructuredSummaryString(patientSummary?.medications_explanation)
     const carePlanSteps = normalizeCarePlanSteps(patientSummary?.next_steps)
     const carePlanHighlights = [
         {
@@ -1095,9 +1116,9 @@ export default function PatientPortal() {
                                                             </div>
                                                         </div>
                                                         <div className="pp-care-explainer__body">
-                                                            {carePlanVitalsPoints.length > 0 ? (
+                                                            {carePlanVitalsPoints.length > 0 || fallbackVitalsPoints.length > 0 ? (
                                                                 <ul className="pp-care-bullets">
-                                                                    {carePlanVitalsPoints.map((point, index) => (
+                                                                    {(carePlanVitalsPoints.length > 0 ? carePlanVitalsPoints : fallbackVitalsPoints).map((point, index) => (
                                                                         <li key={`${point}-${index}`}>{point}</li>
                                                                     ))}
                                                                 </ul>
@@ -1118,9 +1139,9 @@ export default function PatientPortal() {
                                                             </div>
                                                         </div>
                                                         <div className="pp-care-explainer__body">
-                                                            {carePlanMedicationPoints.length > 0 ? (
+                                                            {carePlanMedicationPoints.length > 0 || fallbackMedicationPoints.length > 0 ? (
                                                                 <ul className="pp-care-bullets pp-care-bullets--dense">
-                                                                    {carePlanMedicationPoints.map((point, index) => (
+                                                                    {(carePlanMedicationPoints.length > 0 ? carePlanMedicationPoints : fallbackMedicationPoints).map((point, index) => (
                                                                         <li key={`${point}-${index}`}>{point}</li>
                                                                     ))}
                                                                 </ul>

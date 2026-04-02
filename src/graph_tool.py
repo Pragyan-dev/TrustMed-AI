@@ -12,8 +12,10 @@ from langchain.chains import GraphCypherQAChain
 from langchain_openai import ChatOpenAI
 from langchain.tools import Tool
 from langchain_core.prompts import PromptTemplate
+from src.ssl_bootstrap import configure_ssl_certificates
 
 load_dotenv()
+configure_ssl_certificates()
 
 # Environment variables
 NEO4J_URI = os.getenv("NEO4J_URI")
@@ -109,6 +111,9 @@ def query_graph(question: str) -> str:
         
     except Exception as e:
         print(f"[GraphRetriever] Error querying graph: {e}")
+        err_msg = str(e).lower()
+        if any(token in err_msg for token in ("routing", "connect", "certificate", "ssl")):
+            return "Knowledge graph unavailable"
         return "No structured data found"
 
 

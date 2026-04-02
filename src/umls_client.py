@@ -3,8 +3,10 @@ from functools import lru_cache
 from typing import Optional, Tuple, List
 import os
 from dotenv import load_dotenv
+from src.ssl_bootstrap import configure_ssl_certificates, get_ssl_cert_path
 
 load_dotenv()
+configure_ssl_certificates()
 
 class UMLSClient:
     """
@@ -34,7 +36,7 @@ class UMLSClient:
         }
         
         try:
-            response = requests.get(endpoint, params=params)
+            response = requests.get(endpoint, params=params, verify=get_ssl_cert_path() or True)
             response.raise_for_status()
             data = response.json()
             
@@ -58,7 +60,7 @@ class UMLSClient:
         }
         
         try:
-            response = requests.get(endpoint, params=params)
+            response = requests.get(endpoint, params=params, verify=get_ssl_cert_path() or True)
             response.raise_for_status()
             data = response.json()
             

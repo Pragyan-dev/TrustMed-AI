@@ -7,6 +7,7 @@ Persistent chat history + multi-session support.
 import os
 import sys
 import json
+import ast
 import asyncio
 import uuid
 import time
@@ -605,7 +606,20 @@ def _get_graph_data(search_term: str, patient_id: str = None) -> dict:
         return get_graph_json(search_term, patient_id)
     except Exception as e:
         print(f"Graph query error: {e}")
-        return {"nodes": [], "edges": [], "stats": {}}
+        err_msg = str(e).lower()
+        if any(token in err_msg for token in ("routing", "connect", "certificate", "ssl", "neo4j")):
+            return {
+                "nodes": [],
+                "edges": [],
+                "stats": {},
+                "error": "Knowledge graph unavailable. Check Neo4j connectivity and local SSL certificates.",
+            }
+        return {
+            "nodes": [],
+            "edges": [],
+            "stats": {},
+            "error": "Unable to load graph data.",
+        }
 
 
 @app.get("/graph")
@@ -706,6 +720,10 @@ Patient Data:
 
 def _normalize_next_steps(value) -> List[str]:
     """Coerce mixed LLM output into a clean list of brief next-step strings."""
+    parsed = _parse_loose_literal(value)
+    if isinstance(parsed, list):
+        return [str(item).strip() for item in parsed if str(item).strip()]
+
     if isinstance(value, list):
         return [str(item).strip() for item in value if str(item).strip()]
 
@@ -723,6 +741,102 @@ def _normalize_next_steps(value) -> List[str]:
     return []
 
 
+def _parse_loose_literal(value):
+    """Parse JSON or Python-literal strings that the LLM sometimes returns inside JSON fields."""
+    if isinstance(value, (dict, list)):
+        return value
+    if not isinstance(value, str):
+        return value
+
+    stripped = value.strip()
+    if not stripped or stripped[0] not in "[{":
+        return value
+
+    for parser in (json.loads, ast.literal_eval):
+        try:
+            parsed = parser(stripped)
+        except Exception:
+            continue
+        if isinstance(parsed, (dict, list)):
+            return parsed
+
+    return value
+
+
+def _normalize_vitals_explanation(value) -> str:
+    """Flatten structured vitals payloads into plain prose."""
+    parsed = _parse_loose_literal(value)
+
+    if isinstance(parsed, dict):
+        ordered_keys = [
+            "temperature",
+            "heart_rate",
+            "respiratory_rate",
+            "o2_saturation",
+            "systolic_bp",
+            "diastolic_bp",
+        ]
+        pieces = []
+        seen = set()
+
+        for key in ordered_keys:
+            text = str(parsed.get(key) or "").strip()
+            if text and text not in seen:
+                seen.add(text)
+                pieces.append(text)
+
+        for key, raw in parsed.items():
+            if key in ordered_keys:
+                continue
+            text = str(raw or "").strip()
+            if text and text not in seen:
+                seen.add(text)
+                pieces.append(text)
+
+        return " ".join(pieces)
+
+    if isinstance(parsed, list):
+        return " ".join(str(item).strip() for item in parsed if str(item).strip())
+
+    return str(value or "").strip()
+
+
+def _normalize_medications_explanation(value) -> str:
+    """Flatten structured medication payloads into semicolon-separated plain-language items."""
+    parsed = _parse_loose_literal(value)
+
+    if isinstance(parsed, list):
+        items = []
+        for entry in parsed:
+            if isinstance(entry, dict):
+                name = str(entry.get("name") or "").strip()
+                explanation = str(entry.get("explanation") or entry.get("description") or "").strip()
+                if name and explanation:
+                    items.append(f"{name}: {explanation}")
+                elif explanation:
+                    items.append(explanation)
+                elif name:
+                    items.append(name)
+            else:
+                text = str(entry).strip()
+                if text:
+                    items.append(text)
+        return "; ".join(items)
+
+    if isinstance(parsed, dict):
+        items = []
+        for key, raw in parsed.items():
+            text = str(raw or "").strip()
+            label = str(key or "").replace("_", " ").strip()
+            if label and text:
+                items.append(f"{label}: {text}")
+            elif text:
+                items.append(text)
+        return "; ".join(items)
+
+    return str(value or "").strip()
+
+
 def _normalize_patient_summary_payload(payload) -> dict:
     """Return a stable frontend-safe summary payload regardless of LLM formatting."""
     if not isinstance(payload, dict):
@@ -737,14 +851,14 @@ def _normalize_patient_summary_payload(payload) -> dict:
 
     return {
         "summary": str(payload.get("summary") or "We could not generate a detailed summary right now.").strip(),
-        "vitals_explanation": str(
+        "vitals_explanation": _normalize_vitals_explanation(
             payload.get("vitals_explanation")
             or "Your vital signs are available in your chart, but a plain-language explanation was not generated."
-        ).strip(),
-        "medications_explanation": str(
+        ),
+        "medications_explanation": _normalize_medications_explanation(
             payload.get("medications_explanation")
             or "Your medication list is available in your chart, but a plain-language explanation was not generated."
-        ).strip(),
+        ),
         "next_steps": next_steps,
     }
 
@@ -1024,6 +1138,7 @@ async def patient_summary(patient_id: str):
 EXPLAIN_TERM_PROMPT = """Explain the medical term "{term}" in plain English at an 8th-grade reading level.
 Keep it to 2-3 sentences. Be warm and reassuring. Do not give medical advice.
 Just explain what the term means in simple language a patient can understand."""
+EXPLAIN_TERM_FALLBACK = "Explanation unavailable. Please consult your physician."
 
 
 @app.get("/explain-term")
@@ -1034,8 +1149,9 @@ async def explain_term(term: str = Query(..., min_length=2, max_length=200)):
     """
     # Check cache first
     cache_key = term.strip().lower()
-    if cache_key in _term_cache:
-        return {"term": term, "explanation": _term_cache[cache_key], "cached": True}
+    cached_explanation = _term_cache.get(cache_key)
+    if cached_explanation and cached_explanation != EXPLAIN_TERM_FALLBACK:
+        return {"term": term, "explanation": cached_explanation, "cached": True}
 
     try:
         prompt = EXPLAIN_TERM_PROMPT.format(term=term)
@@ -1044,8 +1160,9 @@ async def explain_term(term: str = Query(..., min_length=2, max_length=200)):
             model="stepfun/step-3.5-flash:free"
         )
 
-        # Cache the result
-        _term_cache[cache_key] = explanation
+        # Only cache successful explanations, not placeholder fallbacks from transient SSL/API failures.
+        if explanation != EXPLAIN_TERM_FALLBACK:
+            _term_cache[cache_key] = explanation
 
         return {"term": term, "explanation": explanation, "cached": False}
 

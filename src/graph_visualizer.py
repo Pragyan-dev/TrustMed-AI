@@ -10,8 +10,10 @@ with all relationship types.
 import os
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
+from src.ssl_bootstrap import configure_ssl_certificates
 
 load_dotenv()
+configure_ssl_certificates()
 
 # =============================================================================
 # Configuration

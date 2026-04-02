@@ -168,6 +168,13 @@ function KnowledgeGraphPanel({
       if (!res.ok) throw new Error('Failed to fetch graph data')
       const data = await res.json()
 
+      if (data.error) {
+        setError(data.error)
+        setGraphData({ nodes: [], links: [] })
+        setStats(null)
+        return
+      }
+
       if (data.nodes.length === 0) {
         setError(`No results found for "${term}"`)
         setGraphData({ nodes: [], links: [] })

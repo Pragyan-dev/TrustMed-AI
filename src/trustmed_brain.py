@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 
 import chromadb
 from sentence_transformers import SentenceTransformer
-from langchain.chains import GraphCypherQAChain
+from langchain_neo4j import GraphCypherQAChain
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 
@@ -30,6 +30,7 @@ from src.vision_agent import (
 from src.vision_tool import set_preferred_vision_model
 # Advanced RAG: Cross-Encoder Reranker for improved retrieval quality
 from src.reranker import rerank_documents, get_reranker
+from src.ssl_bootstrap import configure_ssl_certificates, get_ssl_cert_path, get_ssl_context
 
 # Neo4j import: prefer langchain-neo4j package (new), fall back to langchain-community (deprecated)
 try:
@@ -38,6 +39,7 @@ except ImportError:
     from langchain_community.graphs import Neo4jGraph
 
 load_dotenv()
+configure_ssl_certificates()
 
 # =============================================================================
 # Configuration
@@ -150,7 +152,13 @@ def call_medgemma_text(prompt: str, temperature: float = 0.1,
     }
 
     if not stream:
-        resp = _requests.post(url, headers=headers, json=payload, timeout=120)
+        resp = _requests.post(
+            url,
+            headers=headers,
+            json=payload,
+            timeout=120,
+            verify=get_ssl_cert_path() or True,
+        )
         if resp.status_code != 200:
             raise ValueError(f"MedGemma text returned {resp.status_code}: {resp.text[:500]}")
         data = resp.json()
@@ -164,8 +172,14 @@ def call_medgemma_text(prompt: str, temperature: float = 0.1,
         return content
     else:
         # Streaming: return generator that yields content chunks
-        resp = _requests.post(url, headers=headers, json=payload,
-                              timeout=120, stream=True)
+        resp = _requests.post(
+            url,
+            headers=headers,
+            json=payload,
+            timeout=120,
+            stream=True,
+            verify=get_ssl_cert_path() or True,
+        )
         if resp.status_code != 200:
             raise ValueError(f"MedGemma stream returned {resp.status_code}: {resp.text[:500]}")
         return _stream_medgemma_chunks(resp)
@@ -388,8 +402,8 @@ def get_graph_chain(model_name: str = None):
             print(f"  ✗ Neo4j connection failed: {conn_err}")
             raise ConnectionError(
                 f"Cannot connect to Neo4j ({NEO4J_URI}). "
-                f"If using Aura Free Tier, the instance may be paused — "
-                f"resume it at https://console.neo4j.io"
+                f"Check that the Aura instance is running and that the local "
+                f"Python CA bundle is configured correctly."
             ) from conn_err
 
         _neo4j_graph = Neo4jGraph(
@@ -429,12 +443,12 @@ def get_graph_context(query: str, model_name: str = None) -> str:
         return answer if answer else "No structured data found."
     except ConnectionError as ce:
         print(f"[GraphSearch] Connection Error: {ce}")
-        return "Knowledge graph unavailable (Neo4j instance may be paused). Using other sources."
+        return "Knowledge graph unavailable (Neo4j connectivity issue). Using other sources."
     except Exception as e:
         err_msg = str(e)
-        if "routing" in err_msg.lower() or "connect" in err_msg.lower():
+        if any(token in err_msg.lower() for token in ("routing", "connect", "certificate", "ssl")):
             print(f"[GraphSearch] Neo4j unreachable: {e}")
-            return "Knowledge graph unavailable (Neo4j instance may be paused). Using other sources."
+            return "Knowledge graph unavailable (Neo4j connectivity issue). Using other sources."
         print(f"[GraphSearch] Error: {e}")
         return "No structured data found."
 
@@ -1603,7 +1617,8 @@ async def ask_trustmed_direct(query: str, model: str = None) -> str:
 
     try:
         timeout = aiohttp.ClientTimeout(total=20)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
+        connector = aiohttp.TCPConnector(ssl=get_ssl_context())
+        async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
             async with session.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers=headers,

@@ -669,6 +669,65 @@
     justify-content: center;
 }
 
+.cd-attachment-save {
+    margin-top: 0.75rem;
+    padding: 0.8rem;
+    border-radius: 12px;
+    border: 1px solid rgba(46, 125, 82, 0.12);
+    background: rgba(247, 250, 248, 0.92);
+}
+
+.cd-attachment-save__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    width: 100%;
+    padding: 0.7rem 0.85rem;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #2E7D52, #256645);
+    color: #ffffff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.cd-attachment-save__button:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.cd-attachment-save__button:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.cd-attachment-save__hint {
+    margin: 0.6rem 0 0;
+    color: var(--cd-text-muted);
+    font-size: 0.72rem;
+    line-height: 1.45;
+}
+
+.cd-attachment-save__status {
+    margin-top: 0.55rem;
+    padding: 0.55rem 0.65rem;
+    border-radius: 10px;
+    font-size: 0.72rem;
+    line-height: 1.45;
+}
+
+.cd-attachment-save__status--success {
+    background: rgba(34, 197, 94, 0.08);
+    color: #166534;
+}
+
+.cd-attachment-save__status--error {
+    background: rgba(239, 68, 68, 0.08);
+    color: #B91C1C;
+}
+
 /* ── Center (Chat) ──────────────────────────────────────────────────────── */
 .cd-center {
     flex: 1;
@@ -1899,6 +1958,109 @@
     color: #166534;
     background: rgba(46, 125, 82, 0.06);
     border: 1px solid rgba(46, 125, 82, 0.15);
+}
+
+.cd .patient-attachments__state {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 8px;
+    border-radius: 8px;
+    background: rgba(248, 250, 252, 0.9);
+    color: var(--cd-text-muted);
+    font-size: 10px;
+    line-height: 1.45;
+}
+
+.cd .patient-attachments__state--error {
+    background: rgba(254, 242, 242, 0.92);
+    color: #B91C1C;
+}
+
+.cd .patient-attachment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.cd .patient-attachment-row {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    padding: 7px;
+    border-radius: 10px;
+    background: rgba(248, 251, 249, 0.95);
+    border: 1px solid rgba(46, 125, 82, 0.08);
+}
+
+.cd .patient-attachment-row__preview {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(46, 125, 82, 0.08);
+    color: var(--cd-accent);
+}
+
+.cd .patient-attachment-row__preview--pdf {
+    background: rgba(30, 64, 175, 0.08);
+    color: #1D4ED8;
+}
+
+.cd .patient-attachment-row__preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.cd .patient-attachment-row__body {
+    min-width: 0;
+}
+
+.cd .patient-attachment-row__title {
+    color: var(--cd-text);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cd .patient-attachment-row__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    margin-top: 3px;
+    color: var(--cd-text-muted);
+    font-size: 9px;
+    line-height: 1.35;
+}
+
+.cd .patient-attachment-row__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 5px 7px;
+    border-radius: 8px;
+    background: rgba(46, 125, 82, 0.1);
+    color: var(--cd-accent);
+    text-decoration: none;
+    font-size: 9px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.cd .patient-attachment-row__link:hover {
+    background: rgba(46, 125, 82, 0.15);
 }
 
 /* ==========================================================================

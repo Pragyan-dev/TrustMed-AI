@@ -44,6 +44,31 @@ const cleanContent = (text) => {
     return t
 }
 
+async function readApiError(response, fallbackMessage) {
+    const contentType = response.headers.get('content-type') || ''
+
+    try {
+        if (contentType.includes('application/json')) {
+            const data = await response.json()
+            if (typeof data?.detail === 'string' && data.detail.trim()) {
+                return data.detail.trim()
+            }
+            if (typeof data?.message === 'string' && data.message.trim()) {
+                return data.message.trim()
+            }
+        }
+
+        const text = (await response.text()).trim()
+        if (text) {
+            return response.status >= 500 ? fallbackMessage : text.slice(0, 220)
+        }
+    } catch {
+        // Fall through to the fallback message.
+    }
+
+    return fallbackMessage
+}
+
 const streamSseEvents = async (response, onEvent) => {
     const reader = response.body?.getReader()
     if (!reader) throw new Error('Streaming response unavailable')
@@ -105,6 +130,12 @@ export default function ClinicianDashboard() {
     // Patient
     const [selectedPatient, setSelectedPatient] = useState('')
     const [patientData, setPatientData] = useState(null)
+    const [patientAttachments, setPatientAttachments] = useState([])
+    const [patientAttachmentsLoading, setPatientAttachmentsLoading] = useState(false)
+    const [patientAttachmentsError, setPatientAttachmentsError] = useState('')
+    const [saveAttachmentLoading, setSaveAttachmentLoading] = useState(false)
+    const [saveAttachmentMessage, setSaveAttachmentMessage] = useState('')
+    const [saveAttachmentError, setSaveAttachmentError] = useState('')
 
     // Settings
     const [temperature, setTemperature] = useState(0.1)
@@ -157,12 +188,57 @@ export default function ClinicianDashboard() {
         }
     }, [input])
 
+    const fetchPatientAttachments = useCallback(async (patId) => {
+        if (!patId) {
+            setPatientAttachments([])
+            setPatientAttachmentsError('')
+            setPatientAttachmentsLoading(false)
+            return []
+        }
+
+        setPatientAttachmentsLoading(true)
+        setPatientAttachmentsError('')
+
+        try {
+            const res = await fetch(`${API_BASE}/patient/${patId}/attachments`)
+            if (!res.ok) {
+                throw new Error(await readApiError(res, 'Unable to load patient imaging attachments.'))
+            }
+
+            const data = await res.json()
+            const attachments = Array.isArray(data.attachments) ? data.attachments : []
+            setPatientAttachments(attachments)
+            return attachments
+        } catch (err) {
+            console.error('Failed to load patient attachments:', err)
+            setPatientAttachments([])
+            setPatientAttachmentsError(
+                err instanceof Error && err.message
+                    ? err.message
+                    : 'Unable to load patient imaging attachments.'
+            )
+            return []
+        } finally {
+            setPatientAttachmentsLoading(false)
+        }
+    }, [])
+
     // ── Patient Loading ──────────────────────────────────────────────
     const loadPatient = async (patId) => {
         setGraphContext(null)
         setDrugAlerts([])
         setPatientData(null)
-        if (!patId) { setPatientData(null); return }
+        setPatientAttachments([])
+        setPatientAttachmentsError('')
+        setSaveAttachmentMessage('')
+        setSaveAttachmentError('')
+        if (!patId) {
+            setPatientData(null)
+            return
+        }
+
+        fetchPatientAttachments(patId)
+
         try {
             const res = await fetch(`${API_BASE}/patient/${patId}`)
             if (res.ok) {
@@ -234,6 +310,8 @@ export default function ClinicianDashboard() {
         setUploadedImagePath(null)
         setPanelData(null)
         setIsUploading(true)
+        setSaveAttachmentMessage('')
+        setSaveAttachmentError('')
         if (fileInputRef.current) fileInputRef.current.value = ''
 
         const formData = new FormData()
@@ -286,7 +364,44 @@ export default function ClinicianDashboard() {
         setImagePreview(null)
         setUploadedImagePath(null)
         setPanelData(null)
+        setSaveAttachmentMessage('')
+        setSaveAttachmentError('')
         if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+
+    const saveUploadedImageToPatient = async () => {
+        if (!selectedPatient || !uploadedImagePath || saveAttachmentLoading) return
+
+        setSaveAttachmentLoading(true)
+        setSaveAttachmentMessage('')
+        setSaveAttachmentError('')
+
+        try {
+            const res = await fetch(`${API_BASE}/patient/${selectedPatient}/attachments/link-clinician-upload`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    image_path: uploadedImagePath,
+                    title: selectedImage?.name || null,
+                }),
+            })
+
+            if (!res.ok) {
+                throw new Error(await readApiError(res, 'Unable to save imaging to the patient record.'))
+            }
+
+            await fetchPatientAttachments(selectedPatient)
+            setSaveAttachmentMessage('Saved to patient imaging.')
+        } catch (err) {
+            console.error('Failed to save image to patient:', err)
+            setSaveAttachmentError(
+                err instanceof Error && err.message
+                    ? err.message
+                    : 'Unable to save imaging to the patient record.'
+            )
+        } finally {
+            setSaveAttachmentLoading(false)
+        }
     }
 
     // ── Pipeline Step Tracker ────────────────────────────────────────
@@ -680,6 +795,9 @@ export default function ClinicianDashboard() {
                             <div style={{ marginTop: '0.75rem' }}>
                                 <PatientInfoPanel
                                     patientData={patientData}
+                                    attachments={patientAttachments}
+                                    attachmentsLoading={patientAttachmentsLoading}
+                                    attachmentsError={patientAttachmentsError}
                                     onClose={() => setPatientData(null)}
                                 />
                             </div>
@@ -748,6 +866,45 @@ export default function ClinicianDashboard() {
                         {panelData?.is_compound && (
                             <div style={{ marginTop: '0.5rem' }}>
                                 <CompoundPanelViewer panelData={panelData} />
+                            </div>
+                        )}
+
+                        {uploadedImagePath && !isUploading && (
+                            <div className="cd-attachment-save">
+                                {selectedPatient ? (
+                                    <>
+                                        <button
+                                            type="button"
+                                            className="cd-attachment-save__button"
+                                            onClick={saveUploadedImageToPatient}
+                                            disabled={saveAttachmentLoading}
+                                        >
+                                            {saveAttachmentLoading ? (
+                                                <><Loader2 size={12} className="cd-spin" /> Saving…</>
+                                            ) : (
+                                                <><FileText size={12} /> Save to patient imaging</>
+                                            )}
+                                        </button>
+                                        <p className="cd-attachment-save__hint">
+                                            Patient {selectedPatient} will see this file in the Imaging tab.
+                                        </p>
+                                    </>
+                                ) : (
+                                    <p className="cd-attachment-save__hint">
+                                        Select a patient to save this upload into the patient imaging record.
+                                    </p>
+                                )}
+
+                                {saveAttachmentMessage && (
+                                    <div className="cd-attachment-save__status cd-attachment-save__status--success">
+                                        {saveAttachmentMessage}
+                                    </div>
+                                )}
+                                {saveAttachmentError && (
+                                    <div className="cd-attachment-save__status cd-attachment-save__status--error">
+                                        {saveAttachmentError}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

@@ -6,7 +6,7 @@ import {
     FileHeart, MessageCircle, Smile,
     Plus, Maximize2, Minimize2, X, SlidersHorizontal,
     User, TrendingUp, TrendingDown, Minus, Calendar, Beaker,
-    Clock, Scan, CircleDot, Gauge
+    Clock, Scan, CircleDot, Gauge, FileText, Upload, ArrowUpRight, Download
 } from 'lucide-react'
 import VitalSparkline from '../components/VitalSparkline'
 import { MarkdownWithHighlight } from '../components/MedicalTermHighlighter'
@@ -109,6 +109,38 @@ function formatTrendDate(value) {
         day: 'numeric',
         year: 'numeric',
     }).format(parsed)
+}
+
+function formatAttachmentDate(value) {
+    if (!value) return 'Just added'
+
+    const parsed = new Date(value)
+    if (Number.isNaN(parsed.getTime())) return value
+
+    return new Intl.DateTimeFormat(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+    }).format(parsed)
+}
+
+function getAttachmentSourceMeta(uploadedBy) {
+    if (uploadedBy === 'patient') {
+        return {
+            label: 'Uploaded by you',
+            tone: 'patient',
+        }
+    }
+
+    return {
+        label: 'Shared by care team',
+        tone: 'clinician',
+    }
+}
+
+function getAttachmentTypeLabel(attachment) {
+    return attachment?.file_kind === 'pdf' ? 'PDF report' : 'Imaging file'
 }
 
 // Strip wrapping quotes from LLM responses
@@ -286,6 +318,11 @@ export default function PatientPortal() {
     const [summaryLoading, setSummaryLoading] = useState(false)
     const [summaryError, setSummaryError] = useState('')
     const [loadError, setLoadError] = useState('')
+    const [attachments, setAttachments] = useState([])
+    const [attachmentsLoading, setAttachmentsLoading] = useState(false)
+    const [attachmentsError, setAttachmentsError] = useState('')
+    const [attachmentUploading, setAttachmentUploading] = useState(false)
+    const [attachmentUploadError, setAttachmentUploadError] = useState('')
 
     // Chat state
     const [chatMessages, setChatMessages] = useState([])
@@ -303,10 +340,41 @@ export default function PatientPortal() {
     const [checkingMed, setCheckingMed] = useState(null)
     const [interactionResult, setInteractionResult] = useState(null)
     const summaryRequestRef = useRef(0)
+    const attachmentInputRef = useRef(null)
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, [chatMessages])
+
+    const loadPatientAttachments = async (patId, requestId = summaryRequestRef.current) => {
+        setAttachmentsLoading(true)
+        setAttachmentsError('')
+
+        try {
+            const res = await fetch(`${API_BASE}/patient/${patId}/attachments`)
+            if (!res.ok) {
+                throw new Error(await readApiError(
+                    res,
+                    'Imaging files could not be loaded right now.'
+                ))
+            }
+
+            const data = await res.json()
+            if (summaryRequestRef.current !== requestId) return
+            setAttachments(Array.isArray(data.attachments) ? data.attachments : [])
+            setAttachmentsError('')
+        } catch (err) {
+            console.error('Failed to load patient attachments:', err)
+            if (summaryRequestRef.current === requestId) {
+                setAttachments([])
+                setAttachmentsError(normalizeFetchError(err, 'Imaging files could not be loaded right now.'))
+            }
+        } finally {
+            if (summaryRequestRef.current === requestId) {
+                setAttachmentsLoading(false)
+            }
+        }
+    }
 
     // ── Load patient data ────────────────────────────────────────────
     const loadPatient = async (patId) => {
@@ -320,7 +388,11 @@ export default function PatientPortal() {
         setPatientSummary(null)
         setSummaryError('')
         setLoadError('')
+        setAttachments([])
+        setAttachmentsError('')
+        setAttachmentUploadError('')
         setSummaryLoading(false)
+        setAttachmentsLoading(false)
         if (!patId) {
             return
         }
@@ -341,38 +413,45 @@ export default function PatientPortal() {
             setLoadError('')
 
             setSummaryLoading(true)
-            try {
-                const summaryRes = await fetch(`${API_BASE}/patient/${patId}/summary`, {
-                    method: 'POST',
-                })
-                if (!summaryRes.ok) {
-                    throw new Error(await readApiError(
-                        summaryRes,
-                        'Personalized care plan unavailable right now.'
-                    ))
-                }
+            const summaryPromise = (async () => {
+                try {
+                    const summaryRes = await fetch(`${API_BASE}/patient/${patId}/summary`, {
+                        method: 'POST',
+                    })
+                    if (!summaryRes.ok) {
+                        throw new Error(await readApiError(
+                            summaryRes,
+                            'Personalized care plan unavailable right now.'
+                        ))
+                    }
 
-                const summaryData = await summaryRes.json()
-                if (summaryRequestRef.current !== requestId) return
-                setPatientSummary(summaryData)
-                setSummaryError('')
-            } catch (summaryErr) {
-                console.error('Failed to load patient summary:', summaryErr)
-                if (summaryRequestRef.current === requestId) {
-                    setPatientSummary(null)
-                    setSummaryError(normalizeFetchError(summaryErr, 'Personalized care plan unavailable right now.'))
+                    const summaryData = await summaryRes.json()
+                    if (summaryRequestRef.current !== requestId) return
+                    setPatientSummary(summaryData)
+                    setSummaryError('')
+                } catch (summaryErr) {
+                    console.error('Failed to load patient summary:', summaryErr)
+                    if (summaryRequestRef.current === requestId) {
+                        setPatientSummary(null)
+                        setSummaryError(normalizeFetchError(summaryErr, 'Personalized care plan unavailable right now.'))
+                    }
+                } finally {
+                    if (summaryRequestRef.current === requestId) {
+                        setSummaryLoading(false)
+                    }
                 }
-            } finally {
-                if (summaryRequestRef.current === requestId) {
-                    setSummaryLoading(false)
-                }
-            }
+            })()
+
+            const attachmentsPromise = loadPatientAttachments(patId, requestId)
+            await Promise.allSettled([summaryPromise, attachmentsPromise])
         } catch (err) {
             console.error('Failed to load patient:', err)
             if (summaryRequestRef.current === requestId) {
                 setPatientData(null)
                 setPatientSummary(null)
+                setAttachments([])
                 setSummaryError('')
+                setAttachmentsError('')
                 setLoadError(normalizeFetchError(
                     err,
                     err instanceof Error && err.message
@@ -380,8 +459,44 @@ export default function PatientPortal() {
                         : 'Patient data could not be loaded.'
                 ))
                 setSummaryLoading(false)
+                setAttachmentsLoading(false)
                 setLoading(false)
             }
+        }
+    }
+
+    const handlePatientAttachmentSelect = async (e) => {
+        const file = e.target.files?.[0]
+        e.target.value = ''
+
+        const patientId = patientData?.patient_id || selectedPatient
+        if (!file || !patientId || attachmentUploading) return
+
+        setAttachmentUploading(true)
+        setAttachmentUploadError('')
+
+        try {
+            const formData = new FormData()
+            formData.append('file', file)
+
+            const res = await fetch(`${API_BASE}/patient/${patientId}/attachments`, {
+                method: 'POST',
+                body: formData,
+            })
+
+            if (!res.ok) {
+                throw new Error(await readApiError(
+                    res,
+                    'Your file could not be uploaded right now.'
+                ))
+            }
+
+            await loadPatientAttachments(patientId)
+        } catch (err) {
+            console.error('Failed to upload patient attachment:', err)
+            setAttachmentUploadError(normalizeFetchError(err, 'Your file could not be uploaded right now.'))
+        } finally {
+            setAttachmentUploading(false)
         }
     }
 
@@ -1006,43 +1121,159 @@ export default function PatientPortal() {
                                         </button>
                                     </div>
                                     <div className="pp-card__body">
-                                        {imagingResults ? (
-                                            <div className="pp-imaging-grid">
-                                                {imagingResults.map((r, i) => {
-                                                    const statusConfig = {
-                                                        normal: { icon: CheckCircle2, color: '#16A34A', bg: '#F0FDF4', label: 'Normal' },
-                                                        attention: { icon: AlertTriangle, color: '#D97706', bg: '#FFFBEB', label: 'Needs Review' },
-                                                        abnormal: { icon: AlertTriangle, color: '#DC2626', bg: '#FEF2F2', label: 'Abnormal' },
-                                                    }
-                                                    const cfg = statusConfig[r.status] || statusConfig.normal
-                                                    const StatusIcon = cfg.icon
-                                                    return (
-                                                        <div key={i} className={`pp-imaging-card pp-imaging-card--${r.status}`}>
-                                                            <div className="pp-imaging-card__icon" style={{ background: cfg.bg, color: cfg.color }}>
-                                                                <Scan size={20} />
-                                                            </div>
-                                                            <div className="pp-imaging-card__body">
-                                                                <div className="pp-imaging-card__title">{r.label}</div>
-                                                                <div className="pp-imaging-card__desc">
-                                                                    {r.status === 'normal' ? 'Your recent imaging looks good.' :
-                                                                        r.status === 'attention' ? 'Your doctor will discuss this finding with you.' :
-                                                                            'Your care team is reviewing this result carefully.'}
+                                        <div className="pp-imaging-workspace">
+                                            <div className="pp-imaging-uploader">
+                                                <div className="pp-imaging-uploader__copy">
+                                                    <span className="pp-imaging-uploader__eyebrow">Imaging Library</span>
+                                                    <h3>See what your care team shared and add new reports.</h3>
+                                                    <p>Upload a scan image or a PDF report to keep everything in one place for your next visit.</p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="pp-imaging-uploader__button"
+                                                    onClick={() => attachmentInputRef.current?.click()}
+                                                    disabled={attachmentUploading || !activePatientId}
+                                                >
+                                                    {attachmentUploading ? (
+                                                        <><Loader2 size={14} className="pp-spin" /> Uploading…</>
+                                                    ) : (
+                                                        <><Upload size={14} /> Upload report</>
+                                                    )}
+                                                </button>
+                                                <input
+                                                    ref={attachmentInputRef}
+                                                    type="file"
+                                                    accept="image/*,application/pdf"
+                                                    hidden
+                                                    onChange={handlePatientAttachmentSelect}
+                                                />
+                                            </div>
+
+                                            {attachmentUploadError && (
+                                                <div className="pp-imaging-feedback pp-imaging-feedback--error">
+                                                    <AlertTriangle size={14} />
+                                                    <span>{attachmentUploadError}</span>
+                                                </div>
+                                            )}
+
+                                            {attachmentsError && (
+                                                <div className="pp-imaging-feedback pp-imaging-feedback--error">
+                                                    <AlertTriangle size={14} />
+                                                    <span>{attachmentsError}</span>
+                                                </div>
+                                            )}
+
+                                            {imagingResults?.length > 0 && (
+                                                <>
+                                                    <div className="pp-imaging-section-label">Clinical summary</div>
+                                                    <div className="pp-imaging-grid">
+                                                        {imagingResults.map((r, i) => {
+                                                            const statusConfig = {
+                                                                normal: { icon: CheckCircle2, color: '#16A34A', bg: '#F0FDF4', label: 'Normal' },
+                                                                attention: { icon: AlertTriangle, color: '#D97706', bg: '#FFFBEB', label: 'Needs Review' },
+                                                                abnormal: { icon: AlertTriangle, color: '#DC2626', bg: '#FEF2F2', label: 'Abnormal' },
+                                                            }
+                                                            const cfg = statusConfig[r.status] || statusConfig.normal
+                                                            const StatusIcon = cfg.icon
+                                                            return (
+                                                                <div key={i} className={`pp-imaging-card pp-imaging-card--${r.status}`}>
+                                                                    <div className="pp-imaging-card__icon" style={{ background: cfg.bg, color: cfg.color }}>
+                                                                        <Scan size={20} />
+                                                                    </div>
+                                                                    <div className="pp-imaging-card__body">
+                                                                        <div className="pp-imaging-card__title">{r.label}</div>
+                                                                        <div className="pp-imaging-card__desc">
+                                                                            {r.status === 'normal' ? 'Your recent imaging looks good.' :
+                                                                                r.status === 'attention' ? 'Your doctor will discuss this finding with you.' :
+                                                                                    'Your care team is reviewing this result carefully.'}
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className={`pp-imaging-card__status pp-imaging-card__status--${r.status}`}>
+                                                                        <StatusIcon size={12} />
+                                                                        {cfg.label}
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            <div className="pp-imaging-section-label">Files in your record</div>
+                                            {attachmentsLoading ? (
+                                                <div className="pp-empty">
+                                                    <Loader2 size={24} className="pp-spin" />
+                                                    <p>Loading your imaging files…</p>
+                                                </div>
+                                            ) : attachments.length > 0 ? (
+                                                <div className="pp-attachment-list">
+                                                    {attachments.map(attachment => {
+                                                        const source = getAttachmentSourceMeta(attachment.uploaded_by)
+                                                        const isPdf = attachment.file_kind === 'pdf'
+
+                                                        return (
+                                                            <div key={attachment.id} className="pp-attachment-card">
+                                                                <div className={`pp-attachment-card__preview pp-attachment-card__preview--${attachment.file_kind}`}>
+                                                                    {attachment.file_kind === 'image' ? (
+                                                                        <img
+                                                                            src={attachment.url}
+                                                                            alt={attachment.title || attachment.original_filename}
+                                                                        />
+                                                                    ) : (
+                                                                        <FileText size={22} />
+                                                                    )}
+                                                                </div>
+                                                                <div className="pp-attachment-card__body">
+                                                                    <div className="pp-attachment-card__badges">
+                                                                        <span className={`pp-attachment-card__source pp-attachment-card__source--${source.tone}`}>
+                                                                            {source.label}
+                                                                        </span>
+                                                                        <span className="pp-attachment-card__type">
+                                                                            {getAttachmentTypeLabel(attachment)}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="pp-attachment-card__title">
+                                                                        {attachment.title || attachment.original_filename}
+                                                                    </div>
+                                                                    <div className="pp-attachment-card__filename">
+                                                                        {attachment.original_filename}
+                                                                    </div>
+                                                                    <div className="pp-attachment-card__meta">
+                                                                        Added {formatAttachmentDate(attachment.uploaded_at)}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="pp-attachment-card__actions">
+                                                                    <a
+                                                                        className="pp-attachment-card__action"
+                                                                        href={attachment.url}
+                                                                        target="_blank"
+                                                                        rel="noreferrer"
+                                                                    >
+                                                                        <ArrowUpRight size={13} />
+                                                                        {isPdf ? 'Open PDF' : 'View image'}
+                                                                    </a>
+                                                                    {isPdf && (
+                                                                        <a
+                                                                            className="pp-attachment-card__action pp-attachment-card__action--ghost"
+                                                                            href={attachment.url}
+                                                                            download={attachment.original_filename}
+                                                                        >
+                                                                            <Download size={13} />
+                                                                            Download
+                                                                        </a>
+                                                                    )}
                                                                 </div>
                                                             </div>
-                                                            <div className={`pp-imaging-card__status pp-imaging-card__status--${r.status}`}>
-                                                                <StatusIcon size={12} />
-                                                                {cfg.label}
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                })}
-                                            </div>
-                                        ) : (
-                                            <div className="pp-empty">
-                                                <Scan size={24} />
-                                                <p>No imaging results yet. Results will appear here after your scans are reviewed.</p>
-                                            </div>
-                                        )}
+                                                        )
+                                                    })}
+                                                </div>
+                                            ) : (
+                                                <div className="pp-empty">
+                                                    <Scan size={24} />
+                                                    <p>No imaging files or reports have been added yet. Upload one here or wait for your care team to share results.</p>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </section>
                                 )}

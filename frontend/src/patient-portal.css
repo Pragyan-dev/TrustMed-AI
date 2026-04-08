@@ -2563,6 +2563,258 @@
     color: #DC2626;
 }
 
+.pp-imaging-workspace {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.pp-imaging-uploader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.1rem 1.2rem;
+    border-radius: 22px;
+    border: 1px solid rgba(44, 125, 82, 0.14);
+    background:
+        radial-gradient(circle at top right, rgba(46, 125, 82, 0.12), transparent 35%),
+        linear-gradient(135deg, rgba(248, 252, 249, 0.98), rgba(241, 248, 244, 0.96));
+    box-shadow: 0 16px 32px rgba(46, 125, 82, 0.07);
+}
+
+.pp-imaging-uploader__copy {
+    min-width: 0;
+}
+
+.pp-imaging-uploader__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.24rem 0.62rem;
+    border-radius: 999px;
+    background: rgba(46, 125, 82, 0.1);
+    color: var(--pp-green);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.pp-imaging-uploader__copy h3 {
+    margin: 0.65rem 0 0.25rem;
+    color: var(--pp-text);
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.pp-imaging-uploader__copy p {
+    margin: 0;
+    max-width: 580px;
+    color: var(--pp-text-muted);
+    font-size: 0.88rem;
+    line-height: 1.55;
+}
+
+.pp-imaging-uploader__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+    padding: 0.8rem 1rem;
+    min-width: 160px;
+    border: none;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #2E7D52, #1F6A44);
+    color: #ffffff;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 18px 30px rgba(46, 125, 82, 0.2);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+
+.pp-imaging-uploader__button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 20px 32px rgba(46, 125, 82, 0.24);
+}
+
+.pp-imaging-uploader__button:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+    box-shadow: none;
+}
+
+.pp-imaging-feedback {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    padding: 0.85rem 0.95rem;
+    border-radius: 16px;
+    font-size: 0.84rem;
+    line-height: 1.5;
+}
+
+.pp-imaging-feedback--error {
+    border: 1px solid rgba(220, 38, 38, 0.14);
+    background: rgba(254, 242, 242, 0.95);
+    color: #B91C1C;
+}
+
+.pp-imaging-section-label {
+    color: var(--pp-text-dim);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.pp-attachment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    content-visibility: auto;
+}
+
+.pp-attachment-card {
+    display: grid;
+    grid-template-columns: 128px minmax(0, 1fr) auto;
+    gap: 0.95rem;
+    align-items: center;
+    padding: 0.95rem;
+    border-radius: 20px;
+    border: 1px solid rgba(17, 24, 39, 0.07);
+    background: linear-gradient(180deg, #ffffff 0%, #f7faf8 100%);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+.pp-attachment-card__preview {
+    height: 102px;
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(17, 24, 39, 0.06);
+    background: #f6f8fb;
+    color: #475569;
+}
+
+.pp-attachment-card__preview--image {
+    background: #eef7f1;
+}
+
+.pp-attachment-card__preview--image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.pp-attachment-card__preview--pdf {
+    background:
+        linear-gradient(135deg, rgba(30, 64, 175, 0.08), rgba(15, 23, 42, 0.04)),
+        #f8fafc;
+}
+
+.pp-attachment-card__body {
+    min-width: 0;
+}
+
+.pp-attachment-card__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-bottom: 0.45rem;
+}
+
+.pp-attachment-card__source,
+.pp-attachment-card__type {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem 0.58rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+.pp-attachment-card__source--patient {
+    background: rgba(14, 116, 144, 0.12);
+    color: #0F766E;
+}
+
+.pp-attachment-card__source--clinician {
+    background: rgba(46, 125, 82, 0.12);
+    color: var(--pp-green);
+}
+
+.pp-attachment-card__type {
+    background: rgba(148, 163, 184, 0.14);
+    color: #475569;
+}
+
+.pp-attachment-card__title {
+    color: var(--pp-text);
+    font-size: 0.98rem;
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+.pp-attachment-card__filename {
+    margin-top: 0.22rem;
+    color: var(--pp-text-dim);
+    font-size: 0.78rem;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.pp-attachment-card__meta {
+    margin-top: 0.55rem;
+    color: var(--pp-text-muted);
+    font-size: 0.78rem;
+}
+
+.pp-attachment-card__actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.55rem;
+}
+
+.pp-attachment-card__action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.42rem;
+    min-width: 126px;
+    padding: 0.7rem 0.9rem;
+    border-radius: 14px;
+    background: #183b2d;
+    color: #ffffff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.pp-attachment-card__action:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 22px rgba(24, 59, 45, 0.18);
+}
+
+.pp-attachment-card__action--ghost {
+    background: rgba(46, 125, 82, 0.08);
+    color: var(--pp-green);
+}
+
+.pp-attachment-card__action--ghost:hover {
+    box-shadow: none;
+    background: rgba(46, 125, 82, 0.14);
+}
+
 /* ==========================================================================
    Care Plan V2 – Better visual hierarchy
    ========================================================================== */
@@ -2873,6 +3125,25 @@
     }
     .pp-med-grid {
         grid-template-columns: 1fr;
+    }
+    .pp-imaging-uploader {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .pp-imaging-uploader__button {
+        width: 100%;
+    }
+    .pp-attachment-card {
+        grid-template-columns: 1fr;
+    }
+    .pp-attachment-card__preview {
+        height: 168px;
+    }
+    .pp-attachment-card__actions {
+        align-items: stretch;
+    }
+    .pp-attachment-card__action {
+        width: 100%;
     }
     .pp-care-columns,
     .pp-care-explainers--v2,

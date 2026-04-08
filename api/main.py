@@ -12,8 +12,12 @@ import asyncio
 import uuid
 import time
 import re
+import mimetypes
+import shutil
 from typing import Optional, List, Dict
 from pathlib import Path
+from datetime import datetime, timezone
+from threading import Lock
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
@@ -59,27 +63,200 @@ app.add_middleware(
 
 HISTORY_DIR = os.path.join(PROJECT_ROOT, "chat_history")
 UPLOADS_DIR = os.path.join(PROJECT_ROOT, "uploads")
+STORAGE_DIR = os.path.join(PROJECT_ROOT, "storage")
+PATIENT_FILES_DIR = os.path.join(UPLOADS_DIR, "patient-files")
+PATIENT_FILES_REGISTRY = os.path.join(STORAGE_DIR, "patient_files.json")
+ATTACHMENT_REGISTRY_LOCK = Lock()
+ATTACHMENT_PUBLIC_FIELDS = (
+    "id",
+    "patient_id",
+    "title",
+    "original_filename",
+    "mime_type",
+    "file_kind",
+    "uploaded_by",
+    "uploaded_at",
+    "url",
+)
 
 
 def _ensure_dirs():
     """Create storage directories if they don't exist."""
     os.makedirs(HISTORY_DIR, exist_ok=True)
     os.makedirs(UPLOADS_DIR, exist_ok=True)
+    os.makedirs(STORAGE_DIR, exist_ok=True)
+    os.makedirs(PATIENT_FILES_DIR, exist_ok=True)
+    if not os.path.exists(PATIENT_FILES_REGISTRY):
+        with open(PATIENT_FILES_REGISTRY, "w") as f:
+            json.dump([], f)
 
 # Serve uploaded images so they're accessible by URL in session history
 _ensure_dirs()
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 
-def _image_url(abs_path: str) -> Optional[str]:
-    """Convert an absolute upload path to a serveable /uploads/... URL."""
+def _uploads_url(abs_path: str) -> Optional[str]:
     if not abs_path:
         return None
-    filename = os.path.basename(abs_path)
-    candidate = os.path.join(UPLOADS_DIR, filename)
-    if os.path.exists(candidate):
-        return f"/uploads/{filename}"
+
+    try:
+        relative_path = Path(abs_path).resolve().relative_to(Path(UPLOADS_DIR).resolve())
+    except ValueError:
+        return None
+
+    return f"/uploads/{str(relative_path).replace(os.sep, '/')}"
+
+
+def _image_url(abs_path: str) -> Optional[str]:
+    """Convert an absolute upload path to a serveable /uploads/... URL."""
+    candidate = _uploads_url(abs_path)
+    if candidate and os.path.exists(abs_path):
+        return candidate
     return None
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _sanitize_path_segment(value: str, fallback: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", str(value or "")).strip("-.")
+    return cleaned or fallback
+
+
+def _patient_attachment_dir(patient_id: str) -> str:
+    safe_patient_id = _sanitize_path_segment(patient_id, "unknown-patient")
+    attachment_dir = os.path.join(PATIENT_FILES_DIR, safe_patient_id)
+    os.makedirs(attachment_dir, exist_ok=True)
+    return attachment_dir
+
+
+def _attachment_path_from_url(url: str) -> Optional[str]:
+    prefix = "/uploads/"
+    if not url or not url.startswith(prefix):
+        return None
+    relative_path = url[len(prefix):]
+    return os.path.join(UPLOADS_DIR, relative_path)
+
+
+def _normalize_patient_upload_mime_type(upload: UploadFile) -> Optional[str]:
+    content_type = (upload.content_type or "").strip().lower()
+    guessed_type, _ = mimetypes.guess_type(upload.filename or "")
+    candidate = content_type or guessed_type or ""
+
+    if candidate.startswith("image/"):
+        return candidate
+    if candidate == "application/pdf":
+        return candidate
+    return None
+
+
+def _normalize_existing_file_mime_type(path: str) -> Optional[str]:
+    guessed_type, _ = mimetypes.guess_type(path)
+    candidate = (guessed_type or "").lower()
+
+    if candidate.startswith("image/"):
+        return candidate
+    if candidate == "application/pdf":
+        return candidate
+    return None
+
+
+def _derive_attachment_kind(mime_type: str) -> Optional[str]:
+    if mime_type.startswith("image/"):
+        return "image"
+    if mime_type == "application/pdf":
+        return "pdf"
+    return None
+
+
+def _default_attachment_title(filename: str, fallback: str) -> str:
+    stem = os.path.splitext(os.path.basename(filename or ""))[0]
+    readable = re.sub(r"[_-]+", " ", stem).strip()
+    return readable or fallback
+
+
+def _make_attachment_record(
+    patient_id: str,
+    stored_path: str,
+    original_filename: str,
+    mime_type: str,
+    uploaded_by: str,
+    title: Optional[str] = None,
+) -> dict:
+    file_kind = _derive_attachment_kind(mime_type)
+    safe_filename = _sanitize_path_segment(original_filename, f"{file_kind or 'file'}")
+    return {
+        "id": uuid.uuid4().hex[:16],
+        "patient_id": str(patient_id),
+        "title": _default_attachment_title(title or safe_filename, "Patient report"),
+        "original_filename": safe_filename,
+        "mime_type": mime_type,
+        "file_kind": file_kind,
+        "uploaded_by": uploaded_by,
+        "uploaded_at": _utc_now_iso(),
+        "url": _uploads_url(stored_path),
+    }
+
+
+def _serialize_attachment(record: dict) -> dict:
+    return {
+        field: record.get(field)
+        for field in ATTACHMENT_PUBLIC_FIELDS
+    }
+
+
+def _load_patient_attachment_registry() -> List[dict]:
+    _ensure_dirs()
+    with ATTACHMENT_REGISTRY_LOCK:
+        try:
+            with open(PATIENT_FILES_REGISTRY, "r") as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return []
+
+    return data if isinstance(data, list) else []
+
+
+def _append_patient_attachment(record: dict):
+    _ensure_dirs()
+    with ATTACHMENT_REGISTRY_LOCK:
+        try:
+            with open(PATIENT_FILES_REGISTRY, "r") as f:
+                data = json.load(f)
+            if not isinstance(data, list):
+                data = []
+        except (json.JSONDecodeError, OSError):
+            data = []
+
+        data.append(record)
+
+        with open(PATIENT_FILES_REGISTRY, "w") as f:
+            json.dump(data, f, indent=2)
+
+
+def _list_patient_attachments(patient_id: str) -> List[dict]:
+    attachments = []
+    for record in _load_patient_attachment_registry():
+        if str(record.get("patient_id")) != str(patient_id):
+            continue
+
+        attachment_path = _attachment_path_from_url(record.get("url"))
+        if attachment_path and not os.path.exists(attachment_path):
+            continue
+
+        attachments.append(_serialize_attachment(record))
+
+    attachments.sort(key=lambda item: item.get("uploaded_at") or "", reverse=True)
+    return attachments
+
+
+def _assert_path_in_uploads(abs_path: str):
+    uploads_root = Path(UPLOADS_DIR).resolve()
+    try:
+        Path(abs_path).resolve().relative_to(uploads_root)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Clinician upload path must be inside the uploads directory.") from exc
 
 
 def _session_path(session_id: str) -> str:
@@ -321,6 +498,11 @@ class RenameRequest(BaseModel):
     title: str
 
 
+class LinkClinicianUploadRequest(BaseModel):
+    image_path: str
+    title: Optional[str] = None
+
+
 class DetectPanelsRequest(BaseModel):
     image_path: str
 
@@ -476,6 +658,98 @@ async def upload_image(file: UploadFile = File(...)):
         with open(save_path, "wb") as f:
             f.write(content)
         return {"path": save_path, "filename": file.filename}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/patient/{patient_id}/attachments")
+async def list_patient_attachments(patient_id: str):
+    """
+    Return patient-linked imaging/report attachments sorted newest first.
+    """
+    try:
+        return {"attachments": _list_patient_attachments(patient_id)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/patient/{patient_id}/attachments")
+async def upload_patient_attachment(patient_id: str, file: UploadFile = File(...)):
+    """
+    Upload a patient-visible image or PDF report.
+    """
+    mime_type = _normalize_patient_upload_mime_type(file)
+    if not mime_type:
+        raise HTTPException(status_code=400, detail="Only image files and PDF reports are supported.")
+
+    file_kind = _derive_attachment_kind(mime_type)
+    original_filename = _sanitize_path_segment(
+        file.filename or f"{file_kind or 'attachment'}",
+        f"{file_kind or 'attachment'}",
+    )
+    ext = os.path.splitext(original_filename)[1]
+    if not ext:
+        ext = mimetypes.guess_extension(mime_type) or (".pdf" if file_kind == "pdf" else ".jpg")
+
+    save_name = f"{file_kind}_{uuid.uuid4().hex[:12]}{ext.lower()}"
+    save_path = os.path.join(_patient_attachment_dir(patient_id), save_name)
+
+    try:
+        content = await file.read()
+        with open(save_path, "wb") as f:
+            f.write(content)
+
+        record = _make_attachment_record(
+            patient_id=patient_id,
+            stored_path=save_path,
+            original_filename=original_filename,
+            mime_type=mime_type,
+            uploaded_by="patient",
+            title=original_filename,
+        )
+        _append_patient_attachment(record)
+        return _serialize_attachment(record)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/patient/{patient_id}/attachments/link-clinician-upload")
+async def link_clinician_upload(patient_id: str, request: LinkClinicianUploadRequest):
+    """
+    Copy an existing clinician upload into a patient-visible imaging record.
+    """
+    source_path = os.path.realpath(request.image_path or "")
+    if not os.path.exists(source_path):
+        raise HTTPException(status_code=404, detail="Uploaded file not found.")
+
+    _assert_path_in_uploads(source_path)
+
+    mime_type = _normalize_existing_file_mime_type(source_path)
+    if not mime_type:
+        raise HTTPException(status_code=400, detail="Only image files and PDF reports can be linked to patient imaging.")
+
+    file_kind = _derive_attachment_kind(mime_type)
+    display_name = request.title or os.path.basename(source_path)
+    original_filename = _sanitize_path_segment(display_name, os.path.basename(source_path))
+    ext = os.path.splitext(original_filename)[1]
+    if not ext:
+        ext = os.path.splitext(source_path)[1] or mimetypes.guess_extension(mime_type) or ".jpg"
+
+    target_name = f"{file_kind}_{uuid.uuid4().hex[:12]}{ext.lower()}"
+    target_path = os.path.join(_patient_attachment_dir(patient_id), target_name)
+
+    try:
+        shutil.copyfile(source_path, target_path)
+        record = _make_attachment_record(
+            patient_id=patient_id,
+            stored_path=target_path,
+            original_filename=original_filename,
+            mime_type=mime_type,
+            uploaded_by="clinician",
+            title=display_name,
+        )
+        _append_patient_attachment(record)
+        return _serialize_attachment(record)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

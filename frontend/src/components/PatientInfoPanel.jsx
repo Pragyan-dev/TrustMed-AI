@@ -1,4 +1,4 @@
-import { X, Heart, Thermometer, Wind, Droplets, Activity, Pill, Stethoscope, ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { X, Heart, Thermometer, Wind, Droplets, Activity, Pill, Stethoscope, ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, Image as ImageIcon, FileText, ArrowUpRight, Loader2, AlertCircle } from 'lucide-react'
 import { useState } from 'react'
 
 const VITAL_CONFIG = [
@@ -51,7 +51,27 @@ function StatusIcon({ status }) {
     return <Minus size={10} />
 }
 
-function PatientInfoPanel({ patientData, onClose }) {
+function formatAttachmentDate(value) {
+    if (!value) return 'Just added'
+
+    const parsed = new Date(value)
+    if (Number.isNaN(parsed.getTime())) return value
+
+    return new Intl.DateTimeFormat(undefined, {
+        month: 'short',
+        day: 'numeric',
+    }).format(parsed)
+}
+
+function getAttachmentSourceLabel(uploadedBy) {
+    return uploadedBy === 'patient' ? 'Patient upload' : 'Care team'
+}
+
+function getAttachmentTypeLabel(fileKind) {
+    return fileKind === 'pdf' ? 'PDF report' : 'Imaging file'
+}
+
+function PatientInfoPanel({ patientData, attachments = [], attachmentsLoading = false, attachmentsError = '', onClose }) {
     const [collapsed, setCollapsed] = useState(false)
 
     if (!patientData) return null
@@ -236,6 +256,65 @@ function PatientInfoPanel({ patientData, onClose }) {
                             </div>
                         </div>
                     )}
+
+                    <div className="patient-section">
+                        <div className="patient-section-label">
+                            <ImageIcon size={12} />
+                            <span>Imaging & Reports ({attachments.length})</span>
+                        </div>
+
+                        {attachmentsLoading ? (
+                            <div className="patient-attachments__state">
+                                <Loader2 size={12} className="cd-spin" />
+                                <span>Loading patient files…</span>
+                            </div>
+                        ) : attachmentsError ? (
+                            <div className="patient-attachments__state patient-attachments__state--error">
+                                <AlertCircle size={12} />
+                                <span>{attachmentsError}</span>
+                            </div>
+                        ) : attachments.length > 0 ? (
+                            <div className="patient-attachment-list">
+                                {attachments.map(attachment => (
+                                    <div key={attachment.id} className="patient-attachment-row">
+                                        <div className={`patient-attachment-row__preview patient-attachment-row__preview--${attachment.file_kind}`}>
+                                            {attachment.file_kind === 'image' ? (
+                                                <img
+                                                    src={attachment.url}
+                                                    alt={attachment.title || attachment.original_filename}
+                                                />
+                                            ) : (
+                                                <FileText size={15} />
+                                            )}
+                                        </div>
+                                        <div className="patient-attachment-row__body">
+                                            <div className="patient-attachment-row__title">
+                                                {attachment.title || attachment.original_filename}
+                                            </div>
+                                            <div className="patient-attachment-row__meta">
+                                                <span>{getAttachmentSourceLabel(attachment.uploaded_by)}</span>
+                                                <span>{getAttachmentTypeLabel(attachment.file_kind)}</span>
+                                                <span>{formatAttachmentDate(attachment.uploaded_at)}</span>
+                                            </div>
+                                        </div>
+                                        <a
+                                            className="patient-attachment-row__link"
+                                            href={attachment.url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                        >
+                                            Open
+                                            <ArrowUpRight size={12} />
+                                        </a>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="patient-attachments__state">
+                                <span>No patient-linked imaging or reports yet.</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
         </div>

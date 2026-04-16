@@ -21,9 +21,16 @@ import {
 
 const API_BASE = '/api'
 
-const SAMPLE_PATIENTS = ['10002428', '10025463', '10027602', '10009049', '10007058', '10020640', '10018081', '10023239', '10035631']
+const SAMPLE_PATIENTS = [
+    '99900001', '99900002', '99900003',
+    '10001217', '10001401', '10001884', '10002013', '10002428',
+    '10002930', '10003019', '10003400', '10003502', '10004235',
+    '10004457', '10005024', '10005749', '10005866', '10007795',
+    '10007928', '10009049', '10010440', '10010471', '10010867',
+    '10011365', '10011938', '10012261', '10012292', '10012853'
+]
 const STARTER_PROMPTS = [
-    'Summarize the current risks for patient 10002428.',
+    'Summarize the current risks for patient 99900001.',
     'Review this chest X-ray for pneumonia and medication risks.',
     'Generate a focused assessment and next steps for today.',
 ]

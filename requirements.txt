@@ -1,50 +1,50 @@
 # TrustMed AI - Requirements
 # Install with: pip install -r requirements.txt
 
-# Core Framework
+# ─── Web Server (FastAPI backend) ─────────────────────────────────────────────
+fastapi>=0.100.0
+uvicorn>=0.23.0
+python-multipart>=0.0.6    # required for file uploads in FastAPI
+
+# ─── Core UI (legacy Streamlit path) ─────────────────────────────────────────
 streamlit>=1.28.0
 
-# LangChain Ecosystem
-langchain>=0.1.0
-langchain-community>=0.0.10
-langchain-openai>=0.0.5
-langchain-core>=0.1.0
-
-# Vector Database
-chromadb>=0.4.0
-
-# Embedding Models
-sentence-transformers>=2.2.0
-
-# Graph Database
-neo4j>=5.0.0
+# ─── LangChain Ecosystem ─────────────────────────────────────────────────────
+# NOTE: langchain.chains was removed in 1.x — trustmed_brain.py was fixed to
+#       import GraphCypherQAChain from langchain_community.chains.graph_qa.cypher
+langchain>=0.2.0
+langchain-community>=0.2.0
+langchain-openai>=0.1.0
+langchain-core>=0.2.0
 langchain-neo4j>=0.1.0
 
-# OpenAI Compatible API (for OpenRouter)
+# ─── Vector Database ──────────────────────────────────────────────────────────
+chromadb>=0.4.0
+
+# ─── Embedding Models ─────────────────────────────────────────────────────────
+sentence-transformers>=2.2.0
+
+# ─── Graph Database ───────────────────────────────────────────────────────────
+neo4j>=5.0.0
+
+# ─── LLM API (OpenRouter uses OpenAI-compatible interface) ───────────────────
 openai>=1.0.0
 
-# HTTP Requests
+# ─── Utilities ────────────────────────────────────────────────────────────────
 requests>=2.28.0
 certifi>=2024.0.0
-
-# Environment Variables
 python-dotenv>=1.0.0
-
-# Data Processing
 pandas>=2.0.0
+pydantic>=2.0.0
 
-# Optional: For UMLS API
-# requests is already included above
-
-# Image Processing & Multimodal
+# ─── Image Processing & Multimodal ───────────────────────────────────────────
 pillow>=10.0.0
 opencv-python>=4.8.0
 torch>=2.0.0
 transformers>=4.30.0
 
-# HuggingFace Datasets
+# ─── HuggingFace Datasets ─────────────────────────────────────────────────────
 datasets>=2.14.0
 
-
-# Visualization
+# ─── Visualization ────────────────────────────────────────────────────────────
 streamlit-agraph>=0.0.45

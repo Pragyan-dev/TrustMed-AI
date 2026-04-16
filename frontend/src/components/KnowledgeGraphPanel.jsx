@@ -1,9 +1,41 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import React, { useState, useCallback, useRef, useEffect, useMemo, Component } from 'react'
 import ForceGraph2D from 'react-force-graph-2d'
 import {
   Search, Network, Loader2, X, Pill, Activity, Shield,
   AlertTriangle, ChevronRight, RefreshCw, Link2, Maximize2, Minimize2
 } from 'lucide-react'
+
+// Error boundary to catch internal react-force-graph D3 errors (like selection.interrupt)
+class GraphErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  componentDidCatch(error, errorInfo) {
+    console.warn("Caught ForceGraph2D internal error (often related to D3 transition limits or 429 interruptions):", error)
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="graph-empty" style={{ opacity: 0.7 }}>
+          <Network size={32} strokeWidth={1} style={{ marginBottom: '1rem', color: '#ff4b4b' }} />
+          <p>Graph rendering was interrupted. Please try again or refresh.</p>
+          <button 
+            onClick={() => this.setState({ hasError: false })}
+            style={{ marginTop: '1rem', padding: '0.25rem 0.75rem', background: '#333', borderRadius: '4px', border: '1px solid #555' }}
+          >
+            Retry Render
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 
 const API_BASE = '/api'
 
@@ -39,25 +71,11 @@ const prettifyGraphTerm = (term) => {
 
 const normalizeGraphTerm = (term) => {
   if (!term) return ''
-
+  
+  // Aggressively strip meta-talk
   let cleaned = String(term)
-    .replace(/\((?:[^)(]+)\)/g, ' ')
-    .replace(/[_/]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-
-  const commaParts = cleaned.split(',').map(part => part.trim()).filter(Boolean)
-  if (commaParts.length > 1) {
-    const qualifierTail = commaParts.slice(1).join(' ')
-    if (QUALIFIER_PATTERN.test(qualifierTail)) {
-      cleaned = commaParts[0]
-    }
-    QUALIFIER_PATTERN.lastIndex = 0
-  }
-
-  cleaned = cleaned
-    .replace(QUALIFIER_PATTERN, ' ')
-    .replace(/\s*,\s*/g, ' ')
+    .replace(/\[(?:system\s+)?Note:\s*[^\]]+\]/gi, ' ')
+    .replace(/\[.*?\]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
 
@@ -112,25 +130,36 @@ function KnowledgeGraphPanel({
   const [dimensions, setDimensions] = useState({ width: 800, height: 500 })
   const syncedTerms = useMemo(() => extractGraphTerms(syncedSearchTerm), [syncedSearchTerm])
 
+  const isMountedRef = useRef(true)
+
   const queueGraphFit = useCallback((delay = 180) => {
     if (fitTimerRef.current) {
       window.clearTimeout(fitTimerRef.current)
     }
 
     fitTimerRef.current = window.setTimeout(() => {
-      if (!graphRef.current || graphData.nodes.length === 0) return
+      // Safety: Only call if component is still active and reference exists
+      if (!isMountedRef.current || !graphRef.current || !graphData.nodes.length) return
 
-      const padding = isExpanded
-        ? 130
-        : Math.max(52, Math.min(dimensions.width * 0.14, 92))
+      try {
+        const padding = isExpanded
+          ? 130
+          : Math.max(52, Math.min(dimensions.width * 0.14, 92))
 
-      graphRef.current.centerAt(0, 0, 0)
-      graphRef.current.zoomToFit(480, padding)
+        // FIX: Removed centerAt(0,0,400) which causes 'selection.interrupt' 
+        // when called alongside zoomToFit. zoomToFit handles centering automatically.
+        // Also setting duration to 0 bypasses D3 transitions that cause the selection.interrupt crash
+        // when React re-renders the component rapidly (e.g. during a 429 error).
+        graphRef.current.zoomToFit(0, padding)
+      } catch (err) {
+        console.warn('Graph fit interrupted (expected during rapid updates):', err)
+      }
     }, delay)
   }, [dimensions.width, graphData.nodes.length, isExpanded])
 
   // Observe the actual canvas area so the graph uses the full remaining space.
   useEffect(() => {
+    isMountedRef.current = true
     if (!canvasWrapRef.current) return
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -141,11 +170,15 @@ function KnowledgeGraphPanel({
       }
     })
     observer.observe(canvasWrapRef.current)
-    return () => observer.disconnect()
+    return () => {
+      isMountedRef.current = false
+      observer.disconnect()
+    }
   }, [])
 
   useEffect(() => {
     return () => {
+      isMountedRef.current = false
       if (fitTimerRef.current) {
         window.clearTimeout(fitTimerRef.current)
       }
@@ -537,29 +570,31 @@ function KnowledgeGraphPanel({
       {hasData && (
         <div className={`graph-content-area ${isExpanded ? 'graph-content-area--expanded' : ''}`}>
           <div className="graph-canvas-wrap" ref={canvasWrapRef}>
-            <ForceGraph2D
-              ref={graphRef}
-              graphData={graphData}
-              width={dimensions.width}
-              height={dimensions.height}
-              nodeCanvasObject={nodeCanvasObject}
-              nodePointerAreaPaint={(node, color, ctx) => {
-                if (!Number.isFinite(node.x)) return
-                const r = Math.sqrt(node.val) * 1.5 + 4
-                ctx.beginPath()
-                ctx.arc(node.x, node.y, r, 0, 2 * Math.PI)
-                ctx.fillStyle = color
-                ctx.fill()
-              }}
-              linkCanvasObject={linkCanvasObject}
-              onNodeHover={(node) => setHoveredNode(node?.id || null)}
-              onNodeClick={handleNodeClick}
-              backgroundColor="transparent"
-              cooldownTicks={100}
-              d3AlphaDecay={0.03}
-              d3VelocityDecay={0.3}
-              onEngineStop={() => queueGraphFit(0)}
-            />
+            <GraphErrorBoundary>
+              <ForceGraph2D
+                ref={graphRef}
+                graphData={graphData}
+                width={dimensions.width}
+                height={dimensions.height}
+                nodeCanvasObject={nodeCanvasObject}
+                nodePointerAreaPaint={(node, color, ctx) => {
+                  if (!Number.isFinite(node.x)) return
+                  const r = Math.sqrt(node.val) * 1.5 + 4
+                  ctx.beginPath()
+                  ctx.arc(node.x, node.y, r, 0, 2 * Math.PI)
+                  ctx.fillStyle = color
+                  ctx.fill()
+                }}
+                linkCanvasObject={linkCanvasObject}
+                onNodeHover={(node) => setHoveredNode(node?.id || null)}
+                onNodeClick={handleNodeClick}
+                backgroundColor="transparent"
+                cooldownTicks={100}
+                d3AlphaDecay={0.03}
+                d3VelocityDecay={0.3}
+                onEngineStop={() => queueGraphFit(0)}
+              />
+            </GraphErrorBoundary>
           </div>
 
           {/* Detail sidebar */}

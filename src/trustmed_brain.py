@@ -37,6 +37,8 @@ try:
     from langchain_neo4j import Neo4jGraph
 except ImportError:
     from langchain_community.graphs import Neo4jGraph
+    # Fallback for GraphCypherQAChain if langchain_neo4j is missing entirely
+    from langchain_community.chains.graph_qa.cypher import GraphCypherQAChain
 
 load_dotenv()
 configure_ssl_certificates()
@@ -52,6 +54,10 @@ NEO4J_USERNAME = os.getenv("NEO4J_USERNAME", "neo4j")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+if OPENROUTER_API_KEY:
+    print(f"  🔑 OpenRouter Key loaded (ends with: ...{OPENROUTER_API_KEY[-4:]})")
+else:
+    print("  ⚠️ WARNING: OPENROUTER_API_KEY not found in environment!")
 DEFAULT_OPENROUTER_MODEL = "nvidia/nemotron-3-nano-30b-a3b:free"
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL") or DEFAULT_OPENROUTER_MODEL
 
@@ -76,8 +82,8 @@ VERTEX_REGION = os.getenv('VERTEX_REGION', 'us-central1')
 VERTEX_SA_JSON = os.getenv('VERTEX_SERVICE_ACCOUNT_JSON', '')
 VERTEX_DEDICATED_DOMAIN = os.getenv('VERTEX_DEDICATED_DOMAIN', '')
 
-# Patient ID regex pattern (8-digit IDs starting with 10)
-PATIENT_ID_PATTERN = r'\b(10\d{6})\b'
+# Patient ID regex pattern (8-digit IDs)
+PATIENT_ID_PATTERN = r'\b(\d{8})\b'
 
 # Image attachment pattern
 IMAGE_ATTACHMENT_PATTERN = r'\[ATTACHMENT: (.*?)\]'

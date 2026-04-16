@@ -70,7 +70,8 @@ class GraphVisualizer:
         # ── Main query: Disease + Symptoms + Precautions + Drugs + Contraindications ──
         query = """
         MATCH (d:Disease)
-        WHERE toLower(d.name) CONTAINS toLower($term)
+        WHERE toLower(d.name) CONTAINS toLower($term) 
+           OR toLower($term) CONTAINS toLower(d.name)
         
         OPTIONAL MATCH (d)-[:HAS_SYMPTOM]->(s:Symptom)
         OPTIONAL MATCH (d)-[:HAS_PRECAUTION]->(p:Precaution)

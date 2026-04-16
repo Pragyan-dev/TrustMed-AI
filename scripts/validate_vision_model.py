@@ -106,10 +106,22 @@ def call_medgemma(image_path: str, prompt: str) -> dict:
 
 def call_openrouter(image_path: str, prompt: str) -> dict:
     """Call the fallback OpenRouter vision model."""
-    from src.vision_tool import call_vision_model
+    from src.vision_tool import OPENROUTER_API_KEY, OPENROUTER_URL, VISION_MODELS, encode_image
+    from src.ssl_bootstrap import get_ssl_cert_path
+    import requests, time
     t0 = time.time()
     try:
-        raw = call_vision_model(image_path, prompt)
+        mime_type = 'image/jpeg' if image_path.lower().endswith(('.jpg', '.jpeg')) else 'image/png'
+        base64_image = encode_image(image_path)
+        payload = {
+            "model": VISION_MODELS[0],
+            "messages": [{"role": "user", "content": [{"type": "text", "text": prompt}, {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{base64_image}"}}] }],
+            "temperature": 0.1, "max_tokens": 400
+        }
+        headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
+        response = requests.post(OPENROUTER_URL, headers=headers, json=payload, verify=get_ssl_cert_path() or True)
+        response.raise_for_status()
+        raw = response.json().get('choices', [{}])[0].get('message', {}).get('content', '')
         return {"raw": raw, "latency": time.time() - t0, "error": None}
     except Exception as e:
         return {"raw": "", "latency": time.time() - t0, "error": str(e)}

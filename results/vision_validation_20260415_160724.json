@@ -1,0 +1,172 @@
+{
+  "model": "OpenRouter (fallback)",
+  "timestamp": "2026-04-15 16:07:24",
+  "num_samples": 2,
+  "metrics": {
+    "json_parse_rate": 1.0,
+    "modality_accuracy": 1.0,
+    "macro_f1": 0.0,
+    "hallucination_rate": 1.1666666666666667,
+    "mean_latency_ms": 4690.070271492004,
+    "api_error_rate": 0.0
+  },
+  "per_label": {
+    "Atelectasis": {
+      "sensitivity": 0.0,
+      "precision": 0,
+      "f1": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 2,
+      "tn": 0
+    },
+    "Cardiomegaly": {
+      "sensitivity": 0,
+      "precision": 0.0,
+      "f1": 0,
+      "tp": 0,
+      "fp": 2,
+      "fn": 0,
+      "tn": 0
+    },
+    "Consolidation": {
+      "sensitivity": 0,
+      "precision": 0.0,
+      "f1": 0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "tn": 1
+    },
+    "Edema": {
+      "sensitivity": 0,
+      "precision": 0,
+      "f1": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "tn": 2
+    },
+    "Enlarged Cardiomediastinum": {
+      "sensitivity": 0,
+      "precision": 0,
+      "f1": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "tn": 2
+    },
+    "Fracture": {
+      "sensitivity": 0,
+      "precision": 0,
+      "f1": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "tn": 2
+    },
+    "Lung Lesion": {
+      "sensitivity": 0,
+      "precision": 0,
+      "f1": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "tn": 2
+    },
+    "Lung Opacity": {
+      "sensitivity": 0,
+      "precision": 0,
+      "f1": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "tn": 2
+    },
+    "No Finding": {
+      "sensitivity": 0,
+      "precision": 0,
+      "f1": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "tn": 2
+    },
+    "Pleural Effusion": {
+      "sensitivity": 0,
+      "precision": 0.0,
+      "f1": 0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "tn": 1
+    },
+    "Pleural Other": {
+      "sensitivity": 0,
+      "precision": 0.0,
+      "f1": 0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "tn": 1
+    },
+    "Pneumonia": {
+      "sensitivity": 0,
+      "precision": 0,
+      "f1": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "tn": 2
+    },
+    "Pneumothorax": {
+      "sensitivity": 0,
+      "precision": 0,
+      "f1": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "tn": 2
+    },
+    "Support Devices": {
+      "sensitivity": 0,
+      "precision": 0.0,
+      "f1": 0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "tn": 1
+    }
+  },
+  "per_sample": [
+    {
+      "image": "79863f89-595bf19b-3c7b514a-42969d9b-eff42368.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Atelectasis"
+      ],
+      "detected_labels": [
+        "Cardiomegaly",
+        "Support Devices"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 4838.277101516724
+    },
+    {
+      "image": "a917c883-720a5bbf-02c84fc6-98ad00ac-c562ff80.jpg",
+      "status": "ok",
+      "gt_labels": [
+        "Atelectasis"
+      ],
+      "detected_labels": [
+        "Cardiomegaly",
+        "Consolidation",
+        "Pleural Effusion",
+        "Pleural Other"
+      ],
+      "modality": "X-Ray",
+      "latency_ms": 4541.863441467285
+    }
+  ],
+  "errors": []
+}

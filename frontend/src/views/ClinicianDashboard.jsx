@@ -615,7 +615,7 @@ export default function ClinicianDashboard() {
             <header className="cd-topbar">
                 <div className="cd-topbar__brand">
                     <div className="cd-topbar__logo"><Stethoscope /></div>
-                    <div className="cd-topbar__name">TrustMed <span>AI</span></div>
+                    <div className="cd-topbar__name">Synapse <span>AI</span></div>
                 </div>
 
                 <div className="cd-topbar__divider" />
@@ -968,7 +968,7 @@ export default function ClinicianDashboard() {
                                     <div className="cd-empty__kicker">
                                         {activePatientId ? `Patient ${activePatientId}` : 'Clinical workspace'}
                                     </div>
-                                    <h3>TrustMed Clinical Assistant</h3>
+                                    <h3>Synapse Clinical Assistant</h3>
                                     <p>
                                         Ground the next response with patient context, optional imaging, and one focused clinical question.
                                     </p>
@@ -1029,7 +1029,7 @@ export default function ClinicianDashboard() {
                                     <div className={`cd-msg-stack cd-msg-stack--${msg.role}`}>
                                         <div className="cd-msg-meta">
                                             <span className="cd-msg-meta__name">
-                                                {msg.role === 'assistant' ? 'TrustMed AI' : 'You'}
+                                                {msg.role === 'assistant' ? 'Synapse AI' : 'You'}
                                             </span>
                                         </div>
                                         <div className={`cd-msg cd-msg--${msg.role}`}>

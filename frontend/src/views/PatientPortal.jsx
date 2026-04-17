@@ -181,7 +181,7 @@ async function readApiError(response, fallbackMessage) {
 function normalizeFetchError(error, fallbackMessage) {
     const message = error instanceof Error ? error.message : ''
     if (message.includes('Failed to fetch') || message.includes('NetworkError')) {
-        return 'TrustMed AI could not reach the backend. Start the FastAPI server on http://localhost:8000 and try again.'
+        return 'Synapse AI could not reach the backend. Start the FastAPI server on http://localhost:8000 and try again.'
     }
     return fallbackMessage
 }
@@ -1431,7 +1431,7 @@ export default function PatientPortal() {
                         <div className="pp-assistant__header">
                             <div className="pp-assistant__badge"><Stethoscope size={24} strokeWidth={2.2} /></div>
                             <div className="pp-assistant__header-copy">
-                                <div className="pp-assistant__title">TrustMed AI</div>
+                                <div className="pp-assistant__title">Synapse AI</div>
                                 <div className="pp-assistant__subtitle">Ask about your health record</div>
                             </div>
                             <div className="pp-assistant__controls">

@@ -1,1 +1,35 @@
-[]
+[
+  {
+    "id": "cef9a707c9764011",
+    "patient_id": "10025463",
+    "title": "SynapseAI CP2 QuadChart",
+    "original_filename": "SynapseAI_CP2_QuadChart.pdf",
+    "mime_type": "application/pdf",
+    "file_kind": "pdf",
+    "uploaded_by": "patient",
+    "uploaded_at": "2026-04-17T01:28:53.908223Z",
+    "url": "/uploads/patient-files/10025463/pdf_de69e24ff7c6.pdf"
+  },
+  {
+    "id": "58dfc2332668452d",
+    "patient_id": "10002428",
+    "title": "SynapseAI CP2 QuadChart",
+    "original_filename": "SynapseAI_CP2_QuadChart.pdf",
+    "mime_type": "application/pdf",
+    "file_kind": "pdf",
+    "uploaded_by": "patient",
+    "uploaded_at": "2026-04-17T01:47:10.350375Z",
+    "url": "/uploads/patient-files/10002428/pdf_640e13525717.pdf"
+  },
+  {
+    "id": "a704ddcfd72e45bd",
+    "patient_id": "10035631",
+    "title": "fgjhkjk pranav",
+    "original_filename": "fgjhkjk-pranav.pdf",
+    "mime_type": "application/pdf",
+    "file_kind": "pdf",
+    "uploaded_by": "patient",
+    "uploaded_at": "2026-04-17T02:18:57.548922Z",
+    "url": "/uploads/patient-files/10035631/pdf_87db4889dc09.pdf"
+  }
+]

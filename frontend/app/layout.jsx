@@ -1,7 +1,7 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'TrustMed AI',
+  title: 'Synapse AI',
   description: 'Clinical decision support with clinician and patient-facing views.',
 }
 

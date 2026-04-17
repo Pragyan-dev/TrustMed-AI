@@ -1,7 +1,12 @@
+'use client'
+
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { Stethoscope, MessageSquare, Info, LogOut } from 'lucide-react'
 
 export default function PatientLayout({ children }) {
+    const pathname = usePathname()
+
     return (
         <div className="patient-layout">
             {/* Top navbar */}
@@ -11,16 +16,22 @@ export default function PatientLayout({ children }) {
                         <Stethoscope />
                     </div>
                     <div className="pt-navbar__title">
-                        TrustMed <span>AI</span>
+                        Synapse <span>AI</span>
                     </div>
                 </Link>
 
                 <nav className="pt-navbar__links">
-                    <Link href="/patient" className="pt-nav-link active">
+                    <Link 
+                        href="/patient" 
+                        className={`pt-nav-link ${pathname === '/patient' ? 'active' : ''}`}
+                    >
                         <MessageSquare size={16} />
                         Chat
                     </Link>
-                    <Link href="/patient" className="pt-nav-link">
+                    <Link 
+                        href="/patient/about" 
+                        className={`pt-nav-link ${pathname === '/patient/about' ? 'active' : ''}`}
+                    >
                         <Info size={16} />
                         About
                     </Link>

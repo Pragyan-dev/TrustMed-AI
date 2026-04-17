@@ -87,7 +87,7 @@ class GraphVisualizer:
         LIMIT 1
         """
 
-        with self.driver.session(database="neo4j") as session:
+        with self.driver.session() as session:
             result = session.run(query, term=search_term).single()
 
             if not result:

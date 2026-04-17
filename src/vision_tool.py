@@ -158,9 +158,8 @@ OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
 # Try multiple vision models in order of preference
 VISION_MODELS = [
-    'google/gemini-3-flash-preview',# Primary
-    'google/gemini-3.1-pro-preview',           
-    'google/gemini-2.0-flash-exp:free',
+    'google/gemini-pro-1.5',
+    'google/gemini-flash-1.5',
     'meta-llama/llama-3.2-11b-vision-instruct',
     'meta-llama/llama-3.2-90b-vision-instruct:free', 
     'qwen/qwen-2-vl-7b-instruct:free',

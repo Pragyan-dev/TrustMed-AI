@@ -9,7 +9,7 @@ import {
     Clock, Scan, CircleDot, Gauge, FileText, Upload, ArrowUpRight, Download
 } from 'lucide-react'
 import VitalSparkline from '../components/VitalSparkline'
-import { MarkdownWithHighlight } from '../components/MedicalTermHighlighter'
+import { MarkdownWithHighlight, SelectionExplainToolbar } from '../components/MedicalTermHighlighter'
 import SafeMarkdownWrapper from '../components/SafeMarkdownWrapper'
 import VitalTrendChart from '../components/VitalTrendChart'
 import { AVAILABLE_TEXT_MODELS, DEFAULT_TEXT_MODEL } from '../lib/modelOptions'
@@ -330,6 +330,7 @@ export default function PatientPortal() {
     const [chatLoading, setChatLoading] = useState(false)
     const [sessionId, setSessionId] = useState(null)
     const chatEndRef = useRef(null)
+    const patientChatMessagesRef = useRef(null)
     const [activeSection, setActiveSection] = useState('profile')
     const [assistantMinimized, setAssistantMinimized] = useState(false)
     const [assistantExpanded, setAssistantExpanded] = useState(false)
@@ -1479,7 +1480,8 @@ export default function PatientPortal() {
                                 </div>
                             ) : (
                                 <div className="pp-chat pp-chat--sidebar">
-                                    <div className="pp-chat__messages">
+                                    <div className="pp-chat__messages" ref={patientChatMessagesRef}>
+                                        <SelectionExplainToolbar enabled containerRef={patientChatMessagesRef} />
                                         {chatMessages.map((m, i) => (
                                             <div key={i} className={`pp-chat__msg pp-chat__msg--${m.role}`}>
                                                 {m.role === 'assistant' ? (

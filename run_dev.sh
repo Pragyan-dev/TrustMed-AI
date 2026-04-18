@@ -23,7 +23,7 @@ trap cleanup INT TERM
 # Start backend
 echo "🔧 Starting FastAPI backend on port 8000..."
 cd api
-python3 -m uvicorn main:app --reload --port 8000 &
+python3 -m uvicorn main:app --reload --port 8000 --reload-dir ../api --reload-dir ../src &
 BACKEND_PID=$!
 cd ..
 

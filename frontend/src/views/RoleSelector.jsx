@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Stethoscope, Heart, ArrowRight } from 'lucide-react'
+import { Stethoscope, Heart, ArrowRight, Plus } from 'lucide-react'
 
 export default function RoleSelector() {
     return (
@@ -15,7 +15,7 @@ export default function RoleSelector() {
             <div className="role-selector__cards">
                 <Link href="/clinician" className="role-card role-card--clinician">
                     <div className="role-card__icon">
-                        <Stethoscope size={32} />
+                        <Plus size={32} strokeWidth={2.5} />
                     </div>
                     <h2>Clinician Dashboard</h2>
                     <p>

@@ -73,6 +73,8 @@ function getAttachmentTypeLabel(fileKind) {
 
 function PatientInfoPanel({ patientData, attachments = [], attachmentsLoading = false, attachmentsError = '', onClose }) {
     const [collapsed, setCollapsed] = useState(false)
+    const [diagnosesExpanded, setDiagnosesExpanded] = useState(false)
+    const [medicationsExpanded, setMedicationsExpanded] = useState(false)
 
     if (!patientData) return null
 
@@ -99,6 +101,9 @@ function PatientInfoPanel({ patientData, attachments = [], attachmentsLoading = 
         if (status === 'low') return 'LOW'
         return 'Normal'
     }
+
+    const visibleDiagnoses = diagnosesExpanded ? diagnoses : diagnoses?.slice(0, 3)
+    const visibleMedications = medicationsExpanded ? medications : medications?.slice(0, 3)
 
     return (
         <div className={`patient-info-panel ${collapsed ? 'collapsed' : ''}`}>
@@ -225,17 +230,33 @@ function PatientInfoPanel({ patientData, attachments = [], attachmentsLoading = 
                     {/* Diagnoses */}
                     {diagnoses && diagnoses.length > 0 && (
                         <div className="patient-section">
-                            <div className="patient-section-label">
-                                <Stethoscope size={12} />
-                                <span>Diagnoses ({diagnoses.length})</span>
+                            <div className="patient-section-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    <Stethoscope size={12} />
+                                    <span>Diagnoses ({diagnoses.length})</span>
+                                </div>
+                                {diagnoses.length > 3 && (
+                                    <button
+                                        onClick={() => setDiagnosesExpanded(!diagnosesExpanded)}
+                                        className="patient-info-action"
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', color: 'var(--text-secondary)' }}
+                                    >
+                                        {diagnosesExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                    </button>
+                                )}
                             </div>
                             <div className="patient-tag-list">
-                                {diagnoses.map((d, i) => (
+                                {visibleDiagnoses.map((d, i) => (
                                     <span key={i} className="patient-tag diagnosis-tag" title={`ICD: ${d.icd_code}`}>
                                         {d.title}
                                         <span className="tag-code">{d.icd_code}</span>
                                     </span>
                                 ))}
+                                {!diagnosesExpanded && diagnoses.length > 3 && (
+                                    <span className="patient-tag more-tag" onClick={() => setDiagnosesExpanded(true)} style={{ cursor: 'pointer', background: 'rgba(0,0,0,0.03)', color: '#6B7280' }}>
+                                        +{diagnoses.length - 3} more
+                                    </span>
+                                )}
                             </div>
                         </div>
                     )}
@@ -243,16 +264,32 @@ function PatientInfoPanel({ patientData, attachments = [], attachmentsLoading = 
                     {/* Medications */}
                     {medications && medications.length > 0 && (
                         <div className="patient-section">
-                            <div className="patient-section-label">
-                                <Pill size={12} />
-                                <span>Medications ({medications.length})</span>
+                            <div className="patient-section-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    <Pill size={12} />
+                                    <span>Medications ({medications.length})</span>
+                                </div>
+                                {medications.length > 3 && (
+                                    <button
+                                        onClick={() => setMedicationsExpanded(!medicationsExpanded)}
+                                        className="patient-info-action"
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', color: 'var(--text-secondary)' }}
+                                    >
+                                        {medicationsExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                    </button>
+                                )}
                             </div>
                             <div className="patient-tag-list">
-                                {medications.map((m, i) => (
+                                {visibleMedications.map((m, i) => (
                                     <span key={i} className="patient-tag med-tag" title={m.description || m.name}>
                                         {m.name}
                                     </span>
                                 ))}
+                                {!medicationsExpanded && medications.length > 3 && (
+                                    <span className="patient-tag more-tag" onClick={() => setMedicationsExpanded(true)} style={{ cursor: 'pointer', background: 'rgba(0,0,0,0.03)', color: '#6B7280' }}>
+                                        +{medications.length - 3} more
+                                    </span>
+                                )}
                             </div>
                         </div>
                     )}

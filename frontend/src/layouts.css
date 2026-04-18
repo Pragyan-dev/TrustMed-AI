@@ -1,5 +1,5 @@
 /* ==========================================================================
-   TrustMed AI – Dual Layout Styles
+   Synapse AI – Dual Layout Styles
    Clinician: Dark professional theme with sidebar
    Patient:   Light accessible theme with top navbar
    ========================================================================== */
@@ -95,8 +95,8 @@
 }
 
 .role-card--clinician .role-card__icon {
-    background: linear-gradient(135deg, #1a1a2e, #16213e);
-    color: #64ffda;
+    background: linear-gradient(135deg, #2E7D52, #4CAF50);
+    color: white;
 }
 
 .role-card--patient .role-card__icon {
@@ -189,7 +189,7 @@
 .cl-sidebar__logo {
     width: 40px;
     height: 40px;
-    background: linear-gradient(135deg, #64ffda, #007cf0);
+    background: linear-gradient(135deg, #2E7D52, #4CAF50);
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -201,7 +201,7 @@
 .cl-sidebar__logo svg {
     width: 22px;
     height: 22px;
-    color: #0f0f1a;
+    color: white;
 }
 
 .cl-sidebar__nav {

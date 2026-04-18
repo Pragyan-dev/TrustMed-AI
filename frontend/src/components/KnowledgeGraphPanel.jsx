@@ -109,7 +109,7 @@ function KnowledgeGraphPanel({
   const graphRef = useRef()
   const canvasWrapRef = useRef()
   const fitTimerRef = useRef(null)
-  const [dimensions, setDimensions] = useState({ width: 800, height: 500 })
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const syncedTerms = useMemo(() => extractGraphTerms(syncedSearchTerm), [syncedSearchTerm])
 
   const queueGraphFit = useCallback((delay = 180) => {
@@ -119,13 +119,13 @@ function KnowledgeGraphPanel({
 
     fitTimerRef.current = window.setTimeout(() => {
       if (!graphRef.current || graphData.nodes.length === 0) return
+      if (!dimensions.width || !dimensions.height) return
 
       const padding = isExpanded
         ? 130
         : Math.max(52, Math.min(dimensions.width * 0.14, 92))
 
-      graphRef.current.centerAt(0, 0, 0)
-      graphRef.current.zoomToFit(480, padding)
+      graphRef.current.zoomToFit(400, padding)
     }, delay)
   }, [dimensions.width, graphData.nodes.length, isExpanded])
 
@@ -141,8 +141,15 @@ function KnowledgeGraphPanel({
       }
     })
     observer.observe(canvasWrapRef.current)
+    const rect = canvasWrapRef.current.getBoundingClientRect()
+    if (rect.width > 0 && rect.height > 0) {
+      setDimensions({
+        width: Math.max(rect.width, 260),
+        height: Math.max(rect.height, 320),
+      })
+    }
     return () => observer.disconnect()
-  }, [])
+  }, [graphData.nodes.length])
 
   useEffect(() => {
     return () => {
@@ -537,6 +544,7 @@ function KnowledgeGraphPanel({
       {hasData && (
         <div className={`graph-content-area ${isExpanded ? 'graph-content-area--expanded' : ''}`}>
           <div className="graph-canvas-wrap" ref={canvasWrapRef}>
+            {dimensions.width > 0 && dimensions.height > 0 && (
             <ForceGraph2D
               ref={graphRef}
               graphData={graphData}
@@ -560,6 +568,7 @@ function KnowledgeGraphPanel({
               d3VelocityDecay={0.3}
               onEngineStop={() => queueGraphFit(0)}
             />
+            )}
           </div>
 
           {/* Detail sidebar */}

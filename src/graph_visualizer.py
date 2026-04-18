@@ -42,6 +42,184 @@ SIZES = {
     "Patient":    30,
 }
 
+# ── Alias map: MIMIC-IV / ICD diagnosis names → Kaggle KG disease names ──
+# The Neo4j graph contains ~41 diseases from the Kaggle dataset.  The frontend
+# frequently searches with MIMIC-IV ICD titles (e.g. "INTRACEREBRAL HEMORRHAGE")
+# or clinical shorthand that doesn't match any Kaggle name.  This map bridges
+# the vocabulary gap so that the graph panel shows relevant results.
+#
+# Keys are lowercased MIMIC / clinical terms (substrings are fine).
+# Values are the exact Kaggle disease name stored in Neo4j.
+_DIAGNOSIS_ALIASES = {
+    # Cardiovascular / cerebrovascular
+    "intracerebral hemorrhage":         "Paralysis (brain hemorrhage)",
+    "brain hemorrhage":                 "Paralysis (brain hemorrhage)",
+    "cerebral hemorrhage":              "Paralysis (brain hemorrhage)",
+    "hemorrhagic stroke":               "Paralysis (brain hemorrhage)",
+    "subarachnoid hemorrhage":          "Paralysis (brain hemorrhage)",
+    "subdural hemorrhage":              "Paralysis (brain hemorrhage)",
+    "subdural hematoma":                "Paralysis (brain hemorrhage)",
+    "traumatic subdural":               "Paralysis (brain hemorrhage)",
+    "myocardial infarction":            "Heart attack",
+    "nstemi":                           "Heart attack",
+    "stemi":                            "Heart attack",
+    "non-st elevation":                 "Heart attack",
+    "non-st elevation mi":              "Heart attack",
+    "non-st elevation myocardial infarction": "Heart attack",
+    "st elevation":                     "Heart attack",
+    "st elevation myocardial infarction": "Heart attack",
+    "mi":                               "Heart attack",
+    "acute coronary syndrome":          "Heart attack",
+    "heart failure":                    "Heart attack",
+    "congestive heart failure":         "Heart attack",
+    "cardiac arrest":                   "Heart attack",
+    "atrial fibrillation":              "Heart attack",
+    "atrial flutter":                   "Heart attack",
+    "hypertension nos":                 "Hypertension",
+    "essential hypertension":           "Hypertension",
+    "hypertensive":                     "Hypertension",
+
+    # Respiratory
+    "pneumonia":                        "Pneumonia",
+    "lobar pneumonia":                  "Pneumonia",
+    "respiratory failure":              "Pneumonia",
+    "respiratory arrest":               "Pneumonia",
+    "acute respiratory failure":        "Pneumonia",
+    "lung edema":                       "Pneumonia",
+    "pleural effusion":                 "Pneumonia",
+    "pneumothorax":                     "Pneumonia",
+    "bronchial asthma":                 "Bronchial Asthma",
+    "asthma":                           "Bronchial Asthma",
+    "acute uri":                        "Common Cold",
+    "common cold":                      "Common Cold",
+    "cough":                            "Common Cold",
+    "acute laryngitis":                 "Common Cold",
+    "tuberculosis":                     "Tuberculosis",
+
+    # GI / hepatic
+    "gastrointestinal hemorrhage":      "Peptic ulcer diseae",
+    "gastrointestinal hemorr":          "Peptic ulcer diseae",
+    "hematemesis":                      "Peptic ulcer diseae",
+    "rectal hemorrhage":                "Dimorphic hemmorhoids(piles)",
+    "anal hemorrhage":                  "Dimorphic hemmorhoids(piles)",
+    "hemorrhoids":                      "Dimorphic hemmorhoids(piles)",
+    "gastroenteritis":                  "Gastroenteritis",
+    "noninf gastroenterit":             "Gastroenteritis",
+    "diarrhea":                         "Gastroenteritis",
+    "cirrhosis":                        "Alcoholic hepatitis",
+    "alcoholic hepatitis":              "Alcoholic hepatitis",
+    "hepatitis a":                      "hepatitis A",
+    "hepatitis b":                      "Hepatitis B",
+    "hepatitis c":                      "Hepatitis C",
+    "hepatitis d":                      "Hepatitis D",
+    "hepatitis e":                      "Hepatitis E",
+    "viral hepatitis":                  "Hepatitis B",
+    "jaundice":                         "Jaundice",
+    "cholestasis":                      "Chronic cholestasis",
+    "gerd":                             "GERD",
+    "peptic ulcer":                     "Peptic ulcer diseae",
+    "intestinal obstruction":           "Peptic ulcer diseae",
+    "acute appendicitis":               "Peptic ulcer diseae",
+    "acute pancreatitis":               "Peptic ulcer diseae",
+
+    # Endocrine / metabolic
+    "diabetes":                         "Diabetes",
+    "diabetic":                         "Diabetes",
+    "diab ketoacidosis":                "Diabetes",
+    "type 1 diabetes":                  "Diabetes",
+    "type 2 diabetes":                  "Diabetes",
+    "hypoglycemia":                     "Hypoglycemia",
+    "hypothyroidism":                   "Hypothyroidism",
+    "hyperthyroidism":                  "Hyperthyroidism",
+    "hypercholesterolemia":             "Heart attack",
+    "hyperlipidemia":                   "Heart attack",
+
+    # Neurological
+    "grand mal":                        "Paralysis (brain hemorrhage)",
+    "convulsions":                      "Paralysis (brain hemorrhage)",
+    "seizure":                          "Paralysis (brain hemorrhage)",
+    "cerebral infarction":              "Paralysis (brain hemorrhage)",
+    "encephalopathy":                   "Paralysis (brain hemorrhage)",
+    "alzheimer":                        "Paralysis (brain hemorrhage)",
+    "dementia":                         "Paralysis (brain hemorrhage)",
+    "migraine":                         "Migraine",
+    "headache":                         "Migraine",
+    "vertigo":                          "(vertigo) Paroymsal  Positional Vertigo",
+    "dizziness":                        "(vertigo) Paroymsal  Positional Vertigo",
+
+    # Musculoskeletal
+    "cervical spondylosis":             "Cervical spondylosis",
+    "cervicalgia":                      "Cervical spondylosis",
+    "lumbago":                          "Cervical spondylosis",
+    "low back pain":                    "Cervical spondylosis",
+    "dorsalgia":                        "Cervical spondylosis",
+    "osteoarthritis":                   "Osteoarthristis",
+    "arthritis":                        "Arthritis",
+    "joint pain":                       "Arthritis",
+    "varicose veins":                   "Varicose veins",
+
+    # Infectious
+    "sepsis":                           "Typhoid",
+    "septicemia":                       "Typhoid",
+    "septic shock":                     "Typhoid",
+    "typhoid":                          "Typhoid",
+    "malaria":                          "Malaria",
+    "dengue":                           "Dengue",
+    "chicken pox":                      "Chicken pox",
+    "aids":                             "AIDS",
+    "hiv":                              "AIDS",
+    "impetigo":                         "Impetigo",
+    "fungal infection":                 "Fungal infection",
+    "cellulitis":                       "Impetigo",
+
+    # Dermatological
+    "psoriasis":                        "Psoriasis",
+    "acne":                             "Acne",
+
+    # Renal / urological
+    "urinary tract infection":          "Urinary tract infection",
+    "uti":                              "Urinary tract infection",
+    "kidney disease":                   "Urinary tract infection",
+    "kidney failure":                   "Urinary tract infection",
+    "renal":                            "Urinary tract infection",
+
+    # Allergy / drug reaction
+    "allergy":                          "Allergy",
+    "drug reaction":                    "Drug Reaction",
+    "adverse effect":                   "Drug Reaction",
+
+    # Fractures → mapped to nearest relevant disease for context
+    "fracture of femur":                "Osteoarthristis",
+    "fracture":                         "Osteoarthristis",
+}
+
+
+def _resolve_search_term(search_term: str) -> str:
+    """
+    Resolve a clinical / MIMIC-IV diagnosis name to a Kaggle KG disease name.
+
+    Strategy:
+      1. Direct alias lookup (case-insensitive substring match against alias keys)
+      2. Individual keyword fallback — split into words and check each
+      3. Return the original term if nothing matched (the Cypher CONTAINS
+         will handle partial matches in Neo4j itself)
+    """
+    lower = search_term.strip().lower()
+
+    # 1. Check if any alias key is a substring of the search term (or vice versa)
+    for alias_key, kg_name in _DIAGNOSIS_ALIASES.items():
+        if alias_key in lower or lower in alias_key:
+            return kg_name
+
+    # 2. Keyword fallback: try each significant word individually
+    words = [w for w in lower.split() if len(w) > 3]
+    for word in words:
+        for alias_key, kg_name in _DIAGNOSIS_ALIASES.items():
+            if word in alias_key:
+                return kg_name
+
+    return search_term
+
 
 # =============================================================================
 # Graph Data Fetcher
@@ -53,6 +231,13 @@ class GraphVisualizer:
 
     def close(self):
         self.driver.close()
+
+    def _all_disease_names(self, session) -> list:
+        if not hasattr(self, "_disease_name_cache"):
+            rows = session.run("MATCH (d:Disease) RETURN d.name AS name").data()
+            self._disease_name_cache = [r["name"] for r in rows if r.get("name")]
+            print(f"📚 Cached {len(self._disease_name_cache)} Disease names from Neo4j")
+        return self._disease_name_cache
 
     def get_graph_json(self, search_term: str, patient_id: str = None) -> dict:
         """
@@ -88,8 +273,44 @@ class GraphVisualizer:
         """
 
         with self.driver.session() as session:
-            result = session.run(query, term=search_term).single()
+            db_names = self._all_disease_names(session)
+            db_names_lower = {n.lower(): n for n in db_names}
+            s_low = search_term.strip().lower()
 
+            candidates = []
+
+            # Strategy 1: exact (case-insensitive) match against DB names
+            if s_low in db_names_lower:
+                candidates.append(db_names_lower[s_low])
+
+            # Strategy 2: alias resolution (run before loose DB substring match
+            # so curated clinical aliases beat coincidental letter overlaps)
+            resolved = _resolve_search_term(search_term)
+            if resolved and resolved.lower() in db_names_lower:
+                canonical = db_names_lower[resolved.lower()]
+                if canonical not in candidates:
+                    candidates.append(canonical)
+
+            # Strategy 3: substring match in either direction against DB names
+            for low, original in db_names_lower.items():
+                if low in s_low or s_low in low:
+                    if original not in candidates:
+                        candidates.append(original)
+
+            # Strategy 4: token fallback — match each significant word against DB names
+            if not candidates:
+                for word in [w for w in s_low.split() if len(w) > 3]:
+                    for low, original in db_names_lower.items():
+                        if word in low and original not in candidates:
+                            candidates.append(original)
+
+            print(f"🔎 Graph Search: '{search_term}' → candidates={candidates[:3]}")
+
+            if not candidates:
+                print(f"   ⚠ No DB match. Available names sample: {db_names[:5]}")
+                return {"nodes": [], "edges": [], "stats": {}}
+
+            result = session.run(query, term=candidates[0]).single()
             if not result:
                 return {"nodes": [], "edges": [], "stats": {}}
 

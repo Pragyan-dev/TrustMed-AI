@@ -1,5 +1,4 @@
 .env
-data/
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -11,3 +10,4 @@ frontend/node_modules/
 out.log
 .codex/
 .claude/
+data/

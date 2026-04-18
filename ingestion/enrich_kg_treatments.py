@@ -18,8 +18,15 @@ Usage:
 
 import os
 import sys
+import json
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
+
+# Force UTF-8 encoding for Windows terminals
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if sys.stderr and hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
 
 # Add project root for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -440,39 +447,39 @@ def verify_enrichment(tx):
 
 def main():
     print("=" * 60)
-    print("💊 TrustMed AI — Knowledge Graph Treatment Enrichment")
+    print("TrustMed AI - Knowledge Graph Treatment Enrichment")
     print("=" * 60)
 
     if not NEO4J_PASSWORD:
-        print("❌ NEO4J_PASSWORD not set. Check your .env file.")
+        print("X NEO4J_PASSWORD not set. Check your .env file.")
         return
 
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USERNAME, NEO4J_PASSWORD))
 
     try:
         with driver.session() as session:
-            print("\n📦 Step 1: Creating Drug nodes...")
+            print("\nStep 1: Creating Drug nodes...")
             session.execute_write(create_drug_nodes)
 
-            print("\n🔗 Step 2: Creating TREATS relationships...")
+            print("\nStep 2: Creating TREATS relationships...")
             session.execute_write(create_treats_relationships)
 
-            print("\n⚠️  Step 3: Creating CONTRAINDICATED_WITH relationships...")
+            print("\nStep 3: Creating CONTRAINDICATED_WITH relationships...")
             session.execute_write(create_contraindication_relationships)
 
-            print("\n💊 Step 4: Creating INTERACTS_WITH relationships...")
+            print("\nStep 4: Creating INTERACTS_WITH relationships...")
             session.execute_write(create_interaction_relationships)
 
-            print("\n📇 Step 5: Creating indexes...")
+            print("\nStep 5: Creating indexes...")
             session.execute_write(create_indexes)
 
-            print("\n🔍 Step 6: Verifying enrichment...")
+            print("\nStep 6: Verifying enrichment...")
             session.execute_read(verify_enrichment)
 
-        print("\n✅ Knowledge Graph enrichment complete!")
+        print("\nKnowledge Graph enrichment complete!")
 
     except Exception as e:
-        print(f"\n❌ Enrichment failed: {e}")
+        print(f"\nEnrichment failed: {e}")
         raise
     finally:
         driver.close()

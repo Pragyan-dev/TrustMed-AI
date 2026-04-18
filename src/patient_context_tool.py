@@ -219,11 +219,11 @@ if __name__ == "__main__":
     print(f"Testing Patient Context Tools - Patient ID: {test_patient}")
     print("=" * 60)
     
-    print("\n📊 VITALS:")
+    print("\nVITALS:")
     print(get_patient_vitals.invoke(test_patient))
     
-    print("\n🏥 DIAGNOSES:")
+    print("\nDIAGNOSES:")
     print(get_patient_diagnoses.invoke(test_patient))
     
-    print("\n💊 MEDICATIONS:")
+    print("\nMEDICATIONS:")
     print(get_patient_meds.invoke(test_patient))

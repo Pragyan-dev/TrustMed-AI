@@ -1,45 +1,14 @@
-import React, { useState, useCallback, useRef, useEffect, useMemo, Component } from 'react'
-import ForceGraph2D from 'react-force-graph-2d'
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   Search, Network, Loader2, X, Pill, Activity, Shield,
-  AlertTriangle, ChevronRight, RefreshCw, Link2, Maximize2, Minimize2
+  AlertTriangle, RefreshCw, Link2, Maximize2, Minimize2, ChevronRight
 } from 'lucide-react'
-
-// Error boundary to catch internal react-force-graph D3 errors (like selection.interrupt)
-class GraphErrorBoundary extends Component {
-  constructor(props) {
-    super(props)
-    this.state = { hasError: false }
-  }
-  static getDerivedStateFromError() {
-    return { hasError: true }
-  }
-  componentDidCatch(error, errorInfo) {
-    console.warn("Caught ForceGraph2D internal error (often related to D3 transition limits or 429 interruptions):", error)
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="graph-empty" style={{ opacity: 0.7 }}>
-          <Network size={32} strokeWidth={1} style={{ marginBottom: '1rem', color: '#ff4b4b' }} />
-          <p>Graph rendering was interrupted. Please try again or refresh.</p>
-          <button 
-            onClick={() => this.setState({ hasError: false })}
-            style={{ marginTop: '1rem', padding: '0.25rem 0.75rem', background: '#333', borderRadius: '4px', border: '1px solid #555' }}
-          >
-            Retry Render
-          </button>
-        </div>
-      )
-    }
-    return this.props.children
-  }
-}
-
+import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from 'd3-force'
+import { drag } from 'd3-drag'
+import { select } from 'd3-selection'
 
 const API_BASE = '/api'
 
-// Node colors matching the backend
 const NODE_COLORS = {
   Disease: '#FF4B4B',
   Symptom: '#FFA500',
@@ -49,63 +18,254 @@ const NODE_COLORS = {
   Patient: '#555555',
 }
 
-const LEGEND_ITEMS = [
-  { label: 'Disease', color: '#FF4B4B', icon: '🦠' },
-  { label: 'Symptom', color: '#FFA500', icon: '⚠️' },
-  { label: 'Drug', color: '#00CC96', icon: '💊' },
-  { label: 'Precaution', color: '#636EFA', icon: '🛡️' },
-]
-
-const QUALIFIER_PATTERN = /\b(organism unspecified|unspecified|not otherwise specified|nos|without mention of complication|site not specified|unknown etiology)\b/gi
-
-const prettifyGraphTerm = (term) => {
-  return term
-    .split(' ')
-    .filter(Boolean)
-    .map((word) => {
-      if (word.length <= 4 && word === word.toUpperCase()) return word
-      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    })
-    .join(' ')
+const NODE_RADII = {
+  Disease: 22,
+  Drug: 15,
+  Symptom: 11,
+  Precaution: 10,
+  Condition: 12,
+  Patient: 16,
 }
+
+const LEGEND_ITEMS = [
+  { label: 'Disease', color: '#FF4B4B' },
+  { label: 'Symptom', color: '#FFA500' },
+  { label: 'Drug', color: '#00CC96' },
+  { label: 'Precaution', color: '#636EFA' },
+]
 
 const normalizeGraphTerm = (term) => {
   if (!term) return ''
-  
-  // Aggressively strip meta-talk
-  let cleaned = String(term)
+  return String(term)
     .replace(/\[(?:system\s+)?Note:\s*[^\]]+\]/gi, ' ')
     .replace(/\[.*?\]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
-
-  if (!cleaned) return ''
-  return prettifyGraphTerm(cleaned)
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ')
 }
 
 const extractGraphTerms = (rawContext) => {
   if (!rawContext) return []
-
-  const rawParts = String(rawContext)
-    .split(/\n|;|•|\. (?=[A-Za-z])/g)
-    .map(part => part.trim())
-    .filter(Boolean)
-
-  const sourceParts = rawParts.length > 0 ? rawParts : [rawContext]
   const seen = new Set()
-  const normalized = []
-
-  for (const part of sourceParts) {
-    const cleaned = normalizeGraphTerm(part)
-    if (!cleaned) continue
-    const key = cleaned.toLowerCase()
-    if (seen.has(key)) continue
-    seen.add(key)
-    normalized.push(cleaned)
-  }
-
-  return normalized
+  return String(rawContext)
+    .split(/\n|;|•|\. (?=[A-Za-z])/g)
+    .map((p) => normalizeGraphTerm(p.trim()))
+    .filter((t) => t.length >= 2 && !seen.has(t.toLowerCase()) && seen.add(t.toLowerCase()))
 }
+
+// ─── Pure D3 Canvas Force Graph ───────────────────────────────────────────────
+
+function ForceGraphCanvas({ nodes: rawNodes, edges: rawEdges, width, height, onNodeClick, selectedNodeId }) {
+  const canvasRef = useRef(null)
+  const simRef = useRef(null)
+  const nodesRef = useRef([])
+  const linksRef = useRef([])
+  const selectedIdRef = useRef(selectedNodeId)
+  const animFrameRef = useRef(null)
+
+  // Keep selectedIdRef in sync without restarting simulation
+  useEffect(() => {
+    selectedIdRef.current = selectedNodeId
+    drawFrame()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedNodeId])
+
+  const drawFrame = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    const dpr = window.devicePixelRatio || 1
+    const w = canvas.width / dpr
+    const h = canvas.height / dpr
+
+    ctx.save()
+    ctx.scale(dpr, dpr)
+    ctx.clearRect(0, 0, w, h)
+
+    // Draw edges
+    linksRef.current.forEach((link) => {
+      const s = link.source
+      const t = link.target
+      if (!Number.isFinite(s.x) || !Number.isFinite(t.x)) return
+
+      ctx.beginPath()
+      ctx.strokeStyle = link.color || '#555'
+      ctx.lineWidth = link.width || 1
+      if (link.dashes) ctx.setLineDash([5, 5])
+      else ctx.setLineDash([])
+      ctx.moveTo(s.x, s.y)
+      ctx.lineTo(t.x, t.y)
+      ctx.stroke()
+      ctx.setLineDash([])
+    })
+
+    // Draw nodes
+    nodesRef.current.forEach((node) => {
+      if (!Number.isFinite(node.x) || !Number.isFinite(node.y)) return
+      const r = NODE_RADII[node.type] || 12
+      const isSelected = selectedIdRef.current === node.id
+      const color = NODE_COLORS[node.type] || '#888'
+      const isDisease = node.type === 'Disease'
+
+      // Glow for disease
+      if (isDisease) {
+        const grad = ctx.createRadialGradient(node.x, node.y, r, node.x, node.y, r * 2.5)
+        grad.addColorStop(0, 'rgba(255,75,75,0.3)')
+        grad.addColorStop(1, 'rgba(255,75,75,0)')
+        ctx.beginPath()
+        ctx.arc(node.x, node.y, r * 2.5, 0, 2 * Math.PI)
+        ctx.fillStyle = grad
+        ctx.fill()
+      }
+
+      // Circle
+      ctx.beginPath()
+      ctx.arc(node.x, node.y, r, 0, 2 * Math.PI)
+      ctx.fillStyle = color
+      ctx.fill()
+
+      // Selection ring
+      if (isSelected) {
+        ctx.strokeStyle = '#ffffff'
+        ctx.lineWidth = 2.5
+        ctx.stroke()
+      }
+
+      // Label
+      const fontSize = isDisease ? 11 : 9
+      ctx.font = `${isDisease ? 'bold ' : ''}${fontSize}px Inter, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'top'
+      const label = node.label || ''
+      const textY = node.y + r + 3
+      const tw = ctx.measureText(label).width
+      const pad = 2
+
+      ctx.fillStyle = 'rgba(18,18,18,0.80)'
+      ctx.beginPath()
+      ctx.roundRect(node.x - tw / 2 - pad, textY - pad, tw + pad * 2, fontSize + pad * 2, 3)
+      ctx.fill()
+
+      ctx.fillStyle = isDisease ? '#ffffff' : '#dddddd'
+      ctx.fillText(label, node.x, textY)
+    })
+
+    ctx.restore()
+  }, [])
+
+  useEffect(() => {
+    if (!canvasRef.current || rawNodes.length === 0) return
+
+    const canvas = canvasRef.current
+    const dpr = window.devicePixelRatio || 1
+    canvas.width = width * dpr
+    canvas.height = height * dpr
+
+    // Clone for D3 mutation
+    const nodes = rawNodes.map((n) => ({ ...n }))
+    const links = rawEdges.map((e) => ({
+      ...e,
+      source: e.source,
+      target: e.target,
+    }))
+
+    nodesRef.current = nodes
+    linksRef.current = links
+
+    // Stop old simulation
+    if (simRef.current) simRef.current.stop()
+
+    const sim = forceSimulation(nodes)
+      .force('link', forceLink(links).id((d) => d.id).distance(90).strength(0.7))
+      .force('charge', forceManyBody().strength(-260))
+      .force('center', forceCenter(width / 2, height / 2))
+      .force('collide', forceCollide().radius((d) => (NODE_RADII[d.type] || 12) + 8))
+      .alphaDecay(0.025)
+
+    sim.on('tick', () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
+      animFrameRef.current = requestAnimationFrame(drawFrame)
+    })
+
+    simRef.current = sim
+
+    // ── Drag support ──
+    const canvasSel = select(canvas)
+
+    let dragSubject = null
+
+    const findNode = (event) => {
+      const rect = canvas.getBoundingClientRect()
+      const scaleX = width / rect.width
+      const scaleY = height / rect.height
+      const mx = (event.clientX - rect.left) * scaleX
+      const my = (event.clientY - rect.top) * scaleY
+      return nodes.find((n) => {
+        const r = (NODE_RADII[n.type] || 12) + 4
+        return Math.hypot(n.x - mx, n.y - my) < r
+      })
+    }
+
+    const dragHandler = drag()
+      .on('start', function (event) {
+        dragSubject = findNode(event.sourceEvent || event)
+        if (!dragSubject) return
+        if (!event.active) sim.alphaTarget(0.3).restart()
+        dragSubject.fx = dragSubject.x
+        dragSubject.fy = dragSubject.y
+      })
+      .on('drag', function (event) {
+        if (!dragSubject) return
+        const rect = canvas.getBoundingClientRect()
+        const scaleX = width / rect.width
+        const scaleY = height / rect.height
+        const sourceEvent = event.sourceEvent || event
+        dragSubject.fx = (sourceEvent.clientX - rect.left) * scaleX
+        dragSubject.fy = (sourceEvent.clientY - rect.top) * scaleY
+      })
+      .on('end', function (event) {
+        if (!dragSubject) return
+        if (!event.active) sim.alphaTarget(0)
+        dragSubject.fx = null
+        dragSubject.fy = null
+        dragSubject = null
+      })
+
+    canvasSel.call(dragHandler)
+
+    // Click to select node
+    const handleClick = (event) => {
+      const node = findNode(event)
+      onNodeClick(node || null)
+    }
+    canvas.addEventListener('click', handleClick)
+
+    return () => {
+      sim.stop()
+      canvas.removeEventListener('click', handleClick)
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawNodes, rawEdges, width, height])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'block',
+        cursor: 'grab',
+        borderRadius: '8px',
+      }}
+    />
+  )
+}
+
+// ─── Main Panel ───────────────────────────────────────────────────────────────
 
 function KnowledgeGraphPanel({
   syncedSearchTerm = '',
@@ -117,75 +277,34 @@ function KnowledgeGraphPanel({
   const [manualSearchTerm, setManualSearchTerm] = useState('')
   const [manualOverride, setManualOverride] = useState(false)
   const [activeSyncedTerm, setActiveSyncedTerm] = useState('')
-  const [graphData, setGraphData] = useState({ nodes: [], links: [] })
+  const [rawNodes, setRawNodes] = useState([])
+  const [rawEdges, setRawEdges] = useState([])
   const [stats, setStats] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   const [error, setError] = useState(null)
   const [selectedNode, setSelectedNode] = useState(null)
-  const [hoveredNode, setHoveredNode] = useState(null)
-  const graphRef = useRef()
   const canvasWrapRef = useRef()
-  const fitTimerRef = useRef(null)
-  const [dimensions, setDimensions] = useState({ width: 800, height: 500 })
+  const [dimensions, setDimensions] = useState({ width: 600, height: 400 })
+
   const syncedTerms = useMemo(() => extractGraphTerms(syncedSearchTerm), [syncedSearchTerm])
 
-  const isMountedRef = useRef(true)
-
-  const queueGraphFit = useCallback((delay = 180) => {
-    if (fitTimerRef.current) {
-      window.clearTimeout(fitTimerRef.current)
-    }
-
-    fitTimerRef.current = window.setTimeout(() => {
-      // Safety: Only call if component is still active and reference exists
-      if (!isMountedRef.current || !graphRef.current || !graphData.nodes.length) return
-
-      try {
-        const padding = isExpanded
-          ? 130
-          : Math.max(52, Math.min(dimensions.width * 0.14, 92))
-
-        // FIX: Removed centerAt(0,0,400) which causes 'selection.interrupt' 
-        // when called alongside zoomToFit. zoomToFit handles centering automatically.
-        // Also setting duration to 0 bypasses D3 transitions that cause the selection.interrupt crash
-        // when React re-renders the component rapidly (e.g. during a 429 error).
-        graphRef.current.zoomToFit(0, padding)
-      } catch (err) {
-        console.warn('Graph fit interrupted (expected during rapid updates):', err)
-      }
-    }, delay)
-  }, [dimensions.width, graphData.nodes.length, isExpanded])
-
-  // Observe the actual canvas area so the graph uses the full remaining space.
+  // Observe container size
   useEffect(() => {
-    isMountedRef.current = true
     if (!canvasWrapRef.current) return
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         setDimensions({
-          width: Math.max(entry.contentRect.width, 260),
-          height: Math.max(entry.contentRect.height, 320)
+          width: Math.max(entry.contentRect.width || 300, 260),
+          height: Math.max(entry.contentRect.height || 300, 240),
         })
       }
     })
     observer.observe(canvasWrapRef.current)
-    return () => {
-      isMountedRef.current = false
-      observer.disconnect()
-    }
+    return () => observer.disconnect()
   }, [])
 
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false
-      if (fitTimerRef.current) {
-        window.clearTimeout(fitTimerRef.current)
-      }
-    }
-  }, [])
-
-  const fetchGraph = useCallback(async (term, activePatientId = patientId) => {
+  const fetchGraph = useCallback(async (term) => {
     if (!term || term.trim().length < 2) return
 
     setIsLoading(true)
@@ -194,55 +313,42 @@ function KnowledgeGraphPanel({
 
     try {
       const params = new URLSearchParams({ search_term: term.trim() })
-      if (activePatientId) {
-        params.set('patient_id', activePatientId)
-      }
-      const res = await fetch(`${API_BASE}/graph?${params.toString()}`)
-      if (!res.ok) throw new Error('Failed to fetch graph data')
+      if (patientId) params.set('patient_id', patientId)
+
+      const res = await fetch(`${API_BASE}/graph?${params}`)
+      if (!res.ok) throw new Error(`Server error ${res.status}`)
+
       const data = await res.json()
 
       if (data.error) {
         setError(data.error)
-        setGraphData({ nodes: [], links: [] })
+        setRawNodes([])
+        setRawEdges([])
         setStats(null)
         return
       }
 
-      if (data.nodes.length === 0) {
-        setError(`No results found for "${term}"`)
-        setGraphData({ nodes: [], links: [] })
+      if (!data.nodes || data.nodes.length === 0) {
+        setError(`No graph data found for "${term}"`)
+        setRawNodes([])
+        setRawEdges([])
         setStats(null)
         return
       }
 
-      // Convert edges to links
-      const links = data.edges.map((e, i) => ({
-        id: `edge_${i}`,
-        source: e.source,
-        target: e.target,
-        color: e.color || '#888',
-        label: e.label || '',
-        dashes: e.dashes || false,
-        width: e.width || 1,
-      }))
-
-      // Enrich nodes
-      const nodes = data.nodes.map((n) => ({
-        ...n,
-        val: n.size || 20,
-        nodeColor: n.color || NODE_COLORS[n.type] || '#888',
-      }))
-
-      setGraphData({ nodes, links })
+      setRawNodes(data.nodes)
+      setRawEdges(data.edges || [])
       setStats(data.stats || null)
-      queueGraphFit(260)
     } catch (err) {
       setError(err.message)
+      setRawNodes([])
+      setRawEdges([])
     } finally {
       setIsLoading(false)
     }
-  }, [patientId, queueGraphFit])
+  }, [patientId])
 
+  // Reset on patient change
   useEffect(() => {
     setManualOverride(false)
     setManualSearchTerm('')
@@ -251,69 +357,34 @@ function KnowledgeGraphPanel({
   }, [patientId, syncedTerms])
 
   useEffect(() => {
-    if (!syncedTerms.length) {
-      setActiveSyncedTerm('')
-      return
-    }
-
-    setActiveSyncedTerm(prev => (
-      prev && syncedTerms.includes(prev) ? prev : syncedTerms[0]
-    ))
+    if (!syncedTerms.length) { setActiveSyncedTerm(''); return }
+    setActiveSyncedTerm((prev) => (prev && syncedTerms.includes(prev) ? prev : syncedTerms[0]))
   }, [syncedTerms])
 
+  // Auto-fetch
   useEffect(() => {
-    const activeTerm = (manualOverride ? manualSearchTerm : activeSyncedTerm || '').trim()
-    if (activeTerm.length < 2) {
-      setGraphData({ nodes: [], links: [] })
-      setStats(null)
-      setError(null)
-      setSelectedNode(null)
-      return
-    }
-    fetchGraph(activeTerm, patientId)
-  }, [fetchGraph, manualOverride, manualSearchTerm, activeSyncedTerm, patientId])
+    const term = (manualOverride ? manualSearchTerm : activeSyncedTerm || '').trim()
+    if (term.length < 2) { setRawNodes([]); setRawEdges([]); setStats(null); setError(null); return }
+    fetchGraph(term)
+  }, [fetchGraph, manualOverride, manualSearchTerm, activeSyncedTerm])
 
-  // Configure d3 forces for better node spacing
+  // Expanded keyboard & scroll lock
   useEffect(() => {
-    if (graphRef.current) {
-      graphRef.current.d3Force('charge')?.strength(-200)
-      graphRef.current.d3Force('link')?.distance(80)
-      graphRef.current.d3Force('center')?.x(0)
-      graphRef.current.d3Force('center')?.y(0)
-    }
-  }, [graphData])
-
-  useEffect(() => {
-    if (!graphData.nodes.length) return
-    queueGraphFit(160)
-  }, [dimensions.width, dimensions.height, graphData.nodes.length, isExpanded, queueGraphFit])
-
-  useEffect(() => {
-    if (!isExpanded) return undefined
-
-    const previousOverflow = document.body.style.overflow
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') {
-        setIsExpanded(false)
-      }
-    }
-
+    if (!isExpanded) return
+    const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    window.addEventListener('keydown', handleEscape)
-
-    return () => {
-      document.body.style.overflow = previousOverflow
-      window.removeEventListener('keydown', handleEscape)
-    }
+    const esc = (e) => { if (e.key === 'Escape') setIsExpanded(false) }
+    window.addEventListener('keydown', esc)
+    return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', esc) }
   }, [isExpanded])
 
   const handleSearch = (e) => {
     e.preventDefault()
-    const nextTerm = normalizeGraphTerm(searchInput.trim()) || searchInput.trim()
-    if (!allowManualOverride || nextTerm.length < 2) return
-    setManualSearchTerm(nextTerm)
+    const next = normalizeGraphTerm(searchInput.trim()) || searchInput.trim()
+    if (!allowManualOverride || next.length < 2) return
+    setManualSearchTerm(next)
     setManualOverride(true)
-    setSearchInput(nextTerm)
+    setSearchInput(next)
   }
 
   const resetToSyncedContext = () => {
@@ -322,121 +393,18 @@ function KnowledgeGraphPanel({
     setSearchInput('')
   }
 
-  // Custom node rendering
-  const nodeCanvasObject = useCallback((node, ctx, globalScale) => {
-    // Guard: skip if node hasn't been positioned by the simulation yet
-    if (!Number.isFinite(node.x) || !Number.isFinite(node.y)) return
+  const getNodeEdges = (nodeId) =>
+    rawEdges.filter(
+      (l) => l.source === nodeId || l.target === nodeId
+    )
 
-    const label = node.label || ''
-    const nodeRadius = Math.sqrt(node.val) * 1.5
-    const isSelected = selectedNode?.id === node.id
-    const isHovered = hoveredNode === node.id
-    const isDiseaseNode = node.type === 'Disease'
-
-    // Glow effect for disease node
-    if (isDiseaseNode) {
-      const gradient = ctx.createRadialGradient(node.x, node.y, nodeRadius, node.x, node.y, nodeRadius * 2.5)
-      gradient.addColorStop(0, 'rgba(255, 75, 75, 0.3)')
-      gradient.addColorStop(1, 'rgba(255, 75, 75, 0)')
-      ctx.beginPath()
-      ctx.arc(node.x, node.y, nodeRadius * 2.5, 0, 2 * Math.PI)
-      ctx.fillStyle = gradient
-      ctx.fill()
-    }
-
-    // Node circle
-    ctx.beginPath()
-    ctx.arc(node.x, node.y, nodeRadius, 0, 2 * Math.PI)
-    ctx.fillStyle = node.nodeColor
-    ctx.fill()
-
-    // Selection / hover ring
-    if (isSelected || isHovered) {
-      ctx.strokeStyle = isSelected ? '#fff' : 'rgba(255,255,255,0.5)'
-      ctx.lineWidth = (isSelected ? 3 : 2) / globalScale
-      ctx.stroke()
-    }
-
-    // Label
-    const fontSize = isDiseaseNode
-      ? Math.max(14 / globalScale, 5)
-      : Math.max(11 / globalScale, 3)
-
-    ctx.font = `${isDiseaseNode ? 'bold ' : ''}${fontSize}px 'Inter', 'Segoe UI', sans-serif`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-
-    if (globalScale > 0.4) {
-      const displayLabel = isDiseaseNode ? label.toUpperCase() : label
-      const textWidth = ctx.measureText(displayLabel).width
-      const pad = 3 / globalScale
-      const textY = node.y + nodeRadius + fontSize / 2 + 4 / globalScale
-
-      // Text background
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.92)'
-      ctx.beginPath()
-      const bgRadius = 3 / globalScale
-      const bgX = node.x - textWidth / 2 - pad
-      const bgY = textY - fontSize / 2 - pad
-      const bgW = textWidth + pad * 2
-      const bgH = fontSize + pad * 2
-      ctx.roundRect(bgX, bgY, bgW, bgH, bgRadius)
-      ctx.fill()
-
-      // Text
-      ctx.fillStyle = isDiseaseNode ? '#1a1a1a' : '#4a4a4a'
-      ctx.fillText(displayLabel, node.x, textY)
-    }
-  }, [selectedNode, hoveredNode])
-
-  // Custom link rendering — no labels on canvas to keep it clean
-  const linkCanvasObject = useCallback((link, ctx) => {
-    const start = link.source
-    const end = link.target
-    if (!Number.isFinite(start.x) || !Number.isFinite(end.x)) return
-
-    ctx.beginPath()
-    ctx.strokeStyle = link.color || '#555'
-    ctx.lineWidth = link.width || 1
-
-    if (link.dashes) {
-      ctx.setLineDash([4, 4])
-    } else {
-      ctx.setLineDash([])
-    }
-
-    ctx.moveTo(start.x, start.y)
-    ctx.lineTo(end.x, end.y)
-    ctx.stroke()
-    ctx.setLineDash([])
-  }, [])
-
-  const handleNodeClick = useCallback((node) => {
-    setSelectedNode(prev => prev?.id === node.id ? null : node)
-  }, [])
-
-  const hasData = graphData.nodes.length > 0
+  const hasData = rawNodes.length > 0
   const activeContextTerm = (manualOverride ? manualSearchTerm : activeSyncedTerm || '').trim()
   const contextLabel = manualOverride ? 'Manual Override' : 'Synced Context'
   const contextDescription = manualOverride
     ? 'Using a manual graph search. Reset to resume automatic sync.'
-    : (syncLabel || 'Auto-synced to the active patient and latest clinical context.')
-  const visibleContextTerms = manualOverride
-    ? [manualSearchTerm].filter(Boolean)
-    : syncedTerms
-
-  const handleSyncedTermSelect = (term) => {
-    if (manualOverride) return
-    setActiveSyncedTerm(term)
-  }
-
-  // Get edges connected to selected node
-  const getNodeEdges = (nodeId) => {
-    return graphData.links.filter(l =>
-      (l.source?.id || l.source) === nodeId ||
-      (l.target?.id || l.target) === nodeId
-    )
-  }
+    : syncLabel || 'Auto-synced to the active patient and latest clinical context.'
+  const visibleContextTerms = manualOverride ? [manualSearchTerm].filter(Boolean) : syncedTerms
 
   return (
     <>
@@ -448,249 +416,216 @@ function KnowledgeGraphPanel({
         />
       )}
       <div className={`graph-panel ${isExpanded ? 'graph-panel--expanded' : ''}`}>
-      <div className="graph-sync-bar">
-        <div className="graph-sync-top">
-          <div className="graph-sync-pill">
-            <Link2 size={12} />
-            <span>{contextLabel}</span>
-          </div>
-          {visibleContextTerms.length > 1 && !manualOverride && (
-            <div className="graph-sync-count">{visibleContextTerms.length} linked contexts</div>
-          )}
-          <button
-            type="button"
-            className="graph-expand-btn"
-            onClick={() => setIsExpanded(prev => !prev)}
-            title={isExpanded ? 'Close enlarged view' : 'Open enlarged view'}
-          >
-            {isExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-            <span>{isExpanded ? 'Close view' : 'Enlarge view'}</span>
-          </button>
-          {allowManualOverride && manualOverride && (
-            <button type="button" className="graph-sync-reset" onClick={resetToSyncedContext}>
-              <RefreshCw size={14} />
-              Reset
+
+        {/* Sync bar */}
+        <div className="graph-sync-bar">
+          <div className="graph-sync-top">
+            <div className="graph-sync-pill">
+              <Link2 size={12} />
+              <span>{contextLabel}</span>
+            </div>
+            {visibleContextTerms.length > 1 && !manualOverride && (
+              <div className="graph-sync-count">{visibleContextTerms.length} linked contexts</div>
+            )}
+            <button
+              type="button"
+              className="graph-expand-btn"
+              onClick={() => setIsExpanded((p) => !p)}
+              title={isExpanded ? 'Close enlarged view' : 'Open enlarged view'}
+            >
+              {isExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+              <span>{isExpanded ? 'Close view' : 'Enlarge view'}</span>
             </button>
+            {allowManualOverride && manualOverride && (
+              <button type="button" className="graph-sync-reset" onClick={resetToSyncedContext}>
+                <RefreshCw size={14} />
+                Reset
+              </button>
+            )}
+          </div>
+
+          {visibleContextTerms.length > 0 ? (
+            <div className="graph-context-chips">
+              {visibleContextTerms.map((term) => (
+                <button
+                  key={term}
+                  type="button"
+                  className={`graph-context-chip ${activeContextTerm === term ? 'active' : ''}`}
+                  onClick={() => !manualOverride && setActiveSyncedTerm(term)}
+                  disabled={manualOverride}
+                  title={term}
+                >
+                  {term}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="graph-sync-empty">No synced context yet.</div>
           )}
+
+          <div className="graph-sync-desc">
+            {contextDescription}
+            {patientId && !manualOverride ? ` Patient ${patientId} is included in the graph query.` : ''}
+          </div>
         </div>
 
-        {visibleContextTerms.length > 0 ? (
-          <div className="graph-context-chips">
-            {visibleContextTerms.map((term) => (
-              <button
-                key={term}
-                type="button"
-                className={`graph-context-chip ${activeContextTerm === term ? 'active' : ''}`}
-                onClick={() => handleSyncedTermSelect(term)}
-                disabled={manualOverride}
-                title={term}
-              >
-                {term}
-              </button>
-            ))}
+        {/* Search */}
+        <form className="graph-search" onSubmit={handleSearch}>
+          <div className="graph-search-input-wrap">
+            <Search size={18} className="graph-search-icon" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder={activeContextTerm ? `Override "${activeContextTerm}"` : 'Override graph focus'}
+              className="graph-search-input"
+            />
           </div>
-        ) : (
-          <div className="graph-sync-empty">No synced context yet.</div>
+          <button
+            type="submit"
+            className="graph-search-btn"
+            disabled={!allowManualOverride || isLoading || searchInput.trim().length < 2}
+          >
+            {isLoading && manualOverride ? <Loader2 size={16} className="spin" /> : 'Apply'}
+          </button>
+        </form>
+
+        {/* Loading state */}
+        {isLoading && (
+          <div className="graph-empty" style={{ opacity: 0.8 }}>
+            <Loader2 size={32} className="spin" style={{ marginBottom: '0.5rem', color: '#636EFA' }} />
+            <p>Loading graph for &ldquo;{activeContextTerm}&rdquo;…</p>
+          </div>
         )}
 
-        <div className="graph-sync-desc">
-          {contextDescription}
-          {patientId && !manualOverride ? ` Patient ${patientId} is included in the graph query.` : ''}
-        </div>
-      </div>
-
-      {/* Search bar */}
-      <form className="graph-search" onSubmit={handleSearch}>
-        <div className="graph-search-input-wrap">
-          <Search size={18} className="graph-search-icon" />
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder={activeContextTerm ? `Override "${activeContextTerm}"` : 'Override graph focus'}
-            className="graph-search-input"
-          />
-        </div>
-        <button
-          type="submit"
-          className="graph-search-btn"
-          disabled={!allowManualOverride || isLoading || searchInput.trim().length < 2}
-        >
-          {isLoading && manualOverride ? <Loader2 size={16} className="spin" /> : 'Apply'}
-        </button>
-      </form>
-
-      {/* Stats bar */}
-      {stats && hasData && (
-        <div className="graph-stats-bar">
-          <div className="graph-stat">
-            <Activity size={14} />
-            <span>{stats.symptoms} symptoms</span>
+        {/* Stats bar */}
+        {stats && hasData && !isLoading && (
+          <div className="graph-stats-bar">
+            <div className="graph-stat"><Activity size={14} /><span>{stats.symptoms} symptoms</span></div>
+            <div className="graph-stat"><Pill size={14} /><span>{stats.drugs} drugs</span></div>
+            <div className="graph-stat"><Shield size={14} /><span>{stats.precautions} precautions</span></div>
+            {stats.interactions > 0 && (
+              <div className="graph-stat graph-stat-warn">
+                <AlertTriangle size={14} /><span>{stats.interactions} interactions</span>
+              </div>
+            )}
+            {stats.contraindications > 0 && (
+              <div className="graph-stat graph-stat-danger">
+                <AlertTriangle size={14} /><span>{stats.contraindications} contraindicated</span>
+              </div>
+            )}
           </div>
-          <div className="graph-stat">
-            <Pill size={14} />
-            <span>{stats.drugs} drugs</span>
+        )}
+
+        {/* Error */}
+        {error && !isLoading && <div className="graph-error">{error}</div>}
+
+        {/* Empty state */}
+        {!hasData && !isLoading && !error && (
+          <div className="graph-empty">
+            <Network size={64} strokeWidth={1} />
+            <h3>Knowledge Graph</h3>
+            <p>
+              {activeContextTerm
+                ? `No graph data available for "${activeContextTerm}" yet.`
+                : 'Select a patient or ask a question to sync the graph automatically.'}
+            </p>
           </div>
-          <div className="graph-stat">
-            <Shield size={14} />
-            <span>{stats.precautions} precautions</span>
-          </div>
-          {stats.interactions > 0 && (
-            <div className="graph-stat graph-stat-warn">
-              <AlertTriangle size={14} />
-              <span>{stats.interactions} interactions</span>
-            </div>
-          )}
-          {stats.contraindications > 0 && (
-            <div className="graph-stat graph-stat-danger">
-              <AlertTriangle size={14} />
-              <span>{stats.contraindications} contraindicated</span>
-            </div>
-          )}
-        </div>
-      )}
+        )}
 
-      {/* Error */}
-      {error && <div className="graph-error">{error}</div>}
-
-      {/* Empty state */}
-      {!hasData && !isLoading && !error && (
-        <div className="graph-empty">
-          <Network size={64} strokeWidth={1} />
-          <h3>Knowledge Graph</h3>
-          <p>
-            {activeContextTerm
-              ? `No graph data is available for "${activeContextTerm}" yet.`
-              : 'Select a patient or ask a question to sync the graph automatically.'}
-          </p>
-        </div>
-      )}
-
-      {/* Graph + optional detail sidebar */}
-      {hasData && (
-        <div className={`graph-content-area ${isExpanded ? 'graph-content-area--expanded' : ''}`}>
-          <div className="graph-canvas-wrap" ref={canvasWrapRef}>
-            <GraphErrorBoundary>
-              <ForceGraph2D
-                ref={graphRef}
-                graphData={graphData}
+        {/* Graph canvas + sidebar */}
+        {hasData && !isLoading && (
+          <div className={`graph-content-area ${isExpanded ? 'graph-content-area--expanded' : ''}`}>
+            <div
+              className="graph-canvas-wrap"
+              ref={canvasWrapRef}
+              style={{ flex: 1, minHeight: 0, position: 'relative' }}
+            >
+              <ForceGraphCanvas
+                nodes={rawNodes}
+                edges={rawEdges}
                 width={dimensions.width}
                 height={dimensions.height}
-                nodeCanvasObject={nodeCanvasObject}
-                nodePointerAreaPaint={(node, color, ctx) => {
-                  if (!Number.isFinite(node.x)) return
-                  const r = Math.sqrt(node.val) * 1.5 + 4
-                  ctx.beginPath()
-                  ctx.arc(node.x, node.y, r, 0, 2 * Math.PI)
-                  ctx.fillStyle = color
-                  ctx.fill()
-                }}
-                linkCanvasObject={linkCanvasObject}
-                onNodeHover={(node) => setHoveredNode(node?.id || null)}
-                onNodeClick={handleNodeClick}
-                backgroundColor="transparent"
-                cooldownTicks={100}
-                d3AlphaDecay={0.03}
-                d3VelocityDecay={0.3}
-                onEngineStop={() => queueGraphFit(0)}
+                onNodeClick={(node) => setSelectedNode((prev) => prev?.id === node?.id ? null : node)}
+                selectedNodeId={selectedNode?.id || null}
               />
-            </GraphErrorBoundary>
+            </div>
+
+            {/* Detail sidebar */}
+            {selectedNode && (
+              <div className="graph-detail-sidebar">
+                <div className="graph-detail-header">
+                  <div className="graph-detail-type-badge" style={{ background: selectedNode.color }}>
+                    {selectedNode.type}
+                  </div>
+                  <button className="graph-detail-close" onClick={() => setSelectedNode(null)}>
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <h3 className="graph-detail-name">{selectedNode.label}</h3>
+
+                {selectedNode.title && <p className="graph-detail-desc">{selectedNode.title}</p>}
+
+                {selectedNode.cui && (
+                  <div className="graph-detail-meta">
+                    <span className="graph-detail-meta-label">CUI:</span>
+                    <span>{selectedNode.cui}</span>
+                  </div>
+                )}
+                {selectedNode.drug_class && (
+                  <div className="graph-detail-meta">
+                    <span className="graph-detail-meta-label">Class:</span>
+                    <span>{selectedNode.drug_class}</span>
+                  </div>
+                )}
+                {selectedNode.dosage && (
+                  <div className="graph-detail-meta">
+                    <span className="graph-detail-meta-label">Dosage:</span>
+                    <span>{selectedNode.dosage}</span>
+                  </div>
+                )}
+                {selectedNode.line && (
+                  <div className="graph-detail-meta">
+                    <span className="graph-detail-meta-label">Line:</span>
+                    <span className={`graph-line-badge ${selectedNode.line === 'first_line' ? 'first' : 'second'}`}>
+                      {selectedNode.line === 'first_line' ? '1st Line' : '2nd Line'}
+                    </span>
+                  </div>
+                )}
+
+                <div className="graph-detail-connections">
+                  <h4>Connections</h4>
+                  {getNodeEdges(selectedNode.id).map((edge, i) => {
+                    const otherId = edge.source === selectedNode.id ? edge.target : edge.source
+                    const other = rawNodes.find((n) => n.id === otherId)
+                    if (!other) return null
+                    return (
+                      <div key={i} className="graph-detail-connection" onClick={() => setSelectedNode(other)}>
+                        <span className="graph-conn-dot" style={{ background: other.color }} />
+                        <span className="graph-conn-name">{other.label}</span>
+                        <span className="graph-conn-rel">{edge.label}</span>
+                        <ChevronRight size={12} className="graph-conn-arrow" />
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
+        )}
 
-          {/* Detail sidebar */}
-          {selectedNode && (
-            <div className="graph-detail-sidebar">
-              <div className="graph-detail-header">
-                <div className="graph-detail-type-badge" style={{ background: selectedNode.color }}>
-                  {selectedNode.type}
-                </div>
-                <button className="graph-detail-close" onClick={() => setSelectedNode(null)}>
-                  <X size={16} />
-                </button>
+        {/* Legend */}
+        {hasData && !isLoading && (
+          <div className="graph-legend">
+            {LEGEND_ITEMS.map((item) => (
+              <div key={item.label} className="legend-item">
+                <span className="legend-dot" style={{ backgroundColor: item.color }} />
+                <span>{item.label}</span>
               </div>
-
-              <h3 className="graph-detail-name">{selectedNode.label}</h3>
-
-              {selectedNode.title && (
-                <p className="graph-detail-desc">{selectedNode.title}</p>
-              )}
-
-              {selectedNode.cui && (
-                <div className="graph-detail-meta">
-                  <span className="graph-detail-meta-label">CUI:</span>
-                  <span>{selectedNode.cui}</span>
-                </div>
-              )}
-
-              {selectedNode.drug_class && (
-                <div className="graph-detail-meta">
-                  <span className="graph-detail-meta-label">Class:</span>
-                  <span>{selectedNode.drug_class}</span>
-                </div>
-              )}
-
-              {selectedNode.dosage && (
-                <div className="graph-detail-meta">
-                  <span className="graph-detail-meta-label">Dosage:</span>
-                  <span>{selectedNode.dosage}</span>
-                </div>
-              )}
-
-              {selectedNode.line && (
-                <div className="graph-detail-meta">
-                  <span className="graph-detail-meta-label">Line:</span>
-                  <span className={`graph-line-badge ${selectedNode.line === 'first_line' ? 'first' : 'second'}`}>
-                    {selectedNode.line === 'first_line' ? '1st Line' : '2nd Line'}
-                  </span>
-                </div>
-              )}
-
-              {selectedNode.severity && (
-                <div className="graph-detail-meta">
-                  <span className="graph-detail-meta-label">Severity:</span>
-                  <span>{selectedNode.severity}/7</span>
-                </div>
-              )}
-
-              {/* Connected nodes */}
-              <div className="graph-detail-connections">
-                <h4>Connections</h4>
-                {getNodeEdges(selectedNode.id).map((edge, i) => {
-                  const otherId = (edge.source?.id || edge.source) === selectedNode.id
-                    ? (edge.target?.id || edge.target)
-                    : (edge.source?.id || edge.source)
-                  const otherNode = graphData.nodes.find(n => n.id === otherId)
-                  if (!otherNode) return null
-                  return (
-                    <div
-                      key={i}
-                      className="graph-detail-connection"
-                      onClick={() => setSelectedNode(otherNode)}
-                    >
-                      <span className="graph-conn-dot" style={{ background: otherNode.color }} />
-                      <span className="graph-conn-name">{otherNode.label}</span>
-                      <span className="graph-conn-rel">{edge.label}</span>
-                      <ChevronRight size={12} className="graph-conn-arrow" />
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Legend */}
-      {hasData && (
-        <div className="graph-legend">
-          {LEGEND_ITEMS.map((item) => (
-            <div key={item.label} className="legend-item">
-              <span className="legend-dot" style={{ backgroundColor: item.color }} />
-              <span>{item.label}</span>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
       </div>
     </>
   )

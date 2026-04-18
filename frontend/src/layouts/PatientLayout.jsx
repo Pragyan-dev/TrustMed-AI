@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Stethoscope, MessageSquare, Info, LogOut } from 'lucide-react'
+import { Stethoscope, MessageSquare, Info } from 'lucide-react'
 
 export default function PatientLayout({ children }) {
     const pathname = usePathname()
@@ -21,24 +21,31 @@ export default function PatientLayout({ children }) {
                 </Link>
 
                 <nav className="pt-navbar__links">
-                    <Link 
-                        href="/patient" 
+                    <Link
+                        href="/patient"
                         className={`pt-nav-link ${pathname === '/patient' ? 'active' : ''}`}
                     >
                         <MessageSquare size={16} />
                         Chat
                     </Link>
-                    <Link 
-                        href="/patient/about" 
+                    <Link
+                        href="/patient/about"
                         className={`pt-nav-link ${pathname === '/patient/about' ? 'active' : ''}`}
                     >
                         <Info size={16} />
                         About
                     </Link>
-                    <Link href="/" className="pt-nav-link">
-                        <LogOut size={16} />
-                        Switch Role
-                    </Link>
+
+                    <div className="pt-view-switch" aria-label="Current application view">
+                        <Link
+                            href="/clinician"
+                            className="pt-view-chip pt-view-chip--link"
+                            title="Switch to clinician dashboard"
+                        >
+                            Clinician
+                        </Link>
+                        <span className="pt-view-chip pt-view-chip--active">Patient View</span>
+                    </div>
                 </nav>
             </header>
 

@@ -356,6 +356,54 @@
     color: white;
 }
 
+/* Clinician / Patient View pill — mirrors .cd-topbar__view-switch */
+.pt-view-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 999px;
+    background: rgba(247, 250, 248, 0.96);
+    border: 1px solid rgba(46, 125, 82, 0.12);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    margin: 0 0.25rem;
+}
+
+.pt-view-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    padding: 0 0.82rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    text-decoration: none;
+    line-height: 1;
+    white-space: nowrap;
+    transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+}
+
+.pt-view-chip--active {
+    background: linear-gradient(135deg, #2E7D52, #348A5A);
+    color: #ffffff;
+    box-shadow: 0 8px 18px rgba(46, 125, 82, 0.18);
+    cursor: default;
+}
+
+.pt-view-chip--link {
+    color: #636E72;
+    background: transparent;
+}
+
+.pt-view-chip--link:hover {
+    background: rgba(46, 125, 82, 0.08);
+    color: #2E7D52;
+    text-decoration: none;
+}
+
 .pt-main {
     flex: 1;
     display: flex;

@@ -1,3 +1,5 @@
+'use client'
+
 import { useId, useState } from 'react'
 
 const VIEWBOX_WIDTH = 860

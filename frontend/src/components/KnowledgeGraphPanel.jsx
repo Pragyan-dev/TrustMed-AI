@@ -1,11 +1,11 @@
+'use client'
+
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   Search, Network, Loader2, X, Pill, Activity, Shield,
   AlertTriangle, RefreshCw, Link2, Maximize2, Minimize2, ChevronRight
 } from 'lucide-react'
 import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from 'd3-force'
-import { drag } from 'd3-drag'
-import { select } from 'd3-selection'
 
 const API_BASE = '/api'
 
@@ -192,12 +192,10 @@ function ForceGraphCanvas({ nodes: rawNodes, edges: rawEdges, width, height, onN
 
     simRef.current = sim
 
-    // ── Drag support ──
-    const canvasSel = select(canvas)
+    // ── Drag support via native pointer events ──
+    let dragNode = null
 
-    let dragSubject = null
-
-    const findNode = (event) => {
+    const getNodeAtEvent = (event) => {
       const rect = canvas.getBoundingClientRect()
       const scaleX = width / rect.width
       const scaleY = height / rect.height
@@ -209,45 +207,57 @@ function ForceGraphCanvas({ nodes: rawNodes, edges: rawEdges, width, height, onN
       })
     }
 
-    const dragHandler = drag()
-      .on('start', function (event) {
-        dragSubject = findNode(event.sourceEvent || event)
-        if (!dragSubject) return
-        if (!event.active) sim.alphaTarget(0.3).restart()
-        dragSubject.fx = dragSubject.x
-        dragSubject.fy = dragSubject.y
-      })
-      .on('drag', function (event) {
-        if (!dragSubject) return
-        const rect = canvas.getBoundingClientRect()
-        const scaleX = width / rect.width
-        const scaleY = height / rect.height
-        const sourceEvent = event.sourceEvent || event
-        dragSubject.fx = (sourceEvent.clientX - rect.left) * scaleX
-        dragSubject.fy = (sourceEvent.clientY - rect.top) * scaleY
-      })
-      .on('end', function (event) {
-        if (!dragSubject) return
-        if (!event.active) sim.alphaTarget(0)
-        dragSubject.fx = null
-        dragSubject.fy = null
-        dragSubject = null
-      })
+    const handlePointerDown = (event) => {
+      const node = getNodeAtEvent(event)
+      if (!node) return
+      dragNode = node
+      canvas.setPointerCapture(event.pointerId)
+      sim.alphaTarget(0.3).restart()
+      node.fx = node.x
+      node.fy = node.y
+      canvas.style.cursor = 'grabbing'
+    }
 
-    canvasSel.call(dragHandler)
+    const handlePointerMove = (event) => {
+      if (!dragNode) return
+      const rect = canvas.getBoundingClientRect()
+      const scaleX = width / rect.width
+      const scaleY = height / rect.height
+      dragNode.fx = (event.clientX - rect.left) * scaleX
+      dragNode.fy = (event.clientY - rect.top) * scaleY
+    }
+
+    const handlePointerUp = (_event) => {
+      if (!dragNode) return
+      sim.alphaTarget(0)
+      dragNode.fx = null
+      dragNode.fy = null
+      dragNode = null
+      canvas.style.cursor = 'grab'
+    }
 
     // Click to select node
     const handleClick = (event) => {
-      const node = findNode(event)
+      const node = getNodeAtEvent(event)
       onNodeClick(node || null)
     }
+
+    canvas.addEventListener('pointerdown', handlePointerDown)
+    canvas.addEventListener('pointermove', handlePointerMove)
+    canvas.addEventListener('pointerup', handlePointerUp)
+    canvas.addEventListener('pointercancel', handlePointerUp)
     canvas.addEventListener('click', handleClick)
 
     return () => {
       sim.stop()
+      canvas.removeEventListener('pointerdown', handlePointerDown)
+      canvas.removeEventListener('pointermove', handlePointerMove)
+      canvas.removeEventListener('pointerup', handlePointerUp)
+      canvas.removeEventListener('pointercancel', handlePointerUp)
       canvas.removeEventListener('click', handleClick)
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
     }
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rawNodes, rawEdges, width, height])
 

@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { BookOpen, X, Loader2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'

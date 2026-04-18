@@ -1,3 +1,5 @@
+'use client'
+
 import { X, Copy, Download, FileText, Stethoscope, Eye, Brain, ClipboardList, Loader2, Check } from 'lucide-react'
 import { useState } from 'react'
 

@@ -1,3 +1,5 @@
+'use client'
+
 import { X, Heart, Thermometer, Wind, Droplets, Activity, Pill, Stethoscope, ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, Image as ImageIcon, FileText, ArrowUpRight, Loader2, AlertCircle } from 'lucide-react'
 import { useState } from 'react'
 

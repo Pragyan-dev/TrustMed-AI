@@ -24,7 +24,7 @@ export default function PatientLayout({ children }) {
                         <Info size={16} />
                         About
                     </Link>
-                    <Link href="/" className="pt-nav-link">
+                    <Link href="/clinician" className="pt-nav-link">
                         <LogOut size={16} />
                         Switch Role
                     </Link>

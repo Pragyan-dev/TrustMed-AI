@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react'
 import { Grid2x2, ImageIcon, X, ZoomIn, Loader2 } from 'lucide-react'
 

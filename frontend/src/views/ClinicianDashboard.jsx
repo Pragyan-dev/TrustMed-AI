@@ -4,13 +4,13 @@ import {
     Send, Plus, Image as ImageIcon, X, Loader2, MessageSquare,
     Trash2, Stethoscope, FileText, Network, Shield,
     Eye, Cpu, PanelRightClose, PanelRight, Upload, Activity, BookOpen,
-    SlidersHorizontal
+    SlidersHorizontal, ChevronDown
 } from 'lucide-react'
 import KnowledgeGraphPanel from '../components/KnowledgeGraphPanel'
 import SOAPNoteModal from '../components/SOAPNoteModal'
 import PatientInfoPanel from '../components/PatientInfoPanel'
 import CompoundPanelViewer from '../components/CompoundPanelViewer'
-import { MarkdownWithHighlight } from '../components/MedicalTermHighlighter'
+import { MarkdownWithHighlight, SelectionExplainToolbar } from '../components/MedicalTermHighlighter'
 import SafeMarkdownWrapper from '../components/SafeMarkdownWrapper'
 import {
     AVAILABLE_TEXT_MODELS,
@@ -42,31 +42,6 @@ const cleanContent = (text) => {
     let t = text.trim()
     if (t.startsWith('"') && t.endsWith('"')) t = t.slice(1, -1)
     return t
-}
-
-async function readApiError(response, fallbackMessage) {
-    const contentType = response.headers.get('content-type') || ''
-
-    try {
-        if (contentType.includes('application/json')) {
-            const data = await response.json()
-            if (typeof data?.detail === 'string' && data.detail.trim()) {
-                return data.detail.trim()
-            }
-            if (typeof data?.message === 'string' && data.message.trim()) {
-                return data.message.trim()
-            }
-        }
-
-        const text = (await response.text()).trim()
-        if (text) {
-            return response.status >= 500 ? fallbackMessage : text.slice(0, 220)
-        }
-    } catch {
-        // Fall through to the fallback message.
-    }
-
-    return fallbackMessage
 }
 
 const streamSseEvents = async (response, onEvent) => {
@@ -130,12 +105,6 @@ export default function ClinicianDashboard() {
     // Patient
     const [selectedPatient, setSelectedPatient] = useState('')
     const [patientData, setPatientData] = useState(null)
-    const [patientAttachments, setPatientAttachments] = useState([])
-    const [patientAttachmentsLoading, setPatientAttachmentsLoading] = useState(false)
-    const [patientAttachmentsError, setPatientAttachmentsError] = useState('')
-    const [saveAttachmentLoading, setSaveAttachmentLoading] = useState(false)
-    const [saveAttachmentMessage, setSaveAttachmentMessage] = useState('')
-    const [saveAttachmentError, setSaveAttachmentError] = useState('')
 
     // Settings
     const [temperature, setTemperature] = useState(0.1)
@@ -154,12 +123,14 @@ export default function ClinicianDashboard() {
     const [graphContext, setGraphContext] = useState(null)
 
     // Term highlighter toggle
-    const [highlighterOn, setHighlighterOn] = useState(false)
+    const [highlighterOn, setHighlighterOn] = useState(true)
+    const [systemStatusOpen, setSystemStatusOpen] = useState(false)
 
     // Settings drawer
     const [settingsOpen, setSettingsOpen] = useState(false)
 
     const messagesEndRef = useRef(null)
+    const messagesContainerRef = useRef(null)
     const fileInputRef = useRef(null)
     const uploadPromiseRef = useRef(null)
     const textareaRef = useRef(null)
@@ -188,57 +159,12 @@ export default function ClinicianDashboard() {
         }
     }, [input])
 
-    const fetchPatientAttachments = useCallback(async (patId) => {
-        if (!patId) {
-            setPatientAttachments([])
-            setPatientAttachmentsError('')
-            setPatientAttachmentsLoading(false)
-            return []
-        }
-
-        setPatientAttachmentsLoading(true)
-        setPatientAttachmentsError('')
-
-        try {
-            const res = await fetch(`${API_BASE}/patient/${patId}/attachments`)
-            if (!res.ok) {
-                throw new Error(await readApiError(res, 'Unable to load patient imaging attachments.'))
-            }
-
-            const data = await res.json()
-            const attachments = Array.isArray(data.attachments) ? data.attachments : []
-            setPatientAttachments(attachments)
-            return attachments
-        } catch (err) {
-            console.error('Failed to load patient attachments:', err)
-            setPatientAttachments([])
-            setPatientAttachmentsError(
-                err instanceof Error && err.message
-                    ? err.message
-                    : 'Unable to load patient imaging attachments.'
-            )
-            return []
-        } finally {
-            setPatientAttachmentsLoading(false)
-        }
-    }, [])
-
     // ── Patient Loading ──────────────────────────────────────────────
     const loadPatient = async (patId) => {
         setGraphContext(null)
         setDrugAlerts([])
         setPatientData(null)
-        setPatientAttachments([])
-        setPatientAttachmentsError('')
-        setSaveAttachmentMessage('')
-        setSaveAttachmentError('')
-        if (!patId) {
-            setPatientData(null)
-            return
-        }
-
-        fetchPatientAttachments(patId)
-
+        if (!patId) { setPatientData(null); return }
         try {
             const res = await fetch(`${API_BASE}/patient/${patId}`)
             if (res.ok) {
@@ -310,8 +236,6 @@ export default function ClinicianDashboard() {
         setUploadedImagePath(null)
         setPanelData(null)
         setIsUploading(true)
-        setSaveAttachmentMessage('')
-        setSaveAttachmentError('')
         if (fileInputRef.current) fileInputRef.current.value = ''
 
         const formData = new FormData()
@@ -364,44 +288,7 @@ export default function ClinicianDashboard() {
         setImagePreview(null)
         setUploadedImagePath(null)
         setPanelData(null)
-        setSaveAttachmentMessage('')
-        setSaveAttachmentError('')
         if (fileInputRef.current) fileInputRef.current.value = ''
-    }
-
-    const saveUploadedImageToPatient = async () => {
-        if (!selectedPatient || !uploadedImagePath || saveAttachmentLoading) return
-
-        setSaveAttachmentLoading(true)
-        setSaveAttachmentMessage('')
-        setSaveAttachmentError('')
-
-        try {
-            const res = await fetch(`${API_BASE}/patient/${selectedPatient}/attachments/link-clinician-upload`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    image_path: uploadedImagePath,
-                    title: selectedImage?.name || null,
-                }),
-            })
-
-            if (!res.ok) {
-                throw new Error(await readApiError(res, 'Unable to save imaging to the patient record.'))
-            }
-
-            await fetchPatientAttachments(selectedPatient)
-            setSaveAttachmentMessage('Saved to patient imaging.')
-        } catch (err) {
-            console.error('Failed to save image to patient:', err)
-            setSaveAttachmentError(
-                err instanceof Error && err.message
-                    ? err.message
-                    : 'Unable to save imaging to the patient record.'
-            )
-        } finally {
-            setSaveAttachmentLoading(false)
-        }
     }
 
     // ── Pipeline Step Tracker ────────────────────────────────────────
@@ -614,8 +501,8 @@ export default function ClinicianDashboard() {
             {/* ═══ TOP BAR ═══ */}
             <header className="cd-topbar">
                 <div className="cd-topbar__brand">
-                    <div className="cd-topbar__logo"><Stethoscope /></div>
-                    <div className="cd-topbar__name">TrustMed <span>AI</span></div>
+                    <div className="cd-topbar__logo"><Stethoscope strokeWidth={2.2} /></div>
+                    <div className="cd-topbar__name">Synapse <span>AI</span></div>
                 </div>
 
                 <div className="cd-topbar__divider" />
@@ -636,7 +523,7 @@ export default function ClinicianDashboard() {
                 <button
                     className={`mth-toggle ${highlighterOn ? 'active' : ''}`}
                     onClick={() => setHighlighterOn(!highlighterOn)}
-                    title="Toggle term explanations"
+                    title="Term explanations: click or right-click underlined words, or select any phrase and use Explain"
                 >
                     <BookOpen size={14} />
                     Explain
@@ -795,39 +682,13 @@ export default function ClinicianDashboard() {
                             <div style={{ marginTop: '0.75rem' }}>
                                 <PatientInfoPanel
                                     patientData={patientData}
-                                    attachments={patientAttachments}
-                                    attachmentsLoading={patientAttachmentsLoading}
-                                    attachmentsError={patientAttachmentsError}
                                     onClose={() => setPatientData(null)}
                                 />
                             </div>
                         )}
                     </div>
 
-                    {/* System status */}
-                    <div className="cd-left__section">
-                        <div className="cd-left__label">
-                            <Shield size={12} /> System Status
-                        </div>
-                        <div className="cd-status-list">
-                            <div className="cd-status-item">
-                                <span className="cd-status-dot cd-status-dot--ok" />
-                                Knowledge Graph
-                            </div>
-                            <div className="cd-status-item">
-                                <span className="cd-status-dot cd-status-dot--ok" />
-                                Vector Store (4,199 images)
-                            </div>
-                            <div className="cd-status-item">
-                                <span className="cd-status-dot cd-status-dot--ok" />
-                                MIMIC-IV Linked
-                            </div>
-                            <div className="cd-status-item">
-                                <span className="cd-status-dot cd-status-dot--ok" />
-                                Drug Safety Engine
-                            </div>
-                        </div>
-                    </div>
+
 
                     {/* Image upload */}
                     <div className="cd-left__section">
@@ -868,45 +729,6 @@ export default function ClinicianDashboard() {
                                 <CompoundPanelViewer panelData={panelData} />
                             </div>
                         )}
-
-                        {uploadedImagePath && !isUploading && (
-                            <div className="cd-attachment-save">
-                                {selectedPatient ? (
-                                    <>
-                                        <button
-                                            type="button"
-                                            className="cd-attachment-save__button"
-                                            onClick={saveUploadedImageToPatient}
-                                            disabled={saveAttachmentLoading}
-                                        >
-                                            {saveAttachmentLoading ? (
-                                                <><Loader2 size={12} className="cd-spin" /> Saving…</>
-                                            ) : (
-                                                <><FileText size={12} /> Save to patient imaging</>
-                                            )}
-                                        </button>
-                                        <p className="cd-attachment-save__hint">
-                                            Patient {selectedPatient} will see this file in the Imaging tab.
-                                        </p>
-                                    </>
-                                ) : (
-                                    <p className="cd-attachment-save__hint">
-                                        Select a patient to save this upload into the patient imaging record.
-                                    </p>
-                                )}
-
-                                {saveAttachmentMessage && (
-                                    <div className="cd-attachment-save__status cd-attachment-save__status--success">
-                                        {saveAttachmentMessage}
-                                    </div>
-                                )}
-                                {saveAttachmentError && (
-                                    <div className="cd-attachment-save__status cd-attachment-save__status--error">
-                                        {saveAttachmentError}
-                                    </div>
-                                )}
-                            </div>
-                        )}
                     </div>
 
 
@@ -937,6 +759,47 @@ export default function ClinicianDashboard() {
                                 {streamingStatus}
                             </div>
                         )}
+
+                        <div className="cd-pipeline__status-dropdown" style={{ marginLeft: 'auto', position: 'relative' }}>
+                            <button
+                                className="cd-system-status-btn"
+                                onClick={() => setSystemStatusOpen(prev => !prev)}
+                                title="View System Status"
+                            >
+                                <Shield size={14} />
+                                <span className="cd-system-status-btn-label">System Status</span>
+                                <ChevronDown size={14} className="cd-system-status-chevron" style={{ transform: systemStatusOpen ? 'rotate(180deg)' : 'none' }} />
+                            </button>
+
+                            {systemStatusOpen && (
+                                <>
+                                    <div className="cd-popover-backdrop" onClick={() => setSystemStatusOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 90 }} />
+                                    <div className="cd-system-status-popover" style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 'max-content', minWidth: '220px', background: 'var(--cd-surface)', border: '1px solid var(--cd-border)', borderRadius: '12px', padding: '1rem', boxShadow: '0 12px 24px rgba(0,0,0,0.08)', zIndex: 100 }}>
+                                        <div className="cd-left__label" style={{ marginBottom: '0.75rem', marginTop: 0 }}>
+                                            <Activity size={12} /> Active Connectors
+                                        </div>
+                                        <div className="cd-status-list">
+                                            <div className="cd-status-item">
+                                                <span className="cd-status-dot cd-status-dot--ok" />
+                                                Knowledge Graph
+                                            </div>
+                                            <div className="cd-status-item">
+                                                <span className="cd-status-dot cd-status-dot--ok" />
+                                                Vector Store (4,199 images)
+                                            </div>
+                                            <div className="cd-status-item">
+                                                <span className="cd-status-dot cd-status-dot--ok" />
+                                                MIMIC-IV Linked
+                                            </div>
+                                            <div className="cd-status-item">
+                                                <span className="cd-status-dot cd-status-dot--ok" />
+                                                Drug Safety Engine
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
 
                     <div className="cd-chat-header">
@@ -958,17 +821,18 @@ export default function ClinicianDashboard() {
                     </div>
 
                     {/* Messages */}
-                    <div className="cd-messages">
+                    <div className="cd-messages" ref={messagesContainerRef}>
+                        <SelectionExplainToolbar enabled={highlighterOn} containerRef={messagesContainerRef} />
                         {messages.length === 0 ? (
                             <div className="cd-empty cd-empty--chat">
                                 <div className="cd-empty__panel">
                                     <div className="cd-empty__icon">
-                                        <Stethoscope size={28} />
+                                        <Plus size={18} />
                                     </div>
                                     <div className="cd-empty__kicker">
                                         {activePatientId ? `Patient ${activePatientId}` : 'Clinical workspace'}
                                     </div>
-                                    <h3>TrustMed Clinical Assistant</h3>
+                                    <h3>Synapse Clinical Assistant</h3>
                                     <p>
                                         Ground the next response with patient context, optional imaging, and one focused clinical question.
                                     </p>
@@ -1029,7 +893,7 @@ export default function ClinicianDashboard() {
                                     <div className={`cd-msg-stack cd-msg-stack--${msg.role}`}>
                                         <div className="cd-msg-meta">
                                             <span className="cd-msg-meta__name">
-                                                {msg.role === 'assistant' ? 'TrustMed AI' : 'You'}
+                                                {msg.role === 'assistant' ? 'Synapse AI' : 'You'}
                                             </span>
                                         </div>
                                         <div className={`cd-msg cd-msg--${msg.role}`}>

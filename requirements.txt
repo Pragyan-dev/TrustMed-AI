@@ -2,51 +2,52 @@
 # Install with: pip install -r requirements.txt
 
 # Core Framework
-streamlit>=1.28.0
-fastapi>=0.110.0
-uvicorn[standard]>=0.27.0
-python-multipart>=0.0.9
+streamlit>=1.56.0
+fastapi>=0.136.0
+uvicorn[standard]>=0.44.0
+python-multipart>=0.0.26
 
 # LangChain Ecosystem
-langchain>=0.1.0
-langchain-community>=0.0.10
-langchain-openai>=0.0.5
-langchain-core>=0.1.0
+langchain>=1.2.15
+langchain-community>=0.4.1
+langchain-openai>=1.1.14
+langchain-core>=1.3.0
+langchain-huggingface>=1.2.2
 
 # Vector Database
-chromadb>=0.4.0
+chromadb>=1.5.8
 
 # Embedding Models
-sentence-transformers>=2.2.0
+sentence-transformers>=5.4.1
 
 # Graph Database
-neo4j>=5.0.0
-langchain-neo4j>=0.1.0
+neo4j>=6.1.0
+langchain-neo4j>=0.9.0
 
 # OpenAI Compatible API (for OpenRouter)
-openai>=1.0.0
+openai>=2.32.0
 
 # HTTP Requests
-requests>=2.28.0
-certifi>=2024.0.0
+requests>=2.33.1
+certifi>=2026.2.25
 
 # Environment Variables
-python-dotenv>=1.0.0
+python-dotenv>=1.2.2
 
 # Data Processing
-pandas>=2.0.0
+pandas>=3.0.2
 
 # Optional: For UMLS API
 # requests is already included above
 
 # Image Processing & Multimodal
-pillow>=10.0.0
-opencv-python>=4.8.0
-torch>=2.0.0
-transformers>=4.30.0
+pillow>=12.2.0
+opencv-python>=4.13.0.92
+torch>=2.11.0
+transformers>=5.5.4
 
 # HuggingFace Datasets
-datasets>=2.14.0
+datasets>=4.8.4
 
 
 # Visualization

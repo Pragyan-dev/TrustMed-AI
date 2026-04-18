@@ -7,6 +7,17 @@ const API_BASE = '/api'
 // ── Client-side explanation cache (shared across all instances) ─────────
 const _explanationCache = {}
 
+async function fetchTermExplanationFromApi(term) {
+    const cacheKey = term.toLowerCase().trim()
+    if (_explanationCache[cacheKey]) return _explanationCache[cacheKey]
+    const res = await fetch(`${API_BASE}/explain-term?term=${encodeURIComponent(term)}`)
+    if (!res.ok) throw new Error('Explain request failed')
+    const data = await res.json()
+    const explanation = data.explanation ?? ''
+    _explanationCache[cacheKey] = explanation
+    return explanation
+}
+
 // ── Known medical terms + Latin/Greek root patterns ────────────────────
 const MEDICAL_TERMS = new Set([
     // Conditions
@@ -49,15 +60,17 @@ const MEDICAL_TERMS = new Set([
     'hemoglobin', 'hematocrit', 'platelets', 'creatinine',
     'troponin', 'procalcitonin', 'lactate', 'albumin', 'bilirubin',
     'electrolytes', 'systolic', 'diastolic', 'tachypnea',
-    'spo2', 'o2 saturation', 'bmi', 'gfr',
+    'spo2', 'o2 saturation', 'bmi', 'gfr', 'lvad', 'ef', 'bnp', 'cbc', 'bmp',
+    'intubation', 'extubation', 'ventilator', 'vasopressor', 'inotrope',
+    'ejection fraction', 'd-dimer', 'lactic acid',
     // Anatomy
     'pleural', 'pericardial', 'peritoneal', 'mesenteric',
     'pulmonary', 'hepatic', 'renal', 'cerebral', 'cervical',
     'thoracic', 'lumbar', 'sacral', 'femoral', 'radial',
 ])
 
-// Regex for Latin/Greek medical suffixes/prefixes not in the list
-const MEDICAL_PATTERN = /\b[A-Za-z]*(?:itis|osis|emia|uria|pathy|ectomy|otomy|ostomy|plasty|scopy|graphy|algia|dynia|megaly|penia|cytosis|trophy|plasia|genesis|lysis|stasis|philia|phobia|sclerosis|oma)\b/gi
+// Regex for Latin/Greek medical suffixes / technical-looking terms not in the list
+const MEDICAL_PATTERN = /\b[A-Za-z]*(?:itis|osis|emia|uria|pathy|ectomy|otomy|ostomy|plasty|scopy|graphy|algia|dynia|megaly|penia|cytosis|trophy|plasia|genesis|lysis|stasis|philia|sclerosis|oma|plegia|paresis|asthenia|ology|scopic|genic|lytic|ectasia|ectasis|pnea|dipsia|phagia|stenotic|stolic|dystolic)\b/gi
 
 /**
  * MedicalTermHighlighter
@@ -106,24 +119,32 @@ export default function MedicalTermHighlighter({ text, enabled = true, children 
         }
 
         setLoading(true)
-        setExplanation('')
+        setExplanation(null) // Clear previous
 
         try {
             const res = await fetch(`${API_BASE}/explain-term?term=${encodeURIComponent(term)}`)
+            if (!res.ok) throw new Error('Explain request failed')
             const data = await res.json()
-            _explanationCache[cacheKey] = data.explanation
-            setExplanation(data.explanation)
+            
+            const result = {
+                text: data.explanation ?? '',
+                note: data.clinician_note,
+                source: data.source || 'Library'
+            }
+            
+            _explanationCache[cacheKey] = result
+            setExplanation(result)
         } catch {
-            setExplanation('Unable to load explanation right now.')
+            setExplanation({ text: 'Unable to load explanation right now.', source: 'Error' })
         } finally {
             setLoading(false)
         }
     }, [])
 
-    const handleTermClick = (e, term) => {
+    const handleTermActivate = (e, term) => {
         e.preventDefault()
         e.stopPropagation()
-        const rect = e.target.getBoundingClientRect()
+        const rect = (e.currentTarget || e.target).getBoundingClientRect()
         if (activeTerm === term) {
             setActiveTerm(null)
         } else {
@@ -182,10 +203,17 @@ export default function MedicalTermHighlighter({ text, enabled = true, children 
                 <span
                     key={`${m.start}-${m.term}`}
                     className="mth-term"
-                    onClick={(e) => handleTermClick(e, m.term)}
+                    onClick={(e) => handleTermActivate(e, m.term)}
+                    onContextMenu={(e) => handleTermActivate(e, m.term)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            handleTermActivate(e, m.term)
+                        }
+                    }}
                     role="button"
                     tabIndex={0}
-                    title="Click to explain"
+                    title="Right-click for medical dictionary explanation"
                 >
                     {m.term}
                 </span>
@@ -221,31 +249,201 @@ export default function MedicalTermHighlighter({ text, enabled = true, children 
 
             {/* Popover */}
             {activeTerm && (
-                <div
+                <span
                     ref={popoverRef}
                     className="mth-popover"
                     style={{ top: popoverPos.top, left: popoverPos.left }}
                 >
-                    <div className="mth-popover__header">
+                    <span className="mth-popover__header">
                         <BookOpen size={14} />
                         <span className="mth-popover__term">{activeTerm}</span>
-                        <button className="mth-popover__close" onClick={() => setActiveTerm(null)}>
+                        <span className="mth-popover__source">{explanation?.source || '...'}</span>
+                        <button type="button" className="mth-popover__close" onClick={() => setActiveTerm(null)}>
                             <X size={12} />
                         </button>
-                    </div>
-                    <div className="mth-popover__body">
+                    </span>
+                    <span className="mth-popover__body">
                         {loading ? (
-                            <div className="mth-popover__loading">
+                            <span className="mth-popover__loading">
                                 <Loader2 size={16} className="mth-spin" />
-                                <span>Looking this up…</span>
-                            </div>
+                                <span>Querying dictionary…</span>
+                            </span>
                         ) : (
-                            <p>{explanation}</p>
+                            <>
+                                <span className="mth-popover__text">{explanation?.text}</span>
+                                {explanation?.note && (
+                                    <span className="mth-popover__note">
+                                        <strong>Clinician Note:</strong> {explanation.note}
+                                    </span>
+                                )}
+                            </>
                         )}
-                    </div>
-                </div>
+                    </span>
+                </span>
             )}
         </span>
+    )
+}
+
+/**
+ * Floating “Explain” for any selected text inside a message (2–200 chars).
+ * Use when auto-highlight misses a term or for multi-word phrases.
+ */
+export function SelectionExplainToolbar({ enabled, containerRef }) {
+    const [buttonPos, setButtonPos] = useState(null)
+    const [selectedText, setSelectedText] = useState('')
+    const [activeTerm, setActiveTerm] = useState(null)
+    const [explanation, setExplanation] = useState('')
+    const [loading, setLoading] = useState(false)
+    const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0 })
+    const popoverRef = useRef(null)
+
+    useEffect(() => {
+        if (!enabled) {
+            setButtonPos(null)
+            setSelectedText('')
+            return
+        }
+        const onMouseUp = () => {
+            requestAnimationFrame(() => {
+                const sel = window.getSelection()
+                if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
+                    setButtonPos(null)
+                    return
+                }
+                const root = containerRef?.current
+                if (!root) return
+                const range = sel.getRangeAt(0)
+                let anchor = range.commonAncestorContainer
+                if (anchor.nodeType === Node.TEXT_NODE) anchor = anchor.parentElement
+                if (!anchor || !root.contains(anchor)) {
+                    setButtonPos(null)
+                    return
+                }
+                if (anchor.closest('input, textarea, [contenteditable="true"]')) {
+                    setButtonPos(null)
+                    return
+                }
+                const text = sel.toString().replace(/\s+/g, ' ').trim()
+                if (text.length < 2 || text.length > 200) {
+                    setButtonPos(null)
+                    return
+                }
+                const rect = range.getBoundingClientRect()
+                setSelectedText(text)
+                setButtonPos({
+                    top: rect.bottom + window.scrollY + 6,
+                    left: Math.min(rect.left + window.scrollX, window.innerWidth - 140),
+                })
+            })
+        }
+        document.addEventListener('mouseup', onMouseUp)
+        return () => document.removeEventListener('mouseup', onMouseUp)
+    }, [enabled, containerRef])
+
+    useEffect(() => {
+        if (!activeTerm) return
+        const handler = (e) => {
+            if (popoverRef.current && !popoverRef.current.contains(e.target)) {
+                setActiveTerm(null)
+            }
+        }
+        document.addEventListener('mousedown', handler)
+        return () => document.removeEventListener('mousedown', handler)
+    }, [activeTerm])
+
+    const openSelectionExplain = useCallback(async () => {
+        const term = selectedText.trim().slice(0, 200)
+        if (term.length < 2 || !buttonPos) return
+        setPopoverPos({
+            top: buttonPos.top + 4,
+            left: Math.min(buttonPos.left, window.innerWidth - 320),
+        })
+        setActiveTerm(term)
+        setButtonPos(null)
+        window.getSelection()?.removeAllRanges()
+
+        const cacheKey = term.toLowerCase()
+        if (_explanationCache[cacheKey]) {
+            setExplanation(_explanationCache[cacheKey])
+            setLoading(false)
+            return
+        }
+        setLoading(true)
+        setExplanation(null)
+        try {
+            const res = await fetch(`${API_BASE}/explain-term?term=${encodeURIComponent(term)}`)
+            if (!res.ok) throw new Error('Explain request failed')
+            const data = await res.json()
+            
+            const result = {
+                text: data.explanation ?? '',
+                note: data.clinician_note,
+                source: data.source || 'Library'
+            }
+            
+            _explanationCache[cacheKey] = result
+            setExplanation(result)
+        } catch {
+            setExplanation({ text: 'Unable to load explanation right now.', source: 'Error' })
+        } finally {
+            setLoading(false)
+        }
+    }, [selectedText, buttonPos])
+
+    if (!enabled) return null
+
+    return (
+        <>
+            {buttonPos && (
+                <button
+                    type="button"
+                    className="mth-selection-btn"
+                    style={{ top: buttonPos.top, left: buttonPos.left }}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={(e) => {
+                        e.stopPropagation()
+                        openSelectionExplain()
+                    }}
+                >
+                    <BookOpen size={14} />
+                    Explain
+                </button>
+            )}
+            {activeTerm && (
+                <span
+                    ref={popoverRef}
+                    className="mth-popover"
+                    style={{ top: popoverPos.top, left: popoverPos.left }}
+                >
+                    <span className="mth-popover__header">
+                        <BookOpen size={14} />
+                        <span className="mth-popover__term">{activeTerm}</span>
+                        <span className="mth-popover__source">{explanation?.source || '...'}</span>
+                        <button type="button" className="mth-popover__close" onClick={() => setActiveTerm(null)}>
+                            <X size={12} />
+                        </button>
+                    </span>
+                    <span className="mth-popover__body">
+                        {loading ? (
+                            <span className="mth-popover__loading">
+                                <Loader2 size={16} className="mth-spin" />
+                                <span>Querying library…</span>
+                            </span>
+                        ) : (
+                            <>
+                                <span className="mth-popover__text">{explanation?.text}</span>
+                                {explanation?.note && (
+                                    <span className="mth-popover__note">
+                                        <strong>Clinician Note:</strong> {explanation.note}
+                                    </span>
+                                )}
+                            </>
+                        )}
+                    </span>
+                </span>
+            )}
+        </>
     )
 }
 
@@ -261,6 +459,7 @@ export function MarkdownWithHighlight({ children, enabled = true }) {
                 p: ({ node: _node, ...props }) => <p {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></p>,
                 li: ({ node: _node, ...props }) => <li {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></li>,
                 td: ({ node: _node, ...props }) => <td {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></td>,
+                th: ({ node: _node, ...props }) => <th {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></th>,
                 span: ({ node: _node, ...props }) => <span {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></span>,
                 strong: ({ node: _node, ...props }) => <strong {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></strong>,
                 em: ({ node: _node, ...props }) => <em {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></em>,
@@ -268,6 +467,7 @@ export function MarkdownWithHighlight({ children, enabled = true }) {
                 h2: ({ node: _node, ...props }) => <h2 {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></h2>,
                 h3: ({ node: _node, ...props }) => <h3 {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></h3>,
                 h4: ({ node: _node, ...props }) => <h4 {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></h4>,
+                blockquote: ({ node: _node, ...props }) => <blockquote {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></blockquote>,
             }}
         >
             {children}

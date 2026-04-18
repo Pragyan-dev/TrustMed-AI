@@ -3,6 +3,9 @@
 
 # Core Framework
 streamlit>=1.28.0
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
 
 # LangChain Ecosystem
 langchain>=0.1.0

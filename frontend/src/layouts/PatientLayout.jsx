@@ -11,7 +11,7 @@ export default function PatientLayout({ children }) {
                         <Stethoscope />
                     </div>
                     <div className="pt-navbar__title">
-                        TrustMed <span>AI</span>
+                        Synapse <span>AI</span>
                     </div>
                 </Link>
 

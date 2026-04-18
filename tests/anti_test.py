@@ -365,19 +365,38 @@ class OpenAIChatLLM:
         self._setup()
 
     def _setup(self) -> None:
+        # New SDK style (>=1.0)
         try:
-            # New SDK style (>=1.0)
             from openai import OpenAI  # type: ignore
-            self._client = OpenAI()
-            self._mode = "v1"
-        except Exception:
-            try:
-                # Legacy SDK
-                import openai  # type: ignore
-                self._client = openai
-                self._mode = "legacy"
-            except Exception:
-                raise RuntimeError("OpenAI SDK not installed. Install `openai` or use the LocalHeuristicLLM.")
+        except ImportError:
+            OpenAI = None  # type: ignore
+
+        if OpenAI is not None:
+            openai_key = os.environ.get("OPENAI_API_KEY")
+            openrouter_key = os.environ.get("OPENROUTER_API_KEY")
+            if openai_key:
+                self._client = OpenAI(api_key=openai_key)
+                self._mode = "v1"
+                return
+            if openrouter_key:
+                # Allow using OpenRouter with the OpenAI-compatible SDK.
+                self._client = OpenAI(
+                    api_key=openrouter_key,
+                    base_url=os.environ.get("OPENAI_BASE_URL", "https://openrouter.ai/api/v1"),
+                )
+                self._mode = "v1"
+                return
+            raise RuntimeError(
+                "Missing API key. Set OPENAI_API_KEY (OpenAI) or OPENROUTER_API_KEY (OpenRouter)."
+            )
+
+        # Legacy SDK fallback
+        try:
+            import openai  # type: ignore
+        except Exception as e:
+            raise RuntimeError("OpenAI SDK not installed. Install `openai` or use the LocalHeuristicLLM.") from e
+        self._client = openai
+        self._mode = "legacy"
 
     def _chat(self, system_prompt: str, user_prompt: str) -> str:
         if self._mode == "v1":

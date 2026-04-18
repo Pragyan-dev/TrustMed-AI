@@ -1,5 +1,5 @@
 /* ==========================================================================
-   TrustMed AI – Clinician Dashboard (Warm Green Light Theme)
+   Synapse AI – Clinician Dashboard (Warm Green Light Theme)
    Matching the patient portal palette for visual consistency
    ========================================================================== */
 
@@ -861,6 +861,33 @@
     }
 }
 
+.cd-system-status-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border: 1px solid var(--cd-border);
+    color: var(--cd-text-muted);
+    background: var(--cd-surface2);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cd-system-status-btn:hover {
+    color: var(--cd-text);
+    border-color: rgba(46, 125, 82, 0.2);
+    background: white;
+}
+
+.cd-system-status-chevron {
+    transition: transform 0.2s;
+}
+
 /* Messages area */
 .cd-messages {
     flex: 1;
@@ -1322,17 +1349,21 @@
         rgba(255, 255, 255, 0.9);
     border: 1px solid rgba(46, 125, 82, 0.12);
     box-shadow: 0 24px 48px rgba(15, 23, 42, 0.06);
+    position: relative;
 }
 
 .cd-empty__icon {
-    width: 64px;
-    height: 64px;
-    border-radius: 16px;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
     background: var(--cd-surface2);
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--cd-text-muted);
+    position: absolute;
+    top: 1.5rem;
+    left: 1.5rem;
 }
 
 .cd-empty__kicker {
@@ -1347,18 +1378,21 @@
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+    margin: 0 auto;
 }
 
 .cd-empty h3 {
     font-family: var(--font-heading);
     color: var(--cd-text-dim);
     font-size: 1.24rem;
+    margin: 1rem auto 0;
 }
 
 .cd-empty p {
     font-size: 0.9rem;
     max-width: 470px;
     color: var(--cd-text-dim);
+    margin: 0.5rem auto 0;
 }
 
 .cd-empty__readiness {
@@ -1894,8 +1928,15 @@
 
 /* Heart rate pulse animation */
 @keyframes vitalPulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
 }
 
 .cd .vital-pulse {
@@ -2074,7 +2115,7 @@
     flex-direction: column;
 }
 
-.cd .cd-right__content > :not(.graph-panel) {
+.cd .cd-right__content> :not(.graph-panel) {
     padding: 1rem;
 }
 
@@ -2121,6 +2162,9 @@
 
 .cd .graph-panel--expanded .graph-canvas-wrap {
     min-height: 56vh;
+    width: 100%;
+    max-width: min(980px, 86%);
+    margin: 0 auto;
 }
 
 .cd .graph-sync-bar {
@@ -2428,10 +2472,13 @@
     margin: 0;
 }
 
-/* Graph content area — fills remaining space */
+/* Graph content area — row: canvas + detail sidebar (sidebar must not overlay canvas or zoom centers under the sidebar) */
 .cd .graph-content-area {
     flex: 1;
     display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    position: relative;
     gap: 0;
     min-height: 340px;
     border-radius: 18px;
@@ -2452,17 +2499,55 @@
     position: relative;
     background: transparent;
     min-width: 0;
+    max-width: 100%;
     min-height: 340px;
+    margin: 0 auto;
 }
 
-/* Detail sidebar inside graph */
+.cd .graph-canvas-controls {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 6;
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.cd .graph-canvas-control {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    border: 1px solid rgba(46, 125, 82, 0.16);
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--cd-text-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+    transition: all 0.18s ease;
+}
+
+.cd .graph-canvas-control:hover {
+    border-color: var(--cd-accent);
+    color: var(--cd-accent);
+    background: #ffffff;
+}
+
+/* Detail sidebar: flex sibling so canvas width matches the visible plot area */
 .cd .graph-detail-sidebar {
+    flex: 0 0 260px;
     width: 260px;
+    max-width: 40%;
+    min-width: 0;
     background: var(--cd-surface2);
     border-left: 1px solid var(--cd-border);
     padding: 14px;
     overflow-y: auto;
+    overflow-x: hidden;
     color: var(--cd-text);
+    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.06);
 }
 
 .cd .graph-detail-header {

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Stethoscope, Heart, ArrowRight } from 'lucide-react'
+import { Stethoscope, Heart, ArrowRight, Plus } from 'lucide-react'
 
 export default function RoleSelector() {
     return (
@@ -7,7 +7,7 @@ export default function RoleSelector() {
             <div className="role-selector__logo">
                 <Stethoscope />
             </div>
-            <h1>TrustMed AI</h1>
+            <h1>Synapse AI</h1>
             <p className="role-selector__subtitle">
                 Neuro-Symbolic Clinical Decision Support
             </p>
@@ -15,7 +15,7 @@ export default function RoleSelector() {
             <div className="role-selector__cards">
                 <Link href="/clinician" className="role-card role-card--clinician">
                     <div className="role-card__icon">
-                        <Stethoscope size={32} />
+                        <Plus size={32} strokeWidth={2.5} />
                     </div>
                     <h2>Clinician Dashboard</h2>
                     <p>
@@ -43,7 +43,7 @@ export default function RoleSelector() {
             </div>
 
             <p className="role-selector__footer">
-                TrustMed AI is for clinical decision support only.
+                Synapse AI is for clinical decision support only.
                 Always verify with qualified medical professionals.
             </p>
         </div>

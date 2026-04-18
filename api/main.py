@@ -8,6 +8,7 @@ import os
 import sys
 import json
 import ast
+# Forced reload to pick up src changes
 import asyncio
 import uuid
 import time
@@ -1409,39 +1410,109 @@ async def patient_summary(patient_id: str):
         raise HTTPException(status_code=500, detail=f"Summary generation failed: {str(e)}")
 
 
-EXPLAIN_TERM_PROMPT = """Explain the medical term "{term}" in plain English at an 8th-grade reading level.
-Keep it to 2-3 sentences. Be warm and reassuring. Do not give medical advice.
-Just explain what the term means in simple language a patient can understand."""
+
+from medical_dictionary import MEDICAL_DICTIONARY, get_medical_explanation
+
+EXPLAIN_TERM_PROMPT = """You are a medical dictionary and clinical summarizer. 
+Explain the term "{term}" in a way that is clear for clinicians but understandable for patients.
+Provide a 2-3 sentence definition.
+
+Respond with valid JSON including:
+- "definition": A plain-English explanation (8th grade level).
+- "clinician_note": A brief technical note for healthcare providers (optional, if applicable).
+- "source": "AI Library"
+"""
+
 EXPLAIN_TERM_FALLBACK = "Explanation unavailable. Please consult your physician."
 
 
 @app.get("/explain-term")
 async def explain_term(term: str = Query(..., min_length=2, max_length=200)):
     """
-    Explain a medical term in plain English using the LLM.
-    Responses are cached to avoid repeated API calls for the same term.
+    Explain a medical term using a local dictionary or an LLM.
     """
-    # Check cache first
     cache_key = term.strip().lower()
+    
+    # 1. Local Dictionary Check (Instant)
+    local_data = get_medical_explanation(cache_key)
+    if local_data:
+        return {
+            "term": term, 
+            "explanation": local_data["definition"],
+            "clinician_note": local_data.get("clinician_note"),
+            "source": "Medical Dictionary",
+            "cached": True
+        }
+
+    # 2. LRU Cache Check
     cached_explanation = _term_cache.get(cache_key)
     if cached_explanation and cached_explanation != EXPLAIN_TERM_FALLBACK:
-        return {"term": term, "explanation": cached_explanation, "cached": True}
+        return {"term": term, "explanation": cached_explanation, "source": "AI Library", "cached": True}
+
+    # 3. External API Fallbacks (Replaces Rate-limited AI)
+    import urllib.request
+    import urllib.parse
+    import urllib.error
+
+    def fetch_definitions():
+        # First try Free Dictionary API
+        try:
+            url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{urllib.parse.quote(term)}"
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                data = json.loads(resp.read().decode('utf-8'))
+                if data and isinstance(data, list) and len(data) > 0:
+                    meanings = data[0].get("meanings", [])
+                    if meanings:
+                        definitions = meanings[0].get("definitions", [])
+                        if definitions:
+                            return definitions[0].get("definition"), "English Dictionary"
+        except Exception:
+            pass
+
+        # If not found, try Wikipedia Open Search
+        try:
+            search_url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={urllib.parse.quote(term)}&utf8=&format=json"
+            req = urllib.request.Request(search_url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                data = json.loads(resp.read().decode('utf-8'))
+                results = data.get("query", {}).get("search", [])
+                if results:
+                    title = results[0]["title"]
+                    # Fetch short extract
+                    extract_url = f"https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exsentences=2&exlimit=1&titles={urllib.parse.quote(title)}&explaintext=1&format=json&formatversion=2"
+                    req2 = urllib.request.Request(extract_url, headers={'User-Agent': 'Mozilla/5.0'})
+                    with urllib.request.urlopen(req2, timeout=3) as resp2:
+                        data2 = json.loads(resp2.read().decode('utf-8'))
+                        pages = data2.get("query", {}).get("pages", [])
+                        if pages and "extract" in pages[0] and pages[0]["extract"].strip():
+                            return pages[0]["extract"].strip(), "Wikipedia Glossary"
+        except Exception:
+            pass
+            
+        return None, None
 
     try:
-        prompt = EXPLAIN_TERM_PROMPT.format(term=term)
-        explanation = await ask_trustmed_direct(
-            prompt,
-            model="stepfun/step-3.5-flash:free"
-        )
+        explanation, source = await asyncio.to_thread(fetch_definitions)
+        
+        if explanation:
+            if explanation != EXPLAIN_TERM_FALLBACK:
+                _term_cache[cache_key] = explanation
 
-        # Only cache successful explanations, not placeholder fallbacks from transient SSL/API failures.
-        if explanation != EXPLAIN_TERM_FALLBACK:
-            _term_cache[cache_key] = explanation
+            return {
+                "term": term, 
+                "explanation": explanation, 
+                "clinician_note": None,
+                "source": source,
+                "cached": False
+            }
 
-        return {"term": term, "explanation": explanation, "cached": False}
+        # Final fallback
+        return {"term": term, "explanation": "Term not found in English or medical dictionary.", "source": "System"}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to explain term: {str(e)}")
+        # Emergency fallback to allow app to continue
+        return {"term": term, "explanation": "Explanation unavailable.", "source": "System", "error": str(e)}
 
 
 if __name__ == "__main__":

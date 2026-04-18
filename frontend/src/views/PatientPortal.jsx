@@ -9,7 +9,7 @@ import {
     Clock, Scan, CircleDot, Gauge, FileText, Upload, ArrowUpRight, Download
 } from 'lucide-react'
 import VitalSparkline from '../components/VitalSparkline'
-import { MarkdownWithHighlight } from '../components/MedicalTermHighlighter'
+import { MarkdownWithHighlight, SelectionExplainToolbar } from '../components/MedicalTermHighlighter'
 import SafeMarkdownWrapper from '../components/SafeMarkdownWrapper'
 import VitalTrendChart from '../components/VitalTrendChart'
 import { AVAILABLE_TEXT_MODELS, DEFAULT_TEXT_MODEL } from '../lib/modelOptions'
@@ -181,7 +181,7 @@ async function readApiError(response, fallbackMessage) {
 function normalizeFetchError(error, fallbackMessage) {
     const message = error instanceof Error ? error.message : ''
     if (message.includes('Failed to fetch') || message.includes('NetworkError')) {
-        return 'TrustMed AI could not reach the backend. Start the FastAPI server on http://localhost:8000 and try again.'
+        return 'Synapse AI could not reach the backend. Start the FastAPI server on http://localhost:8000 and try again.'
     }
     return fallbackMessage
 }
@@ -330,6 +330,7 @@ export default function PatientPortal() {
     const [chatLoading, setChatLoading] = useState(false)
     const [sessionId, setSessionId] = useState(null)
     const chatEndRef = useRef(null)
+    const patientChatMessagesRef = useRef(null)
     const [activeSection, setActiveSection] = useState('profile')
     const [assistantMinimized, setAssistantMinimized] = useState(false)
     const [assistantExpanded, setAssistantExpanded] = useState(false)
@@ -1431,7 +1432,7 @@ export default function PatientPortal() {
                         <div className="pp-assistant__header">
                             <div className="pp-assistant__badge"><Stethoscope size={24} strokeWidth={2.2} /></div>
                             <div className="pp-assistant__header-copy">
-                                <div className="pp-assistant__title">TrustMed AI</div>
+                                <div className="pp-assistant__title">Synapse AI</div>
                                 <div className="pp-assistant__subtitle">Ask about your health record</div>
                             </div>
                             <div className="pp-assistant__controls">
@@ -1479,7 +1480,8 @@ export default function PatientPortal() {
                                 </div>
                             ) : (
                                 <div className="pp-chat pp-chat--sidebar">
-                                    <div className="pp-chat__messages">
+                                    <div className="pp-chat__messages" ref={patientChatMessagesRef}>
+                                        <SelectionExplainToolbar enabled containerRef={patientChatMessagesRef} />
                                         {chatMessages.map((m, i) => (
                                             <div key={i} className={`pp-chat__msg pp-chat__msg--${m.role}`}>
                                                 {m.role === 'assistant' ? (

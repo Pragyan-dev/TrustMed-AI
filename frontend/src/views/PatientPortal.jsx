@@ -8,7 +8,6 @@ import {
     User, TrendingUp, TrendingDown, Minus, Calendar, Beaker,
     Clock, Scan, CircleDot, Gauge, FileText, Upload, ArrowUpRight, Download
 } from 'lucide-react'
-import VitalSparkline from '../components/VitalSparkline'
 import { MarkdownWithHighlight, SelectionExplainToolbar } from '../components/MedicalTermHighlighter'
 import SafeMarkdownWrapper from '../components/SafeMarkdownWrapper'
 import VitalTrendChart from '../components/VitalTrendChart'
@@ -974,13 +973,6 @@ export default function PatientPortal() {
                                                                 </div>
                                                                 <div className="pp-vital-summary__value">{chart.valueText}</div>
                                                                 <div className="pp-vital-summary__label">{chart.title}</div>
-                                                                <div className="pp-vital-summary__spark">
-                                                                    <VitalSparkline
-                                                                        points={chart.points}
-                                                                        color={color}
-                                                                        ariaLabel={`${chart.title} trend`}
-                                                                    />
-                                                                </div>
                                                             </div>
                                                         )
                                                     })}

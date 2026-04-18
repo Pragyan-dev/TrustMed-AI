@@ -1,12 +1,12 @@
 import { useId, useState } from 'react'
 
-const VIEWBOX_WIDTH = 860
-const VIEWBOX_HEIGHT = 280
+const VIEWBOX_WIDTH = 960
+const VIEWBOX_HEIGHT = 360
 const MARGIN = {
-    top: 18,
-    right: 20,
-    bottom: 50,
-    left: 64,
+    top: 24,
+    right: 28,
+    bottom: 56,
+    left: 72,
 }
 
 function isFiniteNumber(value) {
@@ -324,32 +324,52 @@ export default function VitalTrendChart({
                         )}
 
                         {/* Line */}
-                        <path d={linePath} fill="none" stroke={`url(#${clipId}-line)`} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                        <path
+                            d={linePath}
+                            fill="none"
+                            stroke={`url(#${clipId}-line)`}
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="pp-trend-chart__line pp-trend-chart__line--v2"
+                            pathLength="1"
+                        />
 
                         {/* Points */}
                         {series.map((point, index) => {
                             const cx = xForIndex(index)
                             const cy = yForValue(point.value)
                             const isActive = hoveredIndex === index
+                            const delay = `${Math.min(index * 60, 1400)}ms`
                             return (
-                                <g key={`${point.label}-${index}`}>
-                                    {/* Glow ring on hover */}
-                                    {isActive && (
-                                        <circle cx={cx} cy={cy} r="14" fill={pointColor} opacity="0.1" />
-                                    )}
+                                <g
+                                    key={`${point.label}-${index}`}
+                                    className="pp-trend-chart__point-group"
+                                    style={{ '--point-delay': delay, transformOrigin: `${cx}px ${cy}px` }}
+                                >
+                                    {/* Outer glow */}
                                     <circle
                                         cx={cx}
                                         cy={cy}
-                                        r={isActive ? '6' : '4.5'}
-                                        fill="#ffffff"
-                                        stroke={pointColor}
-                                        strokeWidth="2.5"
+                                        r={isActive ? '14' : '9'}
+                                        fill={pointColor}
+                                        className="pp-trend-chart__point-glow"
+                                        opacity={isActive ? '0.18' : '0.12'}
+                                    />
+                                    {/* Solid colored dot */}
+                                    <circle
+                                        cx={cx}
+                                        cy={cy}
+                                        r={isActive ? '6.5' : '5'}
+                                        fill={pointColor}
+                                        stroke="#ffffff"
+                                        strokeWidth="1.5"
                                         className={`pp-trend-chart__point pp-trend-chart__point--v2 ${isActive ? 'pp-trend-chart__point--active' : ''}`}
                                     />
                                     <circle
                                         cx={cx}
                                         cy={cy}
-                                        r="16"
+                                        r="18"
                                         fill="transparent"
                                         className="pp-trend-chart__point-hitbox"
                                         onMouseEnter={() => setHoveredIndex(index)}

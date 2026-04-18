@@ -2268,11 +2268,53 @@
 /* Points */
 .pp-trend-chart__point--v2 {
     transition: r 0.18s ease, stroke-width 0.18s ease;
-    filter: none;
+    filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.15));
 }
 
 .pp-trend-chart__point--v2.pp-trend-chart__point--active {
-    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.12));
+    filter: drop-shadow(0 3px 8px rgba(15, 23, 42, 0.22));
+}
+
+/* --- Animated line + points --- */
+@keyframes pp-trend-line-draw {
+    from { stroke-dashoffset: 1; }
+    to   { stroke-dashoffset: 0; }
+}
+
+@keyframes pp-trend-point-pop {
+    0%   { opacity: 0; transform: scale(0.2); }
+    70%  { opacity: 1; transform: scale(1.18); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+.pp-trend-chart__line--v2 {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: pp-trend-line-draw 1.4s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+
+.pp-trend-chart__point-group {
+    opacity: 0;
+    animation: pp-trend-point-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    animation-delay: var(--point-delay, 0ms);
+}
+
+.pp-trend-chart__point-glow {
+    transition: r 0.2s ease, opacity 0.2s ease;
+}
+
+/* Larger chart now that sparklines are gone */
+.pp-trend-card__plot--v2 {
+    min-height: 300px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pp-trend-chart__line--v2,
+    .pp-trend-chart__point-group {
+        animation: none !important;
+        opacity: 1 !important;
+        stroke-dashoffset: 0 !important;
+    }
 }
 
 /* Tooltip */
@@ -2388,15 +2430,7 @@
     margin-top: 0.15rem;
 }
 
-.pp-vital-summary__spark {
-    height: 40px;
-    margin-top: 0.4rem;
-}
-
-.pp-vital-summary__spark .pp-sparkline {
-    height: 100%;
-    width: 100%;
-}
+/* .pp-vital-summary__spark — sparklines removed in favor of the large trend charts below */
 
 /* ==========================================================================
    Medications Grid – Card-based layout

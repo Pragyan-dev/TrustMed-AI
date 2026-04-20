@@ -72,6 +72,15 @@ class PatientGraphPopulator:
 
         with self.driver.session() as session:
             for subject_id in patients:
+                # Check for data presence
+                diagnoses = self.get_patient_diagnoses(subject_id)
+                vitals = self.get_patient_vitals(subject_id)
+                meds = self.get_patient_meds(subject_id)
+                
+                if not diagnoses and not vitals and not meds:
+                    print(f"Skipping Patient: {subject_id} (No data found)")
+                    continue
+
                 print(f"\nProcessing Patient: {subject_id}")
                 
                 # 1. Create/Update Patient Node
@@ -82,7 +91,6 @@ class PatientGraphPopulator:
                 """, subject_id=subject_id, name=f"Patient {subject_id}")
 
                 # 2. Process Diagnoses
-                diagnoses = self.get_patient_diagnoses(subject_id)
                 for diag in diagnoses:
                     term = diag['icd_title']
                     code = diag['icd_code']
@@ -112,11 +120,16 @@ class PatientGraphPopulator:
                     """, name=umls_name, code=code, cui=cui, subject_id=subject_id)
 
                 # 3. Process Vital Signs
-                vitals = self.get_patient_vitals(subject_id)
                 if vitals:
                     latest = vitals[0]
-                    print(f"  Loading vitals (Latest: {latest['charttime']})...")
+                    print(f"  Loading {len(vitals)} vitals (Latest: {latest['charttime']})...")
                     
+                    # Clear existing historical vitals to avoid duplicates/orphans from previous runs
+                    session.run("""
+                        MATCH (p:Patient {subject_id: $subject_id})-[r:HAS_VITAL]->(v:VitalSign)
+                        DELETE r, v
+                    """, subject_id=subject_id)
+
                     # Store latest vitals directly on Patient for fast access
                     session.run("""
                         MATCH (p:Patient {subject_id: $subject_id})
@@ -137,28 +150,30 @@ class PatientGraphPopulator:
                     dbp=latest['dbp'],
                     time=latest['charttime'])
 
-                    # Also create a VitalSign node for historical tracking
-                    session.run("""
-                        MATCH (p:Patient {subject_id: $subject_id})
-                        CREATE (v:VitalSign {
-                            temperature: $temp,
-                            heart_rate: $hr,
-                            respiratory_rate: $rr,
-                            o2_saturation: $o2,
-                            systolic_bp: $sbp,
-                            diastolic_bp: $dbp,
-                            timestamp: $time
-                        })
-                        MERGE (p)-[:HAS_VITAL]->(v)
-                    """,
-                    subject_id=subject_id,
-                    temp=latest['temperature'],
-                    hr=latest['heartrate'],
-                    rr=latest['resprate'],
-                    o2=latest['o2sat'],
-                    sbp=latest['sbp'],
-                    dbp=latest['dbp'],
-                    time=latest['charttime'])
+                    # Create VitalSign nodes for historical tracking
+                    for v_entry in vitals:
+                        session.run("""
+                            MATCH (p:Patient {subject_id: $subject_id})
+                            MERGE (v:VitalSign {
+                                subject_id: $subject_id,
+                                timestamp: $time
+                            })
+                            SET v.temperature = $temp,
+                                v.heart_rate = $hr,
+                                v.respiratory_rate = $rr,
+                                v.o2_saturation = $o2,
+                                v.systolic_bp = $sbp,
+                                v.diastolic_bp = $dbp
+                            MERGE (p)-[:HAS_VITAL]->(v)
+                        """,
+                        subject_id=subject_id,
+                        temp=v_entry['temperature'],
+                        hr=v_entry['heartrate'],
+                        rr=v_entry['resprate'],
+                        o2=v_entry['o2sat'],
+                        sbp=v_entry['sbp'],
+                        dbp=v_entry['dbp'],
+                        time=v_entry['charttime'])
 
                 # 4. Process Medications
                 meds = self.get_patient_meds(subject_id)

@@ -31,5 +31,49 @@
     "uploaded_by": "patient",
     "uploaded_at": "2026-04-17T02:18:57.548922Z",
     "url": "/uploads/patient-files/10035631/pdf_87db4889dc09.pdf"
+  },
+  {
+    "id": "531e2547aaab464b",
+    "patient_id": "10023239",
+    "title": "IMG 0955",
+    "original_filename": "IMG_0955.jpg",
+    "mime_type": "image/jpeg",
+    "file_kind": "image",
+    "uploaded_by": "patient",
+    "uploaded_at": "2026-04-21T21:35:10.402756Z",
+    "url": "/uploads/patient-files/10023239/image_e0de6ff3482b.jpg"
+  },
+  {
+    "id": "21255f95bf0b4d41",
+    "patient_id": "10023239",
+    "title": "8bfb3d e27ac84de84f48bfac97ae48cad057db mv2",
+    "original_filename": "8bfb3d_e27ac84de84f48bfac97ae48cad057db-mv2.avif",
+    "mime_type": "image/avif",
+    "file_kind": "image",
+    "uploaded_by": "patient",
+    "uploaded_at": "2026-04-21T21:40:36.231544Z",
+    "url": "/uploads/patient-files/10023239/image_816fa0001bcf.avif"
+  },
+  {
+    "id": "6e9ce26b057d4aff",
+    "patient_id": "10002428",
+    "title": "8bfb3d e27ac84de84f48bfac97ae48cad057db mv2",
+    "original_filename": "8bfb3d_e27ac84de84f48bfac97ae48cad057db-mv2.avif",
+    "mime_type": "image/avif",
+    "file_kind": "image",
+    "uploaded_by": "patient",
+    "uploaded_at": "2026-04-21T21:46:59.799735Z",
+    "url": "/uploads/patient-files/10002428/image_d6912b906974.avif"
+  },
+  {
+    "id": "7afeea9b87264b86",
+    "patient_id": "10002428",
+    "title": "1",
+    "original_filename": "1.jpeg",
+    "mime_type": "image/jpeg",
+    "file_kind": "image",
+    "uploaded_by": "patient",
+    "uploaded_at": "2026-04-21T21:49:55.668033Z",
+    "url": "/uploads/patient-files/10002428/image_3d01158c8645.jpeg"
   }
 ]

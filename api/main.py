@@ -252,6 +252,28 @@ def _list_patient_attachments(patient_id: str) -> List[dict]:
     return attachments
 
 
+def _resolve_latest_patient_image_path(patient_id: Optional[str]) -> Optional[str]:
+    if not patient_id:
+        return None
+
+    attachments = _list_patient_attachments(str(patient_id))
+    for attachment in attachments:
+        if attachment.get("file_kind") != "image":
+            continue
+        path = _attachment_path_from_url(attachment.get("url"))
+        if path and os.path.exists(path):
+            return path
+    return None
+
+
+def _message_requests_imaging(message: str) -> bool:
+    text = (message or "").lower()
+    return any(
+        token in text
+        for token in ("imaging", "x-ray", "xray", "ct", "mri", "scan", "ultrasound", "image", "radiology")
+    )
+
+
 def _assert_path_in_uploads(abs_path: str):
     uploads_root = Path(UPLOADS_DIR).resolve()
     try:
@@ -414,6 +436,17 @@ def _build_patient_portal_context(patient_data: dict, patient_id: Optional[str])
     if medications:
         parts.append(f"Current Medications: {', '.join(m.get('name', '') for m in medications if m.get('name'))}")
 
+    if resolved_patient_id:
+        attachments = _list_patient_attachments(str(resolved_patient_id))
+        if attachments:
+            attachment_count = len(attachments)
+            latest = attachments[0]
+            latest_label = latest.get("title") or latest.get("original_filename") or "untitled file"
+            latest_kind = (latest.get("file_kind") or "file").lower()
+            parts.append(
+                f"Imaging files: {attachment_count} in patient record; latest is {latest_kind} '{latest_label}'."
+            )
+
     if not parts:
         return ""
     return "\n\nPatient clinical context:\n" + "\n".join(parts)
@@ -540,6 +573,14 @@ async def _stream_chat(request: ChatRequest):
     }
     history = session["messages"]
 
+    if (
+        not request.image_path
+        and request.patient_id
+        and _get_assistant_mode(request, session) == "patient"
+        and _message_requests_imaging(request.message)
+    ):
+        request.image_path = _resolve_latest_patient_image_path(request.patient_id)
+
     query, direct_response = await _prepare_chat_query(request, session)
     if request.image_path and os.path.exists(request.image_path):
         query += f" [ATTACHMENT: {request.image_path}]"
@@ -609,6 +650,14 @@ async def chat(request: ChatRequest):
         "messages": []
     }
     history = session["messages"]
+
+    if (
+        not request.image_path
+        and request.patient_id
+        and _get_assistant_mode(request, session) == "patient"
+        and _message_requests_imaging(request.message)
+    ):
+        request.image_path = _resolve_latest_patient_image_path(request.patient_id)
 
     # Build query with image attachment if present
     query, direct_response = await _prepare_chat_query(request, session)

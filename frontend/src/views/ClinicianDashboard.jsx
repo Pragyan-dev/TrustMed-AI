@@ -44,6 +44,25 @@ const cleanContent = (text) => {
     return t
 }
 
+async function readApiError(response, fallbackMessage) {
+    const contentType = response.headers.get('content-type') || ''
+
+    try {
+        if (contentType.includes('application/json')) {
+            const data = await response.json()
+            if (typeof data?.detail === 'string' && data.detail.trim()) return data.detail.trim()
+            if (typeof data?.message === 'string' && data.message.trim()) return data.message.trim()
+        } else {
+            const text = (await response.text()).trim()
+            if (text) return response.status >= 500 ? fallbackMessage : text.slice(0, 220)
+        }
+    } catch {
+        // Fall through to fallback message.
+    }
+
+    return fallbackMessage
+}
+
 const streamSseEvents = async (response, onEvent) => {
     const reader = response.body?.getReader()
     if (!reader) throw new Error('Streaming response unavailable')
@@ -139,6 +158,9 @@ export default function ClinicianDashboard() {
     const fetchSessions = useCallback(async () => {
         try {
             const res = await fetch(`${API_BASE}/sessions?source=clinician`)
+            if (!res.ok) {
+                throw new Error(await readApiError(res, 'Failed to load sessions.'))
+            }
             const data = await res.json()
             setSessions(data.sessions || [])
         } catch (err) { console.error('Failed to load sessions:', err) }
@@ -167,10 +189,11 @@ export default function ClinicianDashboard() {
         if (!patId) { setPatientData(null); return }
         try {
             const res = await fetch(`${API_BASE}/patient/${patId}`)
-            if (res.ok) {
-                const data = await res.json()
-                setPatientData(data)
+            if (!res.ok) {
+                throw new Error(await readApiError(res, 'Failed to load patient data.'))
             }
+            const data = await res.json()
+            setPatientData(data)
         } catch (err) { console.error('Failed to load patient:', err) }
     }
 
@@ -178,6 +201,9 @@ export default function ClinicianDashboard() {
     const createNewSession = async () => {
         try {
             const res = await fetch(`${API_BASE}/sessions/new?source=clinician`, { method: 'POST' })
+            if (!res.ok) {
+                throw new Error(await readApiError(res, 'Failed to create session.'))
+            }
             const data = await res.json()
             setSessionId(data.id)
             setSessionTitle('New Chat')
@@ -194,6 +220,9 @@ export default function ClinicianDashboard() {
     const loadSession = async (sid) => {
         try {
             const res = await fetch(`${API_BASE}/sessions/${sid}`)
+            if (!res.ok) {
+                throw new Error(await readApiError(res, 'Failed to load session.'))
+            }
             const data = await res.json()
             setSessionId(sid)
             setSessionTitle(data.title || 'Chat')
@@ -246,6 +275,9 @@ export default function ClinicianDashboard() {
                 const response = await fetch(`${API_BASE}/upload-image`, {
                     method: 'POST', body: formData
                 })
+                if (!response.ok) {
+                    throw new Error(await readApiError(response, 'Image upload failed.'))
+                }
                 const data = await response.json()
                 setUploadedImagePath(data.path)
                 // Detect compound panels
@@ -255,6 +287,9 @@ export default function ClinicianDashboard() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ image_path: data.path })
                     })
+                    if (!panelRes.ok) {
+                        throw new Error(await readApiError(panelRes, 'Panel detection failed.'))
+                    }
                     const pData = await panelRes.json()
                     setPanelData(pData)
                 } catch { setPanelData(null) }
@@ -328,6 +363,9 @@ export default function ClinicianDashboard() {
         if (!currentSessionId) {
             try {
                 const res = await fetch(`${API_BASE}/sessions/new?source=clinician`, { method: 'POST' })
+                if (!res.ok) {
+                    throw new Error(await readApiError(res, 'Failed to create session.'))
+                }
                 const data = await res.json()
                 currentSessionId = data.id
                 setSessionId(data.id)
@@ -458,6 +496,9 @@ export default function ClinicianDashboard() {
                     patient_id: selectedPatient || null,
                 })
             })
+            if (!res.ok) {
+                throw new Error(await readApiError(res, 'SOAP note generation failed.'))
+            }
             const data = await res.json()
             setSoapData(data)
         } catch (err) {

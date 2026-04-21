@@ -22,6 +22,28 @@
     --cd-success: #22c55e;
     --cd-info: #3B82F6;
 
+    /* --- Dark Mode Overrides --- */
+    &.cd--dark {
+        --cd-bg: #0f172a;
+        --cd-surface: #1e293b;
+        --cd-surface2: #0f172a;
+        --cd-surface3: #1e292a;
+        --cd-border: rgba(16, 185, 129, 0.15);
+        --cd-text: #f8fafc;
+        --cd-text-dim: #94a3b8;
+        --cd-text-muted: #64748b;
+        --cd-accent: #10b981;
+        --cd-accent2: #059669;
+        
+        /* Global overrides for embedded components */
+        --bg-primary: #0f172a;
+        --bg-secondary: #1e293b;
+        --bg-tertiary: #1e293b;
+        --text-primary: #f8fafc;
+        --text-secondary: #94a3b8;
+        --border: rgba(16, 185, 129, 0.15);
+    }
+
     /* Override global App.css vars so embedded components (KG, PatientInfo) inherit light theme */
     --bg-primary: #F7FAF8;
     --bg-secondary: #ffffff;
@@ -71,11 +93,12 @@
 .cd-topbar__logo {
     width: 32px;
     height: 32px;
-    background: linear-gradient(135deg, #2E7D52, #4CAF50);
+    background: var(--brand-emerald, #10b981);
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .cd-topbar__logo svg {
@@ -86,9 +109,10 @@
 
 .cd-topbar__name {
     font-family: var(--font-heading);
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: 1.1rem;
+    font-weight: 700;
     color: var(--cd-text);
+    white-space: nowrap;
 }
 
 .cd-topbar__name span {
@@ -108,12 +132,12 @@
 .cd-topbar__view-switch {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    padding: 0.22rem;
+    gap: 4px;
+    padding: 3px;
     border-radius: 999px;
-    border: 1px solid rgba(46, 125, 82, 0.12);
-    background: rgba(247, 250, 248, 0.96);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    border: 1px solid var(--cd-border);
+    background: var(--cd-surface2);
+    box-shadow: none;
 }
 
 .cd-topbar__view-chip {
@@ -131,9 +155,9 @@
 }
 
 .cd-topbar__view-chip--active {
-    background: linear-gradient(135deg, #2E7D52, #348A5A);
+    background: var(--brand-emerald, #10b981);
     color: white;
-    box-shadow: 0 8px 18px rgba(46, 125, 82, 0.18);
+    box-shadow: 0 4px 12px var(--cd-accent-glow, rgba(16, 185, 129, 0.2));
 }
 
 .cd-topbar__view-chip--link {
@@ -144,6 +168,26 @@
 .cd-topbar__view-chip--link:hover {
     background: rgba(46, 125, 82, 0.08);
     color: var(--cd-accent);
+}
+
+.cd-theme-toggle {
+    background: transparent;
+    border: none;
+    color: var(--cd-text-dim);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cd-theme-toggle:hover {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--cd-accent);
+    transform: scale(1.1);
 }
 
 /* Top bar controls */
@@ -735,9 +779,7 @@
     flex-direction: column;
     overflow: hidden;
     min-width: 0;
-    background:
-        radial-gradient(circle at top center, rgba(46, 125, 82, 0.03), transparent 34%),
-        linear-gradient(180deg, #F8FBF9 0%, #F5FAF7 100%);
+    background: var(--cd-bg);
 }
 
 /* Pipeline badges */
@@ -756,8 +798,8 @@
     justify-content: space-between;
     gap: 1rem;
     padding: 1rem 1.25rem 0.9rem;
-    background: rgba(255, 255, 255, 0.7);
-    border-bottom: 1px solid rgba(46, 125, 82, 0.08);
+    background: var(--cd-surface);
+    border-bottom: 1px solid var(--cd-border);
 }
 
 .cd-chat-header__meta {
@@ -1344,10 +1386,8 @@
     width: min(760px, 100%);
     padding: 2.2rem 2rem;
     border-radius: 28px;
-    background:
-        radial-gradient(circle at top center, rgba(46, 125, 82, 0.08), transparent 44%),
-        rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(46, 125, 82, 0.12);
+    background: var(--cd-surface);
+    border: 1px solid var(--cd-border);
     box-shadow: 0 24px 48px rgba(15, 23, 42, 0.06);
     position: relative;
 }
@@ -1371,8 +1411,8 @@
     align-items: center;
     padding: 0.35rem 0.72rem;
     border-radius: 999px;
-    border: 1px solid rgba(46, 125, 82, 0.14);
-    background: rgba(248, 251, 249, 0.9);
+    border: 1px solid var(--cd-border);
+    background: var(--cd-surface2);
     color: var(--cd-accent);
     font-size: 0.74rem;
     font-weight: 700;
@@ -1383,7 +1423,7 @@
 
 .cd-empty h3 {
     font-family: var(--font-heading);
-    color: var(--cd-text-dim);
+    color: var(--cd-text);
     font-size: 1.24rem;
     margin: 1rem auto 0;
 }
@@ -1408,8 +1448,8 @@
     gap: 0.8rem;
     padding: 1rem 1.05rem;
     border-radius: 18px;
-    border: 1px solid rgba(46, 125, 82, 0.1);
-    background: rgba(247, 250, 248, 0.88);
+    border: 1px solid var(--cd-border);
+    background: var(--cd-surface2);
     color: var(--cd-text-dim);
     text-align: left;
 }
@@ -1421,8 +1461,8 @@
 }
 
 .cd-empty__readiness-card.is-ready {
-    border-color: rgba(46, 125, 82, 0.2);
-    background: linear-gradient(180deg, rgba(232, 244, 236, 0.96), rgba(247, 250, 248, 0.94));
+    border-color: rgba(16, 185, 129, 0.4);
+    background: var(--cd-surface);
 }
 
 .cd-empty__readiness-card.is-ready svg {
@@ -1489,8 +1529,8 @@
     text-align: left;
     padding: 0.95rem 1rem;
     border-radius: 16px;
-    border: 1px solid rgba(46, 125, 82, 0.1);
-    background: rgba(247, 250, 248, 0.92);
+    border: 1px solid var(--cd-border);
+    background: var(--cd-bg);
     color: var(--cd-text);
     font-size: 0.85rem;
     line-height: 1.5;
@@ -1499,8 +1539,8 @@
 }
 
 .cd-empty__prompt:hover {
-    border-color: rgba(46, 125, 82, 0.22);
-    background: white;
+    border-color: var(--cd-accent);
+    background: var(--cd-surface2);
     transform: translateY(-1px);
 }
 
@@ -1913,17 +1953,9 @@
     background: rgba(239, 68, 68, 0.03);
 }
 
-.cd .vital-card-v2.vital-high .vital-value-v2 {
-    color: #DC2626;
-}
-
 .cd .vital-card-v2.vital-low {
     border-color: rgba(59, 130, 246, 0.35);
     background: rgba(59, 130, 246, 0.03);
-}
-
-.cd .vital-card-v2.vital-low .vital-value-v2 {
-    color: #2563EB;
 }
 
 /* Heart rate pulse animation */
@@ -2173,11 +2205,8 @@
     gap: 0.75rem;
     padding: 0.95rem 1rem;
     border-radius: 16px;
-    background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.54)),
-        linear-gradient(135deg, rgba(46, 125, 82, 0.10), rgba(76, 175, 80, 0.04));
-    border: 1px solid rgba(46, 125, 82, 0.12);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+    background: var(--cd-surface2);
+    border: 1px solid var(--cd-border);
     flex-shrink: 0;
 }
 
@@ -2195,8 +2224,8 @@
     margin-left: auto;
     padding: 0.5rem 0.72rem;
     border-radius: 10px;
-    border: 1px solid rgba(46, 125, 82, 0.16);
-    background: rgba(255, 255, 255, 0.86);
+    border: 1px solid var(--cd-border);
+    background: var(--cd-surface);
     color: var(--cd-text-dim);
     font-size: 0.77rem;
     font-weight: 600;
@@ -2207,7 +2236,7 @@
 .cd .graph-expand-btn:hover {
     border-color: var(--cd-accent);
     color: var(--cd-accent);
-    background: white;
+    background: var(--cd-surface);
 }
 
 .cd .graph-sync-pill {
@@ -2217,8 +2246,8 @@
     width: fit-content;
     padding: 0.25rem 0.55rem;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.8);
-    border: 1px solid rgba(46, 125, 82, 0.16);
+    background: var(--cd-bg);
+    border: 1px solid var(--cd-border);
     font-size: 0.68rem;
     font-weight: 700;
     letter-spacing: 0.05em;
@@ -2255,8 +2284,8 @@
     max-width: 100%;
     padding: 0.5rem 0.8rem;
     border-radius: 999px;
-    border: 1px solid rgba(46, 125, 82, 0.12);
-    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid var(--cd-border);
+    background: var(--cd-surface);
     color: var(--cd-text-dim);
     font-size: 0.8rem;
     font-weight: 600;

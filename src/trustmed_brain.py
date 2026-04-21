@@ -561,7 +561,7 @@ def check_drug_interactions(patient_context: str) -> str:
     print(f"  [DrugChecker] Found {len(patient_diagnoses)} diagnoses: {patient_diagnoses[:3]}...")
 
     try:
-        with driver.session() as session:
+        with driver.session(database="neo4j") as session:
             # 1. Check drug-drug interactions — single batch query for all meds
             if len(patient_meds) >= 2:
                 result = session.run("""
@@ -641,7 +641,7 @@ def check_drug_interactions(patient_context: str) -> str:
     # Query Neo4j for drug classes, flag when 2+ meds share a class
     try:
         if driver and len(patient_meds) >= 2:
-            with driver.session() as session:
+            with driver.session(database="neo4j") as session:
                 result = session.run("""
                     MATCH (d:Drug)
                     WHERE ANY(med IN $meds WHERE toLower(d.name) CONTAINS toLower(med))
@@ -677,7 +677,7 @@ def check_drug_interactions(patient_context: str) -> str:
     qt_drugs_found = []
     try:
         if driver:
-            with driver.session() as session:
+            with driver.session(database="neo4j") as session:
                 result = session.run("""
                     MATCH (d:Drug)
                     WHERE ANY(med IN $meds WHERE toLower(d.name) CONTAINS toLower(med))
@@ -721,7 +721,7 @@ def check_drug_interactions(patient_context: str) -> str:
     bleeding_drugs_found = []
     try:
         if driver:
-            with driver.session() as session:
+            with driver.session(database="neo4j") as session:
                 result = session.run("""
                     MATCH (d:Drug)
                     WHERE ANY(med IN $meds WHERE toLower(d.name) CONTAINS toLower(med))

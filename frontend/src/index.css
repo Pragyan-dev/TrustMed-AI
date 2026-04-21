@@ -5,10 +5,42 @@
    Background: Very Light Mint (#F2FAF4)
    Cards:      Pure White (#FFFFFF)
    Text:       Charcoal (#2D3436)
-   Typography: Poppins (Headings) + Open Sans (Body)
+   Typography: Outfit (Headings) + Inter (Body)
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600&family=Poppins:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600&family=Poppins:wght@400;500;600;700;800&display=swap');
+
+:root {
+    /* Fonts */
+    --font-heading: 'Poppins', -apple-system, sans-serif;
+    --font-body: 'Open Sans', -apple-system, sans-serif;
+
+    /* Theme Tokens - Light (Clean Tech) */
+    --bg-app: #f8fafc;
+    --bg-surface: #ffffff;
+    --bg-surface-alt: #f1f5f9;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --border-color: rgba(15, 23, 42, 0.08);
+    --accent-color: #10b981;
+    --accent-glow: rgba(16, 185, 129, 0.15);
+    --brand-emerald: #2E7D52;
+}
+
+[data-theme='dark'] {
+    /* Theme Tokens - Dark (Obsidian Tech) */
+    --bg-app: #030712;
+    --bg-surface: #0f172a;
+    --bg-surface-alt: #1e293b;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --border-color: rgba(255, 255, 255, 0.08);
+    --accent-color: #10b981;
+    --accent-glow: rgba(16, 185, 129, 0.3);
+    --brand-emerald: #10b981;
+}
 
 *,
 *::before,
@@ -18,70 +50,22 @@
     box-sizing: border-box;
 }
 
-:root {
-    /* ── Backgrounds ─────────────────────────────────────────────── */
-    --bg-primary: #F2FAF4;
-    /* Very light mint */
-    --bg-secondary: rgba(255, 255, 255, 0.85);
-    /* Glassy white sidebar */
-    --bg-tertiary: #FFFFFF;
-    /* Pure white cards */
-    --bg-hover: #E8F5E9;
-    /* Soft mint hover */
-
-    /* ── Text ────────────────────────────────────────────────────── */
-    --text-primary: #2D3436;
-    /* Near-black charcoal */
-    --text-secondary: #636E72;
-    /* Medium gray */
-    --text-tertiary: #B2BEC3;
-    /* Light gray */
-
-    /* ── Primary accent (Emerald Green) ──────────────────────────── */
-    --accent: #2E7D52;
-    /* Emerald green */
-    --accent-hover: #236B45;
-    /* Darker emerald */
-    --accent-glow: rgba(46, 125, 82, 0.15);
-    /* Subtle green glow */
-
-    /* ── Warm accent (kept subtle — light teal) ──────────────────── */
-    --warm-accent: #2E7D52;
-    /* Same emerald for consistency */
-    --warm-accent-light: #A8E6CF;
-    /* Light mint green */
-    --warm-glow: rgba(168, 230, 207, 0.3);
-
-    /* ── Teal legacy variable ────────────────────────────────────── */
-    --teal: #2E7D52;
-
-    /* ── Gradients ───────────────────────────────────────────────── */
-    --gradient-primary: linear-gradient(135deg, #A8E6CF, #2E7D52);
-    --gradient-warm: linear-gradient(135deg, #2E7D52, #236B45);
-    --gradient-ambient: radial-gradient(circle at 50% 0%, rgba(46, 125, 82, 0.04), transparent 60%);
-
-    /* ── Border ──────────────────────────────────────────────────── */
-    --border: rgba(45, 52, 54, 0.08);
-    --glass-border: rgba(46, 125, 82, 0.12);
-
-    /* ── Typography ──────────────────────────────────────────────── */
-    --font-heading: 'Poppins', sans-serif;
-    --font-body: 'Open Sans', sans-serif;
-
-    font-family: var(--font-body);
-    font-size: 15px;
-    line-height: 1.6;
+body {
+    background: var(--bg-app);
     color: var(--text-primary);
-    background-color: var(--bg-primary);
-
-    /* ── Shapes ──────────────────────────────────────────────────── */
-    --radius-sm: 8px;
-    --radius-md: 16px;
-    --radius-lg: 24px;
-    --radius-full: 9999px;
-
-    color-scheme: light;
+    font-family: var(--font-body);
+    transition: background 0.3s ease, color 0.3s ease;
+    overflow-x: hidden;
+    min-height: 100vh;
 }
+
+/* Helper for themed cards */
+.themed-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
 
 html,
 body,

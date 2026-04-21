@@ -1411,7 +1411,7 @@ async def patient_summary(patient_id: str):
 
 
 
-from medical_dictionary import MEDICAL_DICTIONARY, get_medical_explanation
+from api.medical_dictionary import MEDICAL_DICTIONARY, get_medical_explanation
 
 EXPLAIN_TERM_PROMPT = """You are a medical dictionary and clinical summarizer.
 Explain the term "{term}" in a way that is clear for clinicians but understandable for patients.

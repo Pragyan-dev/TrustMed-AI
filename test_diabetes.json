@@ -1,0 +1,62 @@
+[
+  {
+    "role": "user",
+    "content": "What are the signs of diabetes?"
+  },
+  {
+    "role": "assistant",
+    "content": "Diabetes commonly presents with frequent urination (especially at night), increased thirst even after drinking, extreme fatigue, and blurry vision due to high blood sugar affecting the eyes[1][3][4][5].\n\nOther key signs include unexplained weight loss despite normal or increased eating, slow-healing cuts or sores, and frequent infections like urinary tract or yeast infections[1][2][4][6].\n\nType 1 diabetes symptoms often appear suddenly and severely, potentially including diabetic ketoacidosis with fruity breath, nausea, vomiting, and abdominal pain[2][4]; type 2 develops gradually with added signs like tingling in hands/feet, dark skin patches (acanthosis nigricans), or skin tags[1][4][5].\n\nAdditional symptoms may involve irritability, dry mouth, digestive issues such as nausea or constipation, excessive sweating, or headaches[3][4][8][9].\n\nSome cases have mild or no noticeable symptoms, so at-risk individuals should get screened; consult a healthcare professional if any signs appear for evaluation[1][4].",
+    "links": [
+      "https://www.mayoclinic.org/diseases-conditions/prediabetes/symptoms-causes/syc-20355278",
+      "https://www.mayoclinic.org/diseases-conditions/diabetic-neuropathy/symptoms-causes/syc-20371580",
+      "https://www.mayoclinic.org/diseases-conditions/diabetes/symptoms-causes/syc-20371444",
+      "https://www.mayoclinic.org/diseases-conditions/diabetic-nephropathy/symptoms-causes/syc-20354556",
+      "https://www.mayoclinic.org/diseases-conditions/diabetic-retinopathy/symptoms-causes/syc-20371611",
+      "https://www.mayoclinic.org/diseases-conditions/type-1-diabetes/symptoms-causes/syc-20353011",
+      "https://www.mayoclinic.org/diseases-conditions/diabetic-coma/symptoms-causes/syc-20371475",
+      "https://www.mayoclinic.org/diseases-conditions/diabetic-ketoacidosis/symptoms-causes/syc-20371551",
+      "https://www.mayoclinic.org/diseases-conditions/diabetic-hypoglycemia/symptoms-causes/syc-20371525",
+      "https://www.mayoclinic.org/diseases-conditions/diabetes-insipidus/symptoms-causes/syc-20351269",
+      "https://familydoctor.org/condition/diabetes-in-kids/",
+      "https://familydoctor.org/condition/diabetes-type1/",
+      "https://familydoctor.org/condition/diabetic-neuropathy/",
+      "https://familydoctor.org/condition/prediabetes/",
+      "https://familydoctor.org/condition/diabetes-insipidus/",
+      "https://familydoctor.org/condition/diabetic-retinopathy/",
+      "https://familydoctor.org/condition/insulin-resistance/",
+      "https://familydoctor.org/condition/gestational-diabetes/",
+      "https://familydoctor.org/condition/diabetic-nephropathy/",
+      "https://familydoctor.org/condition/diabetic-ketoacidosis/",
+      "https://patient.info/medicine/metformin-for-diabetes-glucophage-sukkarto-yaltormin",
+      "https://patient.info/medicine/liraglutide-for-diabetes-victoza",
+      "https://patient.info/medicine/linagliptin-tablets-for-diabetes-trajenta",
+      "https://patient.info/medicine/canagliflozin",
+      "https://patient.info/medicine/repaglinide-for-diabetes-enyglid",
+      "https://patient.info/medicine/glipizide-minodiab",
+      "https://patient.info/medicine/semaglutide-ozempic-rybelsus",
+      "https://patient.info/medicine/exenatide-for-diabetes-byetta-bydureon",
+      "https://patient.info/medicine/insulin",
+      "https://patient.info/medicine/glyburide-for-diabetes-glynase"
+    ]
+  },
+  {
+    "role": "user",
+    "content": "What medications are used for it?"
+  },
+  {
+    "role": "assistant",
+    "content": "Diabetes medications primarily target type 2 diabetes with oral drugs like metformin as the first-line option, which reduces liver glucose production and improves insulin sensitivity, while insulin is essential for type 1 and advanced type 2 cases.\n\nKey oral classes include sulfonylureas (e.g., glimepiride, glipizide) that stimulate insulin release but risk hypoglycemia; SGLT2 inhibitors (e.g., empagliflozin/Jardiance, dapagliflozin/Farxiga) that promote glucose excretion via urine, aiding weight loss and heart/kidney health; DPP-4 inhibitors (e.g., sitagliptin/Januvia); and others like thiazolidinediones or alpha-glucosidase inhibitors (e.g., acarbose).\n\nInjectables feature GLP-1 receptor agonists (e.g., semaglutide/Ozempic, dulaglutide/Trulicity) that suppress appetite and promote weight loss, plus dual GLP-1/GIP agonists like tirzepatide/Mounjaro.\n\nTreatment often starts with metformin plus lifestyle changes, adding agents based on needs like cardiovascular protection from SGLT2 or GLP-1 drugs; always consult a provider for personalized plans and side effect monitoring, such as gastrointestinal issues or dehydration.",
+    "links": [
+      "https://patient.info/medicine/insulin",
+      "https://patient.info/medicine/acarbose-for-diabetes",
+      "https://patient.info/medicine/repaglinide-for-diabetes-enyglid",
+      "https://patient.info/medicine/alogliptin-tablets-for-diabetes-vipidia",
+      "https://patient.info/medicine/linagliptin-tablets-for-diabetes-trajenta",
+      "https://patient.info/medicine/glibenclamide-for-diabetes",
+      "https://patient.info/medicine/saxagliptin-for-diabetes-onglyza",
+      "https://patient.info/medicine/empagliflozin-tablets-jardiance",
+      "https://patient.info/medicine/glimepiride-tablets-for-diabetes",
+      "https://patient.info/medicine/lixisenatide-for-diabetes-lyxumia"
+    ]
+  }
+]

@@ -1,4 +1,5 @@
 import './globals.css'
+import { ThemeProvider } from '../src/context/ThemeContext'
 
 export const metadata = {
   title: 'Synapse AI',
@@ -8,7 +9,11 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
+      </body>
     </html>
   )
 }

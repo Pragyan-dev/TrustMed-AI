@@ -13,8 +13,18 @@ def run_query(query, session_file="chat_history.json"):
     print(f"\n{'='*60}")
     print(f"QUERY: '{query}'")
     print('='*60)
-    cmd = [sys.executable, "anti_test.py", "--query", query, "--session_file", session_file]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    # Configure environment
+    env = os.environ.copy()
+    root = "/Users/chandanapulikanti/Downloads/TrustMed-AI"
+    env["CHROMA_DB_DIR"] = os.path.join(root, "data/chroma_db")
+    env["CHROMA_COLLECTIONS"] = "diseases,symptoms,medicines"
+    
+    # Path to the AI engine
+    tests_dir = os.path.dirname(os.path.abspath(__file__))
+    anti_test_path = os.path.join(tests_dir, "anti_test.py")
+
+    cmd = [sys.executable, "-u", anti_test_path, "--query", query, "--session_file", session_file]
+    result = subprocess.run(cmd, capture_output=True, text=True, env=env)
     
     if result.returncode != 0:
         print("❌ Error running command:")

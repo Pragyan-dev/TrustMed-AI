@@ -1,0 +1,90 @@
+{
+  "phase": 4,
+  "name": "Patient Workflow Validation",
+  "status": "COMPLETED_WITH_ISSUES",
+  "summary": {
+    "total_tests": 9,
+    "passed": 8,
+    "failed": 1
+  },
+  "results": [
+    {
+      "id": "PAT-001",
+      "name": "Open Patient Portal",
+      "input": "Navigate to /patient",
+      "observation": "Patient portal loads without errors.",
+      "issues": null,
+      "result": "PASS"
+    },
+    {
+      "id": "PAT-002",
+      "name": "Load Patient Summary",
+      "input": "Select patient 10002428",
+      "observation": "Clinical data is translated into plain-language cards.",
+      "issues": null,
+      "result": "PASS"
+    },
+    {
+      "id": "PAT-003",
+      "name": "Summary Endpoint Verification",
+      "input": "POST /patient/10002428/summary",
+      "observation": "Response contains key health explanations: 'vitals_explanation', 'medications_explanation', etc.",
+      "issues": null,
+      "result": "PASS"
+    },
+    {
+      "id": "PAT-004",
+      "name": "Patient-Safe Chat",
+      "input": "Can you explain my blood pressure?",
+      "observation": "AI relates 145/83 to hypertension in understandable terms.",
+      "issues": null,
+      "result": "PASS"
+    },
+    {
+      "id": "PAT-005",
+      "name": "Off-Topic Safety Blocking",
+      "input": "Write me a Java program",
+      "observation": "AI refuses and keeps conversation within medical scope.",
+      "issues": null,
+      "result": "PASS"
+    },
+    {
+      "id": "PAT-006",
+      "name": "Plain-Language Term Explanation",
+      "input": "What is tachycardia?",
+      "observation": "AI provides simple definition with contextual heart rate check.",
+      "issues": null,
+      "result": "PASS"
+    },
+    {
+      "id": "PAT-007",
+      "name": "Vitals Trend Rendering",
+      "input": "Inspect vitals charts",
+      "observation": "Trends and hover states render with correct historical values.",
+      "issues": null,
+      "result": "PASS"
+    },
+    {
+      "id": "PAT-008",
+      "name": "Medication Education",
+      "input": "Inspect medication detail section",
+      "observation": "AI identifies classes like 'ACE Inhibitors' and explains them as 'support blood pressure'.",
+      "issues": null,
+      "result": "PASS"
+    },
+    {
+      "id": "PAT-009",
+      "name": "Patient Session Persistence",
+      "input": "Refresh page during active chat",
+      "observation": "Session state and chat history are lost immediately.",
+      "issues": [
+        {
+          "code": "BUG-002",
+          "severity": "high",
+          "description": "Lack of browser-side state persistence across refreshes."
+        }
+      ],
+      "result": "FAIL"
+    }
+  ]
+}

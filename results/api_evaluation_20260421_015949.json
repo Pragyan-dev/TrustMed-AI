@@ -1,0 +1,142 @@
+{
+  "timestamp": "20260421_015949",
+  "api_url": "http://127.0.0.1:8000",
+  "summary": {
+    "passed": 8,
+    "total": 8,
+    "pass_rate": 1.0
+  },
+  "results": [
+    {
+      "name": "API Health",
+      "passed": true,
+      "latency_ms": 6,
+      "details": "Version: 2.0.0, Message: TrustMed AI API is running",
+      "error": "",
+      "keywords_found": [],
+      "keywords_expected": []
+    },
+    {
+      "name": "Knowledge Graph",
+      "passed": true,
+      "latency_ms": 1019,
+      "details": "Nodes: 15, Edges: 14, Sample: ['Type 2 Diabetes', 'Increased thirst', 'frequent urination', 'increased hunger', 'unintended weight loss']",
+      "error": "",
+      "keywords_found": [],
+      "keywords_expected": []
+    },
+    {
+      "name": "Medical Knowledge Query",
+      "passed": true,
+      "latency_ms": 33309,
+      "details": "Response length: 3769 chars",
+      "error": "",
+      "keywords_found": [
+        "insulin",
+        "glucose",
+        "diet",
+        "exercise",
+        "medication"
+      ],
+      "keywords_expected": [
+        "blood sugar",
+        "insulin",
+        "glucose",
+        "diet",
+        "exercise",
+        "medication"
+      ]
+    },
+    {
+      "name": "Patient Context Query",
+      "passed": true,
+      "latency_ms": 48331,
+      "details": "Response length: 4724 chars",
+      "error": "",
+      "keywords_found": [
+        "patient",
+        "medication",
+        "history"
+      ],
+      "keywords_expected": [
+        "patient",
+        "medication",
+        "diagnosis",
+        "vital",
+        "history"
+      ]
+    },
+    {
+      "name": "Drug Information Query",
+      "passed": true,
+      "latency_ms": 23703,
+      "details": "Response length: 2247 chars",
+      "error": "",
+      "keywords_found": [
+        "diabetes",
+        "dose"
+      ],
+      "keywords_expected": [
+        "diabetes",
+        "blood sugar",
+        "side effect",
+        "dose",
+        "kidney"
+      ]
+    },
+    {
+      "name": "Vision Agent",
+      "passed": true,
+      "latency_ms": 28528,
+      "details": "Response length: 2521 chars",
+      "error": "",
+      "keywords_found": [
+        "image",
+        "finding",
+        "normal",
+        "abnormal"
+      ],
+      "keywords_expected": [
+        "image",
+        "scan",
+        "finding",
+        "chest",
+        "lung",
+        "opacity",
+        "normal",
+        "abnormal"
+      ]
+    },
+    {
+      "name": "Conversational Context",
+      "passed": true,
+      "latency_ms": 31278,
+      "details": "Response correctly referenced previous context",
+      "error": "",
+      "keywords_found": [
+        "blood pressure",
+        "ACE",
+        "diuretic",
+        "medication",
+        "drug"
+      ],
+      "keywords_expected": [
+        "blood pressure",
+        "ACE",
+        "diuretic",
+        "beta blocker",
+        "medication",
+        "drug"
+      ]
+    },
+    {
+      "name": "Session Management",
+      "passed": true,
+      "latency_ms": 6,
+      "details": "Found 10 sessions",
+      "error": "",
+      "keywords_found": [],
+      "keywords_expected": []
+    }
+  ]
+}

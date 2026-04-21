@@ -5,29 +5,29 @@
 
 /* ── Page Container ─────────────────────────────────────────────────────── */
 .pp {
-    --pp-bg: #F7FAF8;
-    --pp-card: #ffffff;
-    --pp-border: rgba(46, 125, 82, 0.1);
-    --pp-text: #2D3436;
-    --pp-text-dim: #636E72;
-    --pp-text-muted: #B2BEC3;
-    --pp-green: #2E7D52;
-    --pp-green-light: #E8F5E9;
-    --pp-green-bg: #F2FAF4;
-    --pp-blue: #3B82F6;
-    --pp-blue-light: #EFF6FF;
-    --pp-yellow: #F59E0B;
-    --pp-yellow-light: #FFFBEB;
-    --pp-red: #EF4444;
-    --pp-red-light: #FEF2F2;
-    --pp-purple: #8B5CF6;
-    --pp-purple-light: #F5F3FF;
+    --pp-bg: var(--bg-app, #f8fafc);
+    --pp-card: var(--bg-surface, #ffffff);
+    --pp-border: var(--border-color, rgba(16, 185, 129, 0.1));
+    --pp-text: var(--text-primary, #0f172a);
+    --pp-text-dim: var(--text-secondary, #64748b);
+    --pp-text-muted: var(--text-muted, #94a3b8);
+    --pp-green: var(--accent-color, #10b981);
+    --pp-green-light: rgba(16, 185, 129, 0.08);
+    --pp-green-bg: var(--bg-surface-alt, #f0fdf4);
+    --pp-blue: #3b82f6;
+    --pp-blue-light: rgba(59, 130, 246, 0.08);
+    --pp-yellow: #f59e0b;
+    --pp-yellow-light: rgba(245, 158, 11, 0.08);
+    --pp-red: #ef4444;
+    --pp-red-light: rgba(239, 68, 68, 0.08);
+    --pp-purple: #8b5cf6;
+    --pp-purple-light: rgba(139, 92, 246, 0.08);
 
-    min-height: 100%;
-    background: var(--pp-bg);
+    min-height: 100vh;
+    background: var(--bg-app);
     color: var(--pp-text);
     font-family: var(--font-body);
-    padding: 1.5rem;
+    padding: 2rem;
 }
 
 /* ── Layout ─────────────────────────────────────────────────────────────── */
@@ -93,10 +93,20 @@
 /* ── Cards ──────────────────────────────────────────────────────────────── */
 .pp-card {
     background: var(--pp-card);
-    border-radius: 24px;
-    border: 1px solid rgba(17, 24, 39, 0.06);
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.04);
+    border-radius: 32px;
+    border: 1px solid rgba(15, 23, 42, 0.05);
+    box-shadow: 
+        0 4px 6px -1px rgba(0, 0, 0, 0.02),
+        0 20px 40px -12px rgba(0, 0, 0, 0.08);
     overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.pp-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 
+        0 4px 6px -1px rgba(0, 0, 0, 0.02),
+        0 25px 50px -12px rgba(0, 0, 0, 0.12);
 }
 
 .pp-card__header {

@@ -1,0 +1,66 @@
+[
+    {
+        "id": "STA-001",
+        "objective": "Backend import smoke",
+        "input": "python3 -c \"import sys; sys.path.append('.'); import api.main; print('backend_import_ok')\"",
+        "observation": "backend_import_ok",
+        "issues": "None",
+        "status": "PASS"
+    },
+    {
+        "id": "STA-002",
+        "objective": "Compile backend and scripts",
+        "input": "python3 -m compileall api src ingestion tests",
+        "observation": "Compiled successfully",
+        "issues": "None",
+        "status": "PASS"
+    },
+    {
+        "id": "STA-003",
+        "objective": "Count FastAPI routes",
+        "input": "python3 -c \"import sys; sys.path.append('.'); from api.main import app; print(len(app.routes))\"",
+        "observation": "27 routes",
+        "issues": "None",
+        "status": "PASS"
+    },
+    {
+        "id": "STA-004",
+        "objective": "Verify frontend lint",
+        "input": "npm run lint",
+        "observation": "Clean exit",
+        "issues": "None",
+        "status": "PASS"
+    },
+    {
+        "id": "STA-005",
+        "objective": "Verify frontend production build",
+        "input": "npm run build",
+        "observation": "Build successful in 6.3s",
+        "issues": "None",
+        "status": "PASS"
+    },
+    {
+        "id": "STA-006",
+        "objective": "Verify rewrite configuration",
+        "input": "cat next.config.mjs",
+        "observation": "/api/ -> localhost:8000",
+        "issues": "None",
+        "status": "PASS"
+    },
+    {
+        "id": "STA-007",
+        "objective": "Verify backend request models",
+        "input": "grep models",
+        "observation": "Classes found",
+        "issues": "None",
+        "status": "PASS"
+    },
+    {
+        "id": "STA-008",
+        "objective": "Verify path consistency",
+        "input": "grep paths",
+        "observation": "Paths match records",
+        "issues": "None",
+        "status": "PASS"
+    }
+]

@@ -1,11 +1,14 @@
+'use client'
+
 import Link from 'next/link'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import {
     Send, Plus, Image as ImageIcon, X, Loader2, MessageSquare,
     Trash2, Stethoscope, FileText, Network, Shield,
     Eye, Cpu, PanelRightClose, PanelRight, Upload, Activity, BookOpen,
-    SlidersHorizontal, ChevronDown
+    SlidersHorizontal, ChevronDown, Sun, Moon
 } from 'lucide-react'
+import { useTheme } from '../context/ThemeContext'
 import KnowledgeGraphPanel from '../components/KnowledgeGraphPanel'
 import SOAPNoteModal from '../components/SOAPNoteModal'
 import PatientInfoPanel from '../components/PatientInfoPanel'
@@ -83,6 +86,7 @@ const streamSseEvents = async (response, onEvent) => {
 }
 
 export default function ClinicianDashboard() {
+    const { theme, toggleTheme } = useTheme()
     // ── State ──────────────────────────────────────────────────────
     const [messages, setMessages] = useState([])
     const [input, setInput] = useState('')
@@ -497,20 +501,24 @@ export default function ClinicianDashboard() {
 
     // ── Render ───────────────────────────────────────────────────────
     return (
-        <div className="cd">
+        <div className={`cd cd--${theme}`}>
             {/* ═══ TOP BAR ═══ */}
             <header className="cd-topbar">
-                <div className="cd-topbar__brand">
+                <Link href="/" className="cd-topbar__brand">
                     <div className="cd-topbar__logo"><Stethoscope strokeWidth={2.2} /></div>
                     <div className="cd-topbar__name">Synapse <span>AI</span></div>
-                </div>
+                </Link>
 
                 <div className="cd-topbar__divider" />
 
                 <div className="cd-topbar__spacer" />
 
                 <div className="cd-topbar__view-switch" aria-label="Current application view">
-                    <span className="cd-topbar__view-chip cd-topbar__view-chip--active">Clinician</span>
+                    <button className="cd-theme-toggle" onClick={toggleTheme} aria-label="Toggle theme">
+                        {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                    </button>
+                    <div className="cd-topbar__divider" style={{ height: '20px', margin: '0 4px' }} />
+                    <span className="cd-topbar__view-chip cd-topbar__view-chip--active">Clinician View</span>
                     <Link
                         href="/patient"
                         className="cd-topbar__view-chip cd-topbar__view-chip--link"

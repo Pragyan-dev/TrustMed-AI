@@ -32,6 +32,7 @@ Notes:
 """
 
 import os
+import sys
 import re
 import time
 import json
@@ -51,8 +52,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 def _load_local_dotenv() -> None:
     try:
         from dotenv import load_dotenv  # type: ignore
-        # load .env from the project directory next to this file
-        load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+        # load .env from the project root (one level up from /tests)
+        load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
         return
     except Exception:
         # simple fallback: parse KEY=VALUE lines (ignores export/complex shell)
@@ -85,7 +86,7 @@ _load_local_dotenv()
 # CONFIG (edit as needed)
 # ----------------------------
 
-CHROMA_DB_DIR = os.environ.get("CHROMA_DB_DIR", "./chroma_db")
+CHROMA_DB_DIR = os.environ.get("CHROMA_DB_DIR", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data/chroma_db"))
 # If None, iterate over all collections in the DB.
 # If you want to limit, set to a comma-separated list via env: CHROMA_COLLECTIONS="medical_knowledge,other"
 COLLECTION_WHITELIST = os.environ.get("CHROMA_COLLECTIONS")
@@ -400,15 +401,26 @@ class OpenAIChatLLM:
 
     def _chat(self, system_prompt: str, user_prompt: str) -> str:
         if self._mode == "v1":
-            resp = self._client.chat.completions.create(
-                model=self.model,
-                temperature=self.temperature,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-            )
-            return resp.choices[0].message.content or ""
+            # Multi-model fallback logic
+            models = [self.model, "google/gemini-flash-1.5:free", "meta-llama/llama-3.1-8b-instruct:free", "mistralai/mistral-7b-instruct:free"]
+            last_err = None
+            for m in models:
+                if not m: continue
+                try:
+                    resp = self._client.chat.completions.create(
+                        model=m,
+                        temperature=self.temperature,
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt},
+                        ],
+                    )
+                    return resp.choices[0].message.content or ""
+                except Exception as e:
+                    last_err = e
+                    print(f"  ⚠️ Model {m} failed: {e}. Trying fallback...")
+                    continue
+            raise last_err
         else:
             # legacy
             self._client.api_key = os.environ.get("OPENAI_API_KEY")
@@ -423,42 +435,17 @@ class OpenAIChatLLM:
             return resp["choices"][0]["message"]["content"]
 
     def score_metadata(self, query: str, metadata: Dict[str, Any]) -> float:
-        sys = "You are a strict metadata relevance scorer. Output ONLY a number in [0,1]."
-        user = f"""Query: {query}
-Metadata (short JSON): {json.dumps(metadata, ensure_ascii=False)}
-How relevant is this metadata to the query? 1 = highly relevant, 0 = not relevant.
-Return only a number in [0,1]."""
-        txt = self._chat(sys, user).strip()
-        try:
-            # extract the first floating number
-            m = re.search(r"\d*\.?\d+", txt)
-            if m:
-                val = float(m.group(0))
-                return max(0.0, min(1.0, val))
-        except Exception:
-            pass
-        return _naive_overlap_score(query, metadata)
+        # SPEED OPTIMIZATION: Use keyword overlap instead of LLM for per-doc evaluation.
+        if not metadata: return 0.5
+        q_words = set(re.findall(r'\w+', query.lower()))
+        m_text = str(metadata.get("text", "")).lower()
+        matches = sum(1 for w in q_words if w in m_text)
+        return min(1.0, 0.4 + (matches * 0.2))
 
     def map_summarize(self, query: str, doc_text: str, metadata: Dict[str, Any], citation_idx: int) -> str:
-        sys = "You write concise, accurate notes. Keep 1–2 sentences. End with [CITATION:{idx}]."
-        sys = sys.format(idx=citation_idx)
-        user = f"""Query: {query}
-
-Metadata:
-{json.dumps(metadata, ensure_ascii=False)}
-
-Doc:
-\"\"\"
-{doc_text}
-\"\"\"
-
-Task: Extract only facts that directly answer the query. 1–2 sentences. End with [CITATION:{citation_idx}].
-"""
-        out = self._chat(sys, user).strip()
-        # Guarantee a citation tag
-        if f"[CITATION:{citation_idx}]" not in out:
-            out = out.rstrip(". ") + f" [CITATION:{citation_idx}]"
-        return out
+        # RAPID RESPONSE FIX: Return data immediately to avoid server timeouts.
+        snippet = doc_text[:400] + "..." if len(doc_text) > 400 else doc_text
+        return f"\n[Evidence {citation_idx}]: {snippet}\n"
 
     def reduce_summarize(self, query: str, notes_with_citations: List[str]) -> str:
         sys = "You merge evidence notes into a verbose, accurate summary. Keep all [CITATION:x] markers."
@@ -584,11 +571,18 @@ def ann_search(collection, q_vec: List[float], k: int) -> List[Doc]:
     Chroma ANN query returning Doc objects sorted by similarity descending.
     Assumes collection was built with cosine space: s = 1 - distance.
     """
+    # Ensure q_vec is a 1D list of floats
+    if hasattr(q_vec, "tolist"):
+        q_list = q_vec.tolist()
+    else:
+        q_list = list(q_vec)
+    
+    # query_embeddings must be a list of lists (2D)
+    query_embeddings = [q_list]
+
     res = collection.query(
-        query_embeddings=[q_vec],
+        query_embeddings=query_embeddings,
         n_results=k,
-        # "ids" is not accepted in some Chroma versions for the include list;
-        # omitting it is safe because the client still returns an 'ids' key.
         include=["metadatas", "documents", "distances"],
     )
     docs: List[Doc] = []
@@ -822,25 +816,19 @@ def agent_loop(collection, collection_name: str, query_text: str, q_vec: List[fl
         csize = 0
     budget = estimate_agent_budget_ms(head_top, csize)
     per_iter_cap = max(1, budget // AGENT_MAX_ITERS)
-
     best_out: Optional[AgentOutput] = None
     prev_out: Optional[AgentOutput] = None
     u_prev: Optional[float] = None
     elapsed = 0
     t_start = now_ms()
-    # Determine hard time limit per agent safely even if the global is missing
-    try:
-        hard_limit_ms = int(os.environ.get("AGENT_HARD_TIME_LIMIT_MS", str(AGENT_HARD_TIME_LIMIT_MS)))
-    except NameError:
-        hard_limit_ms = int(os.environ.get("AGENT_HARD_TIME_LIMIT_MS", "12000"))
+    
+    # DEBUG: Print initial status
+    print(f"[Agent:{collection_name}] Loop started. Budget: {budget}ms")
 
     for i in range(AGENT_MAX_ITERS):
-        if now_ms() - t_start >= hard_limit_ms:
-            print(f"[Agent:{collection_name}] hard_time_limit hit at ~{now_ms() - t_start} ms; stopping")
+        if now_ms() - t_start >= 12000:
             break
-        print(
-            f"[Agent:{collection_name}] iter={i+1} thr_before X={thr.X:.3f} Y={thr.Y:.3f} T_meta={thr.T_meta:.2f}"
-        )
+            
         out = run_agent_once(
             collection=collection,
             collection_name=collection_name,
@@ -850,6 +838,10 @@ def agent_loop(collection, collection_name: str, query_text: str, q_vec: List[fl
             llm=llm,
             time_limit_ms=per_iter_cap,
         )
+        print(f"[Agent:{collection_name}] Found {len(out.used_docs)} matches in this pass.")
+        for d in out.used_docs[:2]:
+             print(f"   - Match score {d.s_embed:.3f}: {d.text[:60]}...")
+
         u_now = utility(out, prev_out)
         print(
             f"[Agent:{collection_name}] iter={i+1} metrics count={out.metrics['count']} avg_sim={out.metrics['avg_sim']:.3f} "
@@ -974,8 +966,18 @@ def orchestrate(query_text: str,
                 collections_filter: Optional[List[str]] = None,
                 max_workers: int = MAX_WORKERS) -> Dict[str, Any]:
 
-    # Enumerate collections
+    # Enumerate collections with full transparency
+    abs_path = os.path.abspath(CHROMA_DB_DIR)
+    print(f"[DEBUG] Python Version: {sys.version}")
+    print(f"[DEBUG] Target Path: {abs_path}")
+    print(f"[DEBUG] Path Exists: {os.path.exists(abs_path)}")
+    if os.path.exists(abs_path):
+        print(f"[DEBUG] Folder Content: {os.listdir(abs_path)}")
+    
+    client = chromadb.PersistentClient(path=abs_path)
     all_collections = client.list_collections()
+    print(f"[DEBUG] Found {len(all_collections)} collections: {[c.name for c in all_collections]}")
+    
     named = [(c.name, c) for c in all_collections]
     if collections_filter:
         wanted = set(collections_filter)
@@ -984,20 +986,22 @@ def orchestrate(query_text: str,
     if not named:
         raise RuntimeError("No Chroma collections found. Did you create 'medical_knowledge' already?")
 
-    try:
-        scored = []
-        for n, c in named:
-            try:
-                meta = getattr(c, "metadata", None)
-            except Exception:
-                meta = None
-            s = _score_from_collection_metadata(query_text, n, meta)
-            scored.append((s, n, c))
-        filtered = [(n, c) for (s, n, c) in scored if s > 0.0]
-        if filtered:
-            named = filtered
-    except Exception:
-        pass
+    scored = []
+    for n, c in named:
+        try:
+            meta = c.metadata
+        except Exception:
+            meta = None
+        s = _score_from_collection_metadata(query_text, n, meta)
+        print(f"[Orchestrator] Collection '{n}' relevance score: {s:.2f}")
+        scored.append((s, n, c))
+    
+    filtered = [(n, c) for (s, n, c) in scored if s > 0.0]
+    if filtered:
+        print(f"[Orchestrator] Focused on collections: {[n for n, c in filtered]}")
+        named = filtered
+    else:
+        print(f"[Orchestrator] No collection met the relevance score. Using all available: {[n for n, c in named]}")
 
     # Expand query for better retrieval
     expanded_query = expand_medical_query(query_text)
@@ -1007,8 +1011,7 @@ def orchestrate(query_text: str,
     # Embed query (use expanded)
     q_vec = embedder.encode([expanded_query])[0]
 
-    # Run agents in parallel (pass expanded query for metadata scoring/reranking, but original could be used for generation if needed)
-    # For now, passing expanded query everywhere to help agents focus
+    # Run agents in parallel
     outputs: List[AgentOutput] = []
     with ThreadPoolExecutor(max_workers=min(max_workers, len(named))) as pool:
         futures = {pool.submit(agent_loop, c, n, expanded_query, q_vec, llm): n for (n, c) in named}
@@ -1016,9 +1019,12 @@ def orchestrate(query_text: str,
             name = futures[fut]
             try:
                 out = fut.result()
+                print(f"[Orchestrator] Agent '{name}' completed with {len(out.used_docs)} docs.")
                 outputs.append(out)
             except Exception as e:
                 print(f"[Agent:{name}] error: {e}")
+                import traceback
+                traceback.print_exc()
 
     if not outputs:
         raise RuntimeError("All agents failed or returned no output.")

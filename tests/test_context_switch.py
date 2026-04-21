@@ -5,19 +5,35 @@ import time
 
 def run_query(query, session_file):
     print(f"\n--- Running query: '{query}' ---")
-    cmd = [sys.executable, "anti_test.py", "--query", query, "--session_file", session_file]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    # Point to the actual knowledge base in data/chroma_db
+    env = os.environ.copy()
+    root = "/Users/chandanapulikanti/Downloads/TrustMed-AI"
+    env["CHROMA_DB_DIR"] = os.path.join(root, "data/chroma_db")
+    env["CHROMA_COLLECTIONS"] = "diseases,symptoms,medicines"
+    env["X0"] = "0.30"
+    env["Y0"] = "0.15"
+    env["RERANKER_MODEL_NAME"] = "" # Disable reranker for speed/reliability
+    tests_dir = os.path.dirname(os.path.abspath(__file__))
+    anti_test_path = os.path.join(tests_dir, "anti_test.py")
+    cmd = [sys.executable, "-u", anti_test_path, "--query", query, "--session_file", session_file]
+    result = subprocess.run(cmd, capture_output=True, text=True, env=env)
     if result.returncode != 0:
         print("Error running command:")
+        print(result.stdout)
         print(result.stderr)
-        return ""
+        return "", ""
     
     # Extract the rewritten query if present
     rewritten = ""
-    for line in result.stdout.splitlines():
+    answer_preview = ""
+    lines = result.stdout.splitlines()
+    for i, line in enumerate(lines):
         if "[Context] Rewrote query:" in line:
             rewritten = line.split("->")[1].strip().strip("'")
             print(f"  -> Rewritten as: '{rewritten}'")
+        if "== ANSWER ==" in line and i+2 < len(lines):
+            answer_preview = lines[i+2].strip()[:150] + "..."
+            print(f"  AI Response: {answer_preview}")
     
     return result.stdout, rewritten
 

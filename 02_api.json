@@ -1,0 +1,17 @@
+[
+    {"id": "API-001", "input": "curl -s http://localhost:8000/", "observation": "TrustMed AI API greeting found", "issues": "None", "results": "PASS"},
+    {"id": "API-002", "input": "curl -X POST /sessions/new", "observation": "Session a744a9cf572e45b5 created", "issues": "None", "results": "PASS"},
+    {"id": "API-003", "input": "curl -s /sessions?source=clinician", "observation": "New session shown in list", "issues": "None", "results": "PASS"},
+    {"id": "API-004", "input": "curl -s /sessions/a744a9cf572e45b5", "observation": "Session metadata retrieved", "issues": "None", "results": "PASS"},
+    {"id": "API-005", "input": "curl -s /patient/10002428", "observation": "Patient 10002428 data JSON received", "issues": "None", "results": "PASS"},
+    {"id": "API-006", "input": "curl -POST /patient/10002428/summary", "observation": "Plain English summary generated", "issues": "None", "results": "PASS"},
+    {"id": "API-007", "input": "curl -s /sessions", "observation": "Global sessions list response ok", "issues": "None", "results": "PASS"},
+    {"id": "API-008", "input": "curl -s /explain-term?term=tachycardia", "observation": "Second hit confirmed cached: true", "issues": "None", "results": "PASS"},
+    {"id": "API-009", "input": "curl -s /graph?search_term=Diabetes", "observation": "Returned 15 nodes and 14 edges", "issues": "None", "results": "PASS"},
+    {"id": "API-010", "input": "curl -X POST /chat (Medical query)", "observation": "Comprehensive medical response received", "issues": "None", "results": "PASS"},
+    {"id": "API-011", "input": "curl -X POST /chat (Non-medical)", "observation": "Refused coding request as expected", "issues": "None", "results": "PASS"},
+    {"id": "API-012", "input": "curl -X POST /soap-note", "observation": "Structured clinical JSON generated", "issues": "None", "results": "PASS"},
+    {"id": "API-013", "input": "curl -N /chat/stream", "observation": "Progress steps and tokens received", "issues": "None", "results": "PASS"},
+    {"id": "API-014", "input": "curl -X POST /sessions/rename", "observation": "Successfully renamed session", "issues": "None", "results": "PASS"},
+    {"id": "API-015", "input": "curl -X DELETE /sessions/a744a9cf572e45b5", "observation": "Session cleared from system", "issues": "None", "results": "PASS"}
+]

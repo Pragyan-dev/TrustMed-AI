@@ -4,29 +4,75 @@
    Patient:   Light accessible theme with top navbar
    ========================================================================== */
 
-/* ── Role Selector (Landing Page /) ─────────────────────────────────────── */
-
 .role-selector {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(160deg, #F2FAF4 0%, #E8F5E9 50%, #F2FAF4 100%);
     padding: 2rem;
     gap: 1rem;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.5s ease;
 }
 
+/* --- Dark Theme --- */
+.role-selector--dark {
+    background: radial-gradient(circle at 50% 50%, #1a2f23 0%, #0f172a 100%);
+}
+
+.role-selector--dark h1 {
+    color: #ffffff;
+    background: linear-gradient(to bottom, #fff, #94a3b8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.role-selector--dark .role-selector__subtitle {
+    color: #94a3b8;
+}
+
+/* --- Light Theme --- */
+.role-selector--light {
+    background: radial-gradient(circle at 50% 50%, #f0fdf4 0%, #f8fafc 100%);
+}
+
+.role-selector--light h1 {
+    color: #2D3436;
+}
+
+.role-selector--light .role-selector__subtitle {
+    color: #64748b;
+}
+
+.role-selector--light .role-card {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(46, 125, 82, 0.1);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.04);
+}
+
+.role-selector--light .role-card h2 {
+    color: #2D3436;
+}
+
+.role-selector--light .role-card p {
+    color: #64748b;
+}
+
+/* --- Commmon Role Selector Styles --- */
 .role-selector__logo {
-    width: 80px;
-    height: 80px;
+    width: 90px;
+    height: 90px;
     background: linear-gradient(135deg, #2E7D52, #4CAF50);
-    border-radius: 20px;
+    border-radius: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 0.5rem;
-    box-shadow: 0 8px 32px rgba(46, 125, 82, 0.25);
+    box-shadow: 0 12px 36px rgba(46, 125, 82, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    animation: floating 3s ease-in-out infinite;
 }
 
 .role-selector__logo svg {
@@ -37,103 +83,184 @@
 
 .role-selector h1 {
     font-family: var(--font-heading);
-    font-size: 2.2rem;
-    color: #2D3436;
+    font-size: 3rem;
+    font-weight: 500;
     margin: 0;
+    letter-spacing: normal;
+    color: var(--text-primary);
+}
+
+.role-selector__typing {
+    font-family: var(--font-body);
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #10b981;
+    margin: 0.5rem 0 0.2rem;
+    height: 1.5rem;
+}
+
+.typing-cursor {
+    margin-left: 2px;
+    animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+    from, to { opacity: 1; }
+    50% { opacity: 0; }
 }
 
 .role-selector__subtitle {
-    color: #636E72;
-    font-size: 1rem;
-    margin-bottom: 2rem;
+    font-size: 0.9rem;
+    margin-bottom: 3rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.theme-toggle {
+    position: absolute;
+    top: 2rem;
+    right: 2rem;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #10b981;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.role-selector--light .theme-toggle {
+    background: white;
+    border-color: rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    color: #2E7D52;
+}
+
+.theme-toggle:hover {
+    transform: scale(1.1);
+    background: #10b981;
+    color: white;
 }
 
 .role-selector__cards {
     display: flex;
-    gap: 2rem;
+    gap: 2.5rem;
     flex-wrap: wrap;
     justify-content: center;
+    z-index: 1;
 }
 
 .role-card {
-    background: white;
-    border-radius: 20px;
-    padding: 2.5rem 2rem;
-    width: 320px;
-    text-align: center;
+    /* Glassmorphism */
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 32px;
+    padding: 3rem 2.5rem;
+    width: 360px;
+    text-align: left;
     cursor: pointer;
-    transition: all 0.3s ease;
-    border: 2px solid transparent;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     text-decoration: none;
     color: inherit;
-    display: block;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+.role-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(800px circle at var(--mouse-x, 0) var(--mouse-y, 0), rgba(255, 255, 255, 0.06), transparent 40%);
+    opacity: 0;
+    transition: opacity 0.5s;
+    pointer-events: none;
+}
+
+.role-card:hover::after {
+    opacity: 1;
 }
 
 .role-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
-    text-decoration: none;
-}
-
-.role-card--clinician:hover {
-    border-color: #1a1a2e;
-}
-
-.role-card--patient:hover {
-    border-color: #2E7D52;
+    transform: translateY(-12px);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(16, 185, 129, 0.4);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
 }
 
 .role-card__icon {
-    width: 64px;
-    height: 64px;
-    border-radius: 16px;
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 1.2rem;
+    margin-bottom: 2rem;
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    transition: all 0.3s ease;
 }
 
-.role-card--clinician .role-card__icon {
-    background: linear-gradient(135deg, #2E7D52, #4CAF50);
+.role-card:hover .role-card__icon {
+    background: #10b981;
     color: white;
-}
-
-.role-card--patient .role-card__icon {
-    background: linear-gradient(135deg, #2E7D52, #4CAF50);
-    color: white;
+    transform: scale(1.1) rotate(-5deg);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
 }
 
 .role-card h2 {
     font-family: var(--font-heading);
-    font-size: 1.3rem;
-    margin: 0 0 0.5rem;
-    color: #2D3436;
+    font-size: 1.7rem;
+    font-weight: 700;
+    margin: 0 0 1rem;
+    color: #ffffff;
 }
 
 .role-card p {
-    color: #636E72;
-    font-size: 0.9rem;
-    line-height: 1.5;
+    color: #94a3b8;
+    font-size: 1rem;
+    line-height: 1.6;
     margin: 0;
+    flex: 1;
 }
 
 .role-card__arrow {
-    margin-top: 1.5rem;
-    color: #B2BEC3;
-    transition: transform 0.3s ease, color 0.3s ease;
+    margin-top: 2rem;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    transition: all 0.3s ease;
 }
 
 .role-card:hover .role-card__arrow {
-    transform: translateX(6px);
-    color: #2E7D52;
+    background: #10b981;
+    color: white;
+    transform: translateX(8px);
 }
 
 .role-selector__footer {
-    margin-top: 3rem;
+    margin-top: 4rem;
     text-align: center;
-    color: #B2BEC3;
-    font-size: 0.8rem;
+    color: #64748b;
+    font-size: 0.85rem;
+    max-width: 500px;
+    line-height: 1.6;
 }
 
 /* ── Clinician Layout (Light Theme — matches patient portal) ────────────── */
@@ -275,6 +402,47 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    transition: background 0.3s ease;
+}
+
+/* --- Patient Dark Theme Overrides --- */
+.patient-layout--dark {
+    background: #0f172a;
+    color: #f8fafc;
+}
+
+.patient-layout--dark .pt-navbar {
+    background: rgba(30, 41, 59, 0.8);
+    backdrop-filter: blur(12px);
+    border-color: rgba(16, 185, 129, 0.15);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.patient-layout--dark .pt-navbar__brand,
+.patient-layout--dark .pt-navbar__title {
+    color: #ffffff;
+}
+
+.patient-layout--dark .pt-nav-link {
+    color: #94a3b8;
+}
+
+.patient-layout--dark .pt-view-switch {
+    background: rgba(15, 23, 42, 0.6);
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+.patient-layout--dark .pt-view-chip--link {
+    color: #64748b;
+}
+
+.patient-layout--dark .pt-view-chip--link:hover {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.patient-layout--dark .pt-theme-toggle {
+    color: #94a3b8;
 }
 
 .pt-navbar {
@@ -287,6 +455,7 @@
     justify-content: space-between;
     box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
     flex-shrink: 0;
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .pt-navbar__brand {
@@ -298,29 +467,32 @@
 }
 
 .pt-navbar__logo {
-    width: 36px;
-    height: 36px;
-    background: linear-gradient(135deg, #2E7D52, #4CAF50);
-    border-radius: 10px;
+    width: 32px;
+    height: 32px;
+    background: var(--brand-emerald);
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .pt-navbar__logo svg {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     color: white;
 }
 
 .pt-navbar__title {
     font-family: var(--font-heading);
-    font-size: 1.2rem;
-    font-weight: 600;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
 }
 
 .pt-navbar__title span {
-    color: #2E7D52;
+    color: var(--accent-color);
 }
 
 .pt-navbar__links {
@@ -361,12 +533,31 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    padding: 4px;
+    padding: 3px;
     border-radius: 999px;
     background: rgba(247, 250, 248, 0.96);
     border: 1px solid rgba(46, 125, 82, 0.12);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
     margin: 0 0.25rem;
+}
+
+.pt-theme-toggle {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.pt-theme-toggle:hover {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
 }
 
 .pt-view-chip {

@@ -1,0 +1,98 @@
+{
+  "phase": 3,
+  "name": "Clinician Workflow Validation",
+  "status": "COMPLETED_WITH_ISSUES",
+  "summary": {
+    "total_tests": 10,
+    "passed": 9,
+    "failed": 1
+  },
+  "results": [
+    {
+      "id": "CLI-001",
+      "name": "Open Clinician Dashboard",
+      "input": "Navigate to http://localhost:5173/clinician",
+      "observation": "Dashboard UI renders successfully with all sidebars and main panels.",
+      "issues": null,
+      "result": "PASS"
+    },
+    {
+      "id": "CLI-002",
+      "name": "Create New Session",
+      "input": "Click 'New Chat' button",
+      "observation": "System initializes a clean workspace and generates a session ID.",
+      "issues": null,
+      "result": "PASS"
+    },
+    {
+      "id": "CLI-003",
+      "name": "Load Patient Data",
+      "input": "Select patient 10002428",
+      "observation": "Patient info, vitals, and history populate the right sidebar.",
+      "issues": null,
+      "result": "PASS"
+    },
+    {
+      "id": "CLI-004",
+      "name": "Send Clinician Text Query",
+      "input": "Summarize the current risks for patient 10002428",
+      "observation": "AI response streams correctly with relevant clinical insights.",
+      "issues": null,
+      "result": "PASS"
+    },
+    {
+      "id": "CLI-005",
+      "name": "Generate SOAP Note",
+      "input": "Trigger 'Generate SOAP Note' from active session",
+      "observation": "A structured SOAP note is generated based on the chat history.",
+      "issues": null,
+      "result": "PASS"
+    },
+    {
+      "id": "CLI-006",
+      "name": "Interactive Knowledge Graph",
+      "input": "Click 'Graph' tab and explore nodes",
+      "observation": "3D graph renders successfully with synced patient context.",
+      "issues": null,
+      "result": "PASS"
+    },
+    {
+      "id": "CLI-007",
+      "name": "Medical Image Upload",
+      "input": "Upload roco_0001.jpg",
+      "observation": "Image is processed, previewed, and analysis is available in workspace.",
+      "issues": null,
+      "result": "PASS"
+    },
+    {
+      "id": "CLI-008",
+      "name": "Compound Figure Panel Detection",
+      "input": "Upload multi-panel medical figure tests/fixtures/vision/compound_figure.png",
+      "observation": "System correctly identifies sub-panels and allows focused clinical review.",
+      "issues": null,
+      "result": "PASS"
+    },
+    {
+      "id": "CLI-009",
+      "name": "Reasoning Model Switching",
+      "input": "Toggle between model architectures",
+      "observation": "System updates the active agent model without crashing.",
+      "issues": null,
+      "result": "PASS"
+    },
+    {
+      "id": "CLI-010",
+      "name": "UI Workflow Persistence",
+      "input": "Hard refresh browser page during session",
+      "observation": "State is reset to default; previous progress must be manually reloaded.",
+      "issues": [
+        {
+          "code": "BUG-002",
+          "severity": "high",
+          "description": "Frontend state is not persisted in localStorage or session URL."
+        }
+      ],
+      "result": "FAIL"
+    }
+  ]
+}

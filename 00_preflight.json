@@ -1,0 +1,14 @@
+[
+    {"id": "ENV-001", "objective": "Python Version", "status": "PASS", "output": "Python 3.13.12"},
+    {"id": "ENV-002", "objective": "Node Version", "status": "PASS", "output": "v22.22.0"},
+    {"id": "ENV-003", "objective": "npm Version", "status": "PASS", "output": "10.9.4"},
+    {"id": "ENV-004", "objective": "Python Dependencies", "status": "PASS", "output": "python_deps_ok"},
+    {"id": "ENV-005", "objective": "Frontend Manifest", "status": "PASS", "output": "True"},
+    {"id": "ENV-006", "objective": ".env Presence", "status": "PASS", "output": "True"},
+    {"id": "ENV-007", "objective": "Env Keys", "status": "PASS", "output": "All keys True"},
+    {"id": "ENV-008", "objective": "SQLite Demo DB", "status": "PASS", "output": "True"},
+    {"id": "ENV-009", "objective": "Chroma DB", "status": "PASS", "output": "True"},
+    {"id": "ENV-010", "objective": "Neo4j Connectivity", "status": "PASS", "output": "neo4j_ok"},
+    {"id": "ENV-011", "objective": "Runtime Dirs", "status": "PASS", "output": "runtime_dirs_ok"},
+    {"id": "ENV-012", "objective": "Git SHA", "status": "PASS", "output": "741b68e095296f2074e1af4399f3b873686bdf6b"}
+]

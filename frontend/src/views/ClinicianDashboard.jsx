@@ -124,6 +124,9 @@ export default function ClinicianDashboard() {
     // Patient
     const [selectedPatient, setSelectedPatient] = useState('')
     const [patientData, setPatientData] = useState(null)
+    const [patientAttachments, setPatientAttachments] = useState([])
+    const [patientAttachmentsLoading, setPatientAttachmentsLoading] = useState(false)
+    const [patientAttachmentsError, setPatientAttachmentsError] = useState('')
 
     // Settings
     const [temperature, setTemperature] = useState(0.1)
@@ -186,15 +189,40 @@ export default function ClinicianDashboard() {
         setGraphContext(null)
         setDrugAlerts([])
         setPatientData(null)
-        if (!patId) { setPatientData(null); return }
+        setPatientAttachments([])
+        setPatientAttachmentsError('')
+        if (!patId) {
+            setPatientAttachmentsLoading(false)
+            return
+        }
+        setPatientAttachmentsLoading(true)
         try {
-            const res = await fetch(`${API_BASE}/patient/${patId}`)
-            if (!res.ok) {
-                throw new Error(await readApiError(res, 'Failed to load patient data.'))
+            const [patientRes, attachRes] = await Promise.all([
+                fetch(`${API_BASE}/patient/${patId}`),
+                fetch(`${API_BASE}/patient/${patId}/attachments`),
+            ])
+            if (!patientRes.ok) {
+                throw new Error(await readApiError(patientRes, 'Failed to load patient data.'))
             }
-            const data = await res.json()
+            const data = await patientRes.json()
             setPatientData(data)
-        } catch (err) { console.error('Failed to load patient:', err) }
+
+            if (attachRes.ok) {
+                const attachData = await attachRes.json()
+                setPatientAttachments(Array.isArray(attachData.attachments) ? attachData.attachments : [])
+                setPatientAttachmentsError('')
+            } else {
+                setPatientAttachments([])
+                setPatientAttachmentsError(
+                    await readApiError(attachRes, 'Could not load patient imaging / reports.')
+                )
+            }
+        } catch (err) {
+            console.error('Failed to load patient:', err)
+            setPatientAttachments([])
+        } finally {
+            setPatientAttachmentsLoading(false)
+        }
     }
 
     // ── Session Management ───────────────────────────────────────────
@@ -723,7 +751,15 @@ export default function ClinicianDashboard() {
                             <div style={{ marginTop: '0.75rem' }}>
                                 <PatientInfoPanel
                                     patientData={patientData}
-                                    onClose={() => setPatientData(null)}
+                                    attachments={patientAttachments}
+                                    attachmentsLoading={patientAttachmentsLoading}
+                                    attachmentsError={patientAttachmentsError}
+                                    onClose={() => {
+                                        setPatientData(null)
+                                        setPatientAttachments([])
+                                        setPatientAttachmentsError('')
+                                        setPatientAttachmentsLoading(false)
+                                    }}
                                 />
                             </div>
                         )}

@@ -75,5 +75,38 @@
     "uploaded_by": "patient",
     "uploaded_at": "2026-04-21T21:49:55.668033Z",
     "url": "/uploads/patient-files/10002428/image_3d01158c8645.jpeg"
+  },
+  {
+    "id": "1a842980419f4d19",
+    "patient_id": "10002428",
+    "title": "8bfb3d e27ac84de84f48bfac97ae48cad057db mv2",
+    "original_filename": "8bfb3d_e27ac84de84f48bfac97ae48cad057db-mv2.avif",
+    "mime_type": "image/avif",
+    "file_kind": "image",
+    "uploaded_by": "patient",
+    "uploaded_at": "2026-04-21T22:01:49.101325Z",
+    "url": "/uploads/patient-files/10002428/image_8bdd264f6d6e.avif"
+  },
+  {
+    "id": "99ad293ab9bd41ff",
+    "patient_id": "10002428",
+    "title": "2",
+    "original_filename": "2.jpeg",
+    "mime_type": "image/jpeg",
+    "file_kind": "image",
+    "uploaded_by": "patient",
+    "uploaded_at": "2026-04-21T22:01:53.162597Z",
+    "url": "/uploads/patient-files/10002428/image_f2041b5b188f.jpeg"
+  },
+  {
+    "id": "cfc858065fc348ee",
+    "patient_id": "10002428",
+    "title": "1",
+    "original_filename": "1.jpg",
+    "mime_type": "image/jpeg",
+    "file_kind": "image",
+    "uploaded_by": "patient",
+    "uploaded_at": "2026-04-21T22:01:55.956595Z",
+    "url": "/uploads/patient-files/10002428/image_3ed52e1f220e.jpg"
   }
 ]

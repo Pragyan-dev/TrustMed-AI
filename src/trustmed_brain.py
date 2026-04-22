@@ -12,6 +12,8 @@ The orchestrator fuses these contexts and generates comprehensive medical insigh
 import asyncio
 import re
 import os
+import queue as sync_queue
+import threading
 from dotenv import load_dotenv
 
 import chromadb
@@ -244,6 +246,121 @@ def _invoke_with_retry(llm_factory, prompt, max_retries=3, models=None):
             print(f"  ↩️ Model {model_name} exhausted retries, trying next fallback...")
 
     raise last_exc
+
+
+def _extract_patient_portal_question(query: str) -> str:
+    match = re.search(r'Patient question:\s*"(.+?)"\s*(?:\n|$)', query or "", re.S)
+    if match:
+        return match.group(1).strip()
+    return (query or "").strip()
+
+
+def _is_report_focused_patient_query(query: str) -> bool:
+    text = (query or "").lower()
+    return any(
+        phrase in text
+        for phrase in (
+            "check the report",
+            "check my report",
+            "review the report",
+            "review my report",
+            "summarize the report",
+            "summarise the report",
+            "explain the report",
+            "latest report",
+            "my report",
+            "uploaded report",
+            "lab result",
+            "lab results",
+            "test result",
+            "test results",
+            "what does my report suggest",
+            "what does my latest report suggest",
+        )
+    )
+
+
+def _latest_report_summary(report_context: str) -> str:
+    for line in (report_context or "").splitlines():
+        stripped = line.strip()
+        if stripped.lower().startswith("summary:"):
+            return stripped.split(":", 1)[1].strip()
+    return ""
+
+
+def _build_stream_timeout_fallback(clean_query: str, report_context: str, partial_response: str = "") -> str:
+    partial = (partial_response or "").strip()
+    if len(partial) >= 80:
+        return partial
+
+    patient_question = _extract_patient_portal_question(clean_query)
+    latest_summary = _latest_report_summary(report_context)
+    if latest_summary and _is_report_focused_patient_query(patient_question):
+        return (
+            f"Your latest uploaded report suggests: {latest_summary}\n\n"
+            "I could not finish the full explanation right now, but that is the main finding from the report."
+        )
+
+    return (
+        "I'm taking longer than expected to finish this answer. "
+        "Please try again in a moment."
+    )
+
+
+def _coerce_chunk_text(chunk) -> str:
+    content = getattr(chunk, "content", chunk)
+
+    if isinstance(content, str):
+        return content
+
+    if isinstance(content, dict):
+        return str(content.get("text") or content.get("content") or content.get("value") or "")
+
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                text = item.get("text") or item.get("content") or item.get("value") or ""
+                if text:
+                    parts.append(str(text))
+        return "".join(parts)
+
+    return str(content or "")
+
+
+async def _stream_sync_tokens(stream_factory, first_token_timeout: float = 25.0, idle_token_timeout: float = 20.0):
+    output_queue: sync_queue.Queue = sync_queue.Queue()
+
+    def _worker():
+        try:
+            for chunk in stream_factory():
+                token = _coerce_chunk_text(chunk)
+                if token:
+                    output_queue.put(("token", token))
+        except Exception as exc:
+            output_queue.put(("error", exc))
+        finally:
+            output_queue.put(("done", None))
+
+    threading.Thread(target=_worker, daemon=True).start()
+    saw_token = False
+
+    while True:
+        timeout = first_token_timeout if not saw_token else idle_token_timeout
+        try:
+            kind, payload = await asyncio.to_thread(output_queue.get, True, timeout)
+        except sync_queue.Empty as exc:
+            raise asyncio.TimeoutError("Timed out waiting for model tokens.") from exc
+
+        if kind == "token":
+            saw_token = True
+            yield payload
+            continue
+        if kind == "error":
+            raise payload
+        break
 
 # =============================================================================
 # Right Brain: Vector Search (ChromaDB)
@@ -1215,7 +1332,8 @@ def _extract_medical_terms_for_graph(
         'image', 'scan', 'xray', 'x-ray', 'chest', 'photo', 'picture',
         'upload', 'attachment', 'please', 'help', 'need', 'want', 'could',
         'would', 'should', 'does', 'have', 'there', 'signs', 'any', 'are',
-        'the', 'and', 'for', 'can', 'you', 'see'
+        'the', 'and', 'for', 'can', 'you', 'see', 'report', 'latest',
+        'result', 'results', 'suggest', 'portal', 'question'
     }
     query_words = clean_query.lower().split()
     query_medical = [w for w in query_words if w not in stop_words and len(w) > 2 and not w.isdigit()]
@@ -1491,19 +1609,16 @@ async def ask_trustmed(
 
     # Step B2: Deterministic Drug Interaction Check (No LLM — pure graph traversal)
     drug_safety_alerts = ""
-    combined_patient_context = "\n\n".join(
-        part for part in (patient_context, report_context)
-        if part and "No uploaded patient reports provided." not in part
+    drug_checker_context = (
+        patient_context
+        if patient_context and "No patient-specific" not in patient_context
+        else ""
     )
-    has_structured_patient_context = (
-        (patient_context and "No patient-specific" not in patient_context)
-        or (report_context and "No uploaded patient reports provided." not in report_context)
-    )
-    if combined_patient_context and has_structured_patient_context:
+    if drug_checker_context:
         print("💊 Step B2: Checking Drug Interactions (deterministic)...")
         try:
             drug_safety_alerts = await asyncio.wait_for(
-                asyncio.to_thread(check_drug_interactions, combined_patient_context),
+                asyncio.to_thread(check_drug_interactions, drug_checker_context),
                 timeout=15.0  # 15-second hard timeout
             )
             if drug_safety_alerts:
@@ -1772,7 +1887,26 @@ async def ask_trustmed_streaming(query: str, chat_history: list = None,
         if not report_context:
             report_context = "No uploaded patient reports provided."
 
-        graph_query = _extract_medical_terms_for_graph(clean_query, vision_result, patient_context, report_context)
+        patient_portal_question = _extract_patient_portal_question(clean_query)
+        user_query_for_prompt = (
+            patient_portal_question
+            if clean_query.startswith("[PATIENT PORTAL]")
+            else clean_query
+        )
+        report_focused_patient_question = (
+            clean_query.startswith("[PATIENT PORTAL]")
+            and "No image provided." in vision_result
+            and report_context
+            and "No uploaded patient reports provided." not in report_context
+            and _is_report_focused_patient_query(patient_portal_question)
+        )
+
+        graph_query = _extract_medical_terms_for_graph(
+            user_query_for_prompt,
+            vision_result,
+            patient_context,
+            report_context,
+        )
         diagnosis_names = _extract_diagnosis_names(patient_context) if patient_context else []
         graph_source = "query"
         if diagnosis_names and any(diag in graph_query.lower() for diag in diagnosis_names):
@@ -1784,7 +1918,7 @@ async def ask_trustmed_streaming(query: str, chat_history: list = None,
             "source": graph_source,
         }
 
-        vector_query = clean_query
+        vector_query = user_query_for_prompt
         if vision_result and "No image provided" not in vision_result:
             vision_terms = []
             for line in vision_result.split('\n'):
@@ -1792,49 +1926,54 @@ async def ask_trustmed_streaming(query: str, chat_history: list = None,
                 if stripped.startswith("[HIGH]"):
                     vision_terms.append(stripped.replace("[HIGH]", "").strip())
             if vision_terms:
-                vector_query = f"{clean_query} {' '.join(vision_terms[:3])}"
+                vector_query = f"{user_query_for_prompt} {' '.join(vision_terms[:3])}"
 
-        # ── Steps B+C: Graph + Vector Search (parallel) ──────────────────
-        yield {"type": "progress", "step": "search", "message": "🔗 Searching knowledge graph & medical literature…"}
-        try:
-            graph_task = asyncio.wait_for(
-                asyncio.to_thread(get_graph_context, graph_query, model),
-                timeout=30.0
-            )
-            vector_task = asyncio.wait_for(
-                asyncio.to_thread(get_vector_context_fast, vector_query),
-                timeout=12.0
-            )
-            graph_context, vector_context = await asyncio.gather(
-                graph_task, vector_task, return_exceptions=True
-            )
-            if isinstance(graph_context, Exception):
-                graph_context = "No structured data found."
-            if isinstance(vector_context, Exception):
-                vector_context = "No relevant literature found."
-        except Exception:
-            graph_context = "No structured data found."
-            vector_context = "No relevant literature found."
-
-        # ── Step B2: Drug Interaction Check ───────────────────────────────
+        graph_context = "No structured data found."
+        vector_context = "No relevant literature found."
         drug_safety_alerts = ""
-        combined_patient_context = "\n\n".join(
-            part for part in (patient_context, report_context)
-            if part and "No uploaded patient reports provided." not in part
-        )
-        has_structured_patient_context = (
-            (patient_context and "No patient-specific" not in patient_context)
-            or (report_context and "No uploaded patient reports provided." not in report_context)
-        )
-        if combined_patient_context and has_structured_patient_context:
-            yield {"type": "progress", "step": "drugs", "message": "💊 Checking drug interactions…"}
+
+        if report_focused_patient_question:
+            yield {"type": "progress", "step": "search", "message": "📄 Reading your latest uploaded report…"}
+            graph_context = "Knowledge graph lookup skipped for a report-focused patient question."
+            vector_context = "Literature lookup skipped for a report-focused patient question."
+        else:
+            # ── Steps B+C: Graph + Vector Search (parallel) ──────────────────
+            yield {"type": "progress", "step": "search", "message": "🔗 Searching knowledge graph & medical literature…"}
             try:
-                drug_safety_alerts = await asyncio.wait_for(
-                    asyncio.to_thread(check_drug_interactions, combined_patient_context),
-                    timeout=15.0
+                graph_task = asyncio.wait_for(
+                    asyncio.to_thread(get_graph_context, graph_query, model),
+                    timeout=30.0
                 )
+                vector_task = asyncio.wait_for(
+                    asyncio.to_thread(get_vector_context_fast, vector_query),
+                    timeout=12.0
+                )
+                graph_context, vector_context = await asyncio.gather(
+                    graph_task, vector_task, return_exceptions=True
+                )
+                if isinstance(graph_context, Exception):
+                    graph_context = "No structured data found."
+                if isinstance(vector_context, Exception):
+                    vector_context = "No relevant literature found."
             except Exception:
-                drug_safety_alerts = ""
+                graph_context = "No structured data found."
+                vector_context = "No relevant literature found."
+
+            # ── Step B2: Drug Interaction Check ───────────────────────────────
+            drug_checker_context = (
+                patient_context
+                if patient_context and "No patient-specific" not in patient_context
+                else ""
+            )
+            if drug_checker_context:
+                yield {"type": "progress", "step": "drugs", "message": "💊 Checking drug interactions…"}
+                try:
+                    drug_safety_alerts = await asyncio.wait_for(
+                        asyncio.to_thread(check_drug_interactions, drug_checker_context),
+                        timeout=15.0
+                    )
+                except Exception:
+                    drug_safety_alerts = ""
 
         # Emit only actual safety alerts to frontend (not treatment recommendations)
         if drug_safety_alerts:
@@ -1869,7 +2008,7 @@ async def ask_trustmed_streaming(query: str, chat_history: list = None,
             graph_context=enriched_graph_context,
             vector_context=vector_context,
             vision_context=vision_result,
-            query=clean_query
+            query=user_query_for_prompt
         )
 
         # ── Step E: Stream LLM synthesis ──────────────────────────────────
@@ -1880,32 +2019,63 @@ async def ask_trustmed_streaming(query: str, chat_history: list = None,
         print(f"🤖 Using model: {synthesis_model}")
 
         draft_chunks = []
-        if synthesis_model.startswith("vertex/"):
-            # Route to MedGemma on Vertex AI with streaming
-            print("  🧬 Routing to MedGemma 27B (Vertex AI) for streaming synthesis...")
-            for token in call_medgemma_text(
-                final_prompt, temperature=synthesis_temp,
-                max_tokens=2000, stream=True
-            ):
-                draft_chunks.append(token)
-                yield {"type": "token", "content": token}
-        else:
-            llm = ChatOpenAI(
-                model=synthesis_model,
-                openai_api_key=OPENROUTER_API_KEY,
-                openai_api_base="https://openrouter.ai/api/v1",
-                temperature=synthesis_temp,
-                streaming=True
-            )
-            for chunk in llm.stream(final_prompt):
-                token = chunk.content
-                if token:
+        draft_response = ""
+        skip_safety_review = False
+        try:
+            if synthesis_model.startswith("vertex/"):
+                # Route to MedGemma on Vertex AI with streaming
+                print("  🧬 Routing to MedGemma 27B (Vertex AI) for streaming synthesis...")
+                async for token in _stream_sync_tokens(
+                    lambda: call_medgemma_text(
+                        final_prompt,
+                        temperature=synthesis_temp,
+                        max_tokens=2000,
+                        stream=True,
+                    )
+                ):
                     draft_chunks.append(token)
                     yield {"type": "token", "content": token}
+            else:
+                llm = ChatOpenAI(
+                    model=synthesis_model,
+                    openai_api_key=OPENROUTER_API_KEY,
+                    openai_api_base="https://openrouter.ai/api/v1",
+                    temperature=synthesis_temp,
+                    streaming=True,
+                    request_timeout=40,
+                )
+                async for token in _stream_sync_tokens(lambda: llm.stream(final_prompt)):
+                    draft_chunks.append(token)
+                    yield {"type": "token", "content": token}
+        except asyncio.TimeoutError:
+            direct_response = ""
+            try:
+                direct_response = await asyncio.wait_for(
+                    ask_trustmed_direct(final_prompt, model=synthesis_model),
+                    timeout=25.0,
+                )
+            except Exception:
+                direct_response = ""
 
-        draft_response = "".join(draft_chunks)
+            draft_response = (
+                direct_response.strip()
+                if direct_response and "Explanation unavailable" not in direct_response
+                else _build_stream_timeout_fallback(
+                    user_query_for_prompt,
+                    report_context,
+                    "".join(draft_chunks),
+                )
+            )
+            yield {"type": "replace", "content": draft_response}
+            skip_safety_review = True
+
+        draft_response = "".join(draft_chunks) if draft_chunks else draft_response
 
         # ── Step F: Safety checks ─────────────────────────────────────────
+        if skip_safety_review:
+            yield {"type": "done", "final_response": draft_response}
+            return
+
         yield {"type": "progress", "step": "safety", "message": "🛡️ Running safety review…"}
 
         # F.1: Deterministic Visual-RAG consistency check
@@ -1928,7 +2098,7 @@ Vision Analysis & Similar Cases (REVIEW FOR DISCREPANCIES):
 """
             safety_prompt = SAFETY_CRITIC_PROMPT.format(
                 context=safety_context,
-                query=clean_query,
+                query=user_query_for_prompt,
                 draft=draft_response
             )
 

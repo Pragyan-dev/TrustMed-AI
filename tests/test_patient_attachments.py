@@ -1,12 +1,15 @@
+import asyncio
 import os
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 import api.main as api_main
 import src.patient_report_context as report_context
+import src.trustmed_brain as trustmed_brain
 
 
 MINIMAL_PNG = bytes.fromhex(
@@ -236,6 +239,177 @@ M.pneumoniae IgM
         self.assertEqual(captured["patient_id"], "10002428")
         self.assertIn("Uploaded report context", captured["report_context"])
         self.assertIn("Pneumonia", captured["report_context"])
+
+    def test_patient_report_question_skips_heavy_retrieval(self):
+        report_digest = (
+            "Uploaded report context (most recent first):\n"
+            "- Z677 (2022-08-11T00:00:00)\n"
+            "  Summary: Mycoplasma pneumoniae accounts for nearly 20% of all cases of pneumonia.\n"
+        )
+
+        class FakeLLM:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def stream(self, prompt):
+                yield SimpleNamespace(content="Your latest report suggests atypical pneumonia.")
+
+        async def collect_events():
+            events = []
+            async for event in trustmed_brain.ask_trustmed_streaming(
+                query=(
+                    "[PATIENT PORTAL] You are TrustMed AI's patient visit assistant.\n\n"
+                    'Patient question: "check the report"\n\n'
+                    "Explain in plain language."
+                ),
+                patient_id="10002428",
+                report_context=report_digest,
+            ):
+                events.append(event)
+            return events
+
+        with patch.object(trustmed_brain, "get_patient_context", return_value="Patient 10002428"), \
+             patch.object(trustmed_brain, "get_graph_context", side_effect=AssertionError("graph lookup should be skipped")), \
+             patch.object(trustmed_brain, "get_vector_context_fast", side_effect=AssertionError("vector lookup should be skipped")), \
+             patch.object(trustmed_brain, "check_drug_interactions", side_effect=AssertionError("drug checker should be skipped")), \
+             patch.object(trustmed_brain, "ChatOpenAI", FakeLLM):
+            events = asyncio.run(collect_events())
+
+        self.assertTrue(any(event.get("step") == "search" and "latest uploaded report" in event.get("message", "") for event in events))
+        self.assertTrue(any(event.get("type") == "token" for event in events))
+        self.assertEqual(events[-1]["type"], "done")
+
+    def test_patient_stream_timeout_uses_direct_completion_fallback(self):
+        report_digest = (
+            "Uploaded report context (most recent first):\n"
+            "- Z677 (2022-08-11T00:00:00)\n"
+            "  Summary: Mycoplasma pneumoniae accounts for nearly 20% of all cases of pneumonia.\n"
+        )
+
+        async def fake_timeout_stream(*args, **kwargs):
+            if False:
+                yield ""
+            raise asyncio.TimeoutError()
+
+        class FakeLLM:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def stream(self, prompt):
+                return iter(())
+
+        async def collect_events():
+            events = []
+            async for event in trustmed_brain.ask_trustmed_streaming(
+                query=(
+                    "[PATIENT PORTAL] You are TrustMed AI's patient visit assistant.\n\n"
+                    'Patient question: "check the report"\n\n'
+                    "Explain in plain language."
+                ),
+                patient_id="10002428",
+                report_context=report_digest,
+            ):
+                events.append(event)
+            return events
+
+        with patch.object(trustmed_brain, "get_patient_context", return_value="Patient 10002428"), \
+             patch.object(trustmed_brain, "ChatOpenAI", FakeLLM), \
+             patch.object(trustmed_brain, "ask_trustmed_direct", return_value="Direct Gemini fallback answer."), \
+             patch.object(trustmed_brain, "_stream_sync_tokens", fake_timeout_stream):
+            events = asyncio.run(collect_events())
+
+        replace_events = [event for event in events if event.get("type") == "replace"]
+        self.assertTrue(replace_events)
+        self.assertEqual(replace_events[-1]["content"], "Direct Gemini fallback answer.")
+        self.assertEqual(events[-1]["type"], "done")
+        self.assertEqual(events[-1]["final_response"], "Direct Gemini fallback answer.")
+
+    def test_patient_stream_timeout_falls_back_to_report_summary_when_direct_completion_fails(self):
+        report_digest = (
+            "Uploaded report context (most recent first):\n"
+            "- Z677 (2022-08-11T00:00:00)\n"
+            "  Summary: Mycoplasma pneumoniae accounts for nearly 20% of all cases of pneumonia.\n"
+        )
+
+        async def fake_timeout_stream(*args, **kwargs):
+            if False:
+                yield ""
+            raise asyncio.TimeoutError()
+
+        class FakeLLM:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def stream(self, prompt):
+                return iter(())
+
+        async def collect_events():
+            events = []
+            async for event in trustmed_brain.ask_trustmed_streaming(
+                query=(
+                    "[PATIENT PORTAL] You are TrustMed AI's patient visit assistant.\n\n"
+                    'Patient question: "what does my latest report suggest"\n\n'
+                    "Explain in plain language."
+                ),
+                patient_id="10002428",
+                report_context=report_digest,
+            ):
+                events.append(event)
+            return events
+
+        with patch.object(trustmed_brain, "get_patient_context", return_value="Patient 10002428"), \
+             patch.object(trustmed_brain, "ChatOpenAI", FakeLLM), \
+             patch.object(trustmed_brain, "ask_trustmed_direct", return_value="Explanation unavailable. Please consult your physician."), \
+             patch.object(trustmed_brain, "_stream_sync_tokens", fake_timeout_stream):
+            events = asyncio.run(collect_events())
+
+        replace_events = [event for event in events if event.get("type") == "replace"]
+        self.assertTrue(replace_events)
+        self.assertIn("Your latest uploaded report suggests:", replace_events[-1]["content"])
+        self.assertEqual(events[-1]["type"], "done")
+        self.assertIn("Mycoplasma pneumoniae", events[-1]["final_response"])
+
+    def test_patient_drug_checker_uses_chart_context_only(self):
+        captured = {}
+
+        class FakeLLM:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def stream(self, prompt):
+                yield SimpleNamespace(content="ok")
+
+        def fake_drug_checker(context):
+            captured["context"] = context
+            return ""
+
+        async def collect_events():
+            events = []
+            async for event in trustmed_brain.ask_trustmed_streaming(
+                query=(
+                    "[PATIENT PORTAL] You are TrustMed AI's patient visit assistant.\n\n"
+                    'Patient question: "what should I know about my medicines?"\n\n'
+                    "Explain in plain language."
+                ),
+                patient_id="10002428",
+                report_context=(
+                    "Uploaded report context (most recent first):\n"
+                    "- Z677 (2022-08-11T00:00:00)\n"
+                    "  Summary: Mycoplasma pneumoniae accounts for nearly 20% of all cases of pneumonia.\n"
+                ),
+            ):
+                events.append(event)
+            return events
+
+        with patch.object(trustmed_brain, "get_patient_context", return_value="Current Medications: lisinopril, albuterol"), \
+             patch.object(trustmed_brain, "get_graph_context", return_value="No structured data found."), \
+             patch.object(trustmed_brain, "get_vector_context_fast", return_value="No relevant literature found."), \
+             patch.object(trustmed_brain, "check_drug_interactions", side_effect=fake_drug_checker), \
+             patch.object(trustmed_brain, "ChatOpenAI", FakeLLM):
+            events = asyncio.run(collect_events())
+
+        self.assertEqual(captured["context"], "Current Medications: lisinopril, albuterol")
+        self.assertEqual(events[-1]["type"], "done")
 
 
 if __name__ == "__main__":

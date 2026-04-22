@@ -344,6 +344,7 @@ export default function PatientPortal() {
     const [chatMessages, setChatMessages] = useState([])
     const [chatInput, setChatInput] = useState('')
     const [chatLoading, setChatLoading] = useState(false)
+    const [chatProgress, setChatProgress] = useState('')
     const [sessionId, setSessionId] = useState(null)
     const chatEndRef = useRef(null)
     const patientChatMessagesRef = useRef(null)
@@ -446,6 +447,7 @@ export default function PatientPortal() {
         const requestId = ++summaryRequestRef.current
         setChatMessages([])
         setChatInput('')
+        setChatProgress('')
         setSessionId(null)
         setActiveSection('profile')
         setInteractionResult(null)
@@ -545,6 +547,7 @@ export default function PatientPortal() {
         setChatInput('')
         setChatMessages(prev => [...prev, { role: 'user', content: userMsg }])
         setChatLoading(true)
+        setChatProgress('Connecting to your care assistant...')
 
         try {
             const res = await fetch(`${API_BASE}/chat/stream`, {
@@ -564,7 +567,10 @@ export default function PatientPortal() {
             let added = false
 
             await streamSseEvents(res, (event) => {
-                if (event.type === 'token') {
+                if (event.type === 'progress') {
+                    setChatProgress(event.message || 'Working on your answer...')
+                } else if (event.type === 'token') {
+                    setChatProgress('')
                     if (!added) {
                         setChatMessages(prev => [...prev, { role: 'assistant', content: '' }])
                         added = true
@@ -575,13 +581,43 @@ export default function PatientPortal() {
                         u[u.length - 1] = { ...l, content: l.content + event.content }
                         return u
                     })
+                } else if (event.type === 'replace') {
+                    setChatProgress('')
+                    if (!added) {
+                        setChatMessages(prev => [...prev, { role: 'assistant', content: event.content || '' }])
+                        added = true
+                        return
+                    }
+                    setChatMessages(prev => {
+                        const u = [...prev]
+                        u[u.length - 1] = { ...u[u.length - 1], content: event.content || '' }
+                        return u
+                    })
+                } else if (event.type === 'error') {
+                    setChatProgress('')
+                    const message = event.message || 'Sorry, something went wrong. Please try again.'
+                    if (!added) {
+                        setChatMessages(prev => [...prev, { role: 'assistant', content: message }])
+                        added = true
+                        return
+                    }
+                    setChatMessages(prev => {
+                        const u = [...prev]
+                        u[u.length - 1] = { ...u[u.length - 1], content: message }
+                        return u
+                    })
                 } else if (event.type === 'done' && !added && event.final_response) {
+                    setChatProgress('')
                     setChatMessages(prev => [...prev, { role: 'assistant', content: event.final_response }])
                 }
             })
         } catch {
+            setChatProgress('')
             setChatMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }])
-        } finally { setChatLoading(false) }
+        } finally {
+            setChatProgress('')
+            setChatLoading(false)
+        }
     }
 
     const sendChat = async (e) => {
@@ -1549,6 +1585,9 @@ export default function PatientPortal() {
                                                 <div className="pp-chat__dot" />
                                                 <div className="pp-chat__dot" />
                                                 <div className="pp-chat__dot" />
+                                                {chatProgress && (
+                                                    <span className="pp-chat__typing-label">{chatProgress}</span>
+                                                )}
                                             </div>
                                         )}
                                         <div ref={chatEndRef} />

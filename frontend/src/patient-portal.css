@@ -1561,9 +1561,18 @@
 
 .pp-chat__typing {
     display: flex;
+    align-items: center;
+    flex-wrap: wrap;
     gap: 4px;
     padding: 0.4rem 0;
     align-self: flex-start;
+}
+
+.pp-chat__typing-label {
+    margin-left: 0.45rem;
+    color: rgba(47, 98, 78, 0.78);
+    font-size: 0.88rem;
+    letter-spacing: 0.01em;
 }
 
 .pp-chat__dot {

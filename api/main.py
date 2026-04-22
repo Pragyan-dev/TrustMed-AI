@@ -532,10 +532,8 @@ async def _prepare_chat_query(request, session: dict) -> tuple[str, Optional[str
 
     wrapped_message = (
         "[PATIENT PORTAL] You are TrustMed AI's patient visit assistant. "
-        "You may only answer questions about this patient's visit, chart, diagnoses, "
-        f"medications, vitals, lab results, imaging, symptoms, or care plan.{patient_context}\n\n"
-        "If the patient asks for anything outside that scope, do not answer the request. "
-        f'Respond exactly with:\n"{PATIENT_ASSISTANT_SCOPE_REPLY}"\n\n'
+        "Answer only using this patient's chart, medications, vitals, imaging, lab results, "
+        "uploaded reports, symptoms, or care plan.\n\n"
         f'Patient question: "{visible_message}"\n\n'
         "Explain in plain language at an 8th-grade reading level. Avoid medical jargon. "
         "Be warm, direct, and concise. Use short sentences and bullet points when helpful. "

@@ -209,6 +209,23 @@ M.pneumoniae IgM
         self.assertTrue(any(item.get("source") == "chart" for item in data["vitals_history"]))
         self.assertTrue(data["report_summaries"])
 
+    def test_patient_summary_endpoint_does_not_404_when_report_has_extraction_error_field(self):
+        response = self._upload_pdf_with_text(
+            "Report Date: 2026-04-21\nFindings: Right lower lobe opacity.\nBlood pressure: 144/82\nSpO2: 95%"
+        )
+        self.assertEqual(response.status_code, 200)
+
+        async def fake_summary_response(prompt, model=None):
+            return "We could not generate a detailed summary right now."
+
+        with patch.object(api_main, "ask_trustmed_direct", fake_summary_response):
+            summary_response = self.client.post("/patient/10002428/summary")
+
+        self.assertEqual(summary_response.status_code, 200)
+        payload = summary_response.json()
+        self.assertIn("summary", payload)
+        self.assertTrue(payload["summary"])
+
     def test_clinician_chat_stream_receives_patient_id_and_report_context(self):
         upload_response = self._upload_pdf_with_text(
             "Report Date: 2026-04-21\nDiagnoses: Pneumonia\nFindings: Right lower lobe opacity.\nMedication: Lisinopril 10 mg\nBlood pressure: 144/82"

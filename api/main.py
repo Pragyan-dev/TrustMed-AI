@@ -914,12 +914,7 @@ async def get_patient(patient_id: str):
     """
     try:
         data = await asyncio.to_thread(get_patient_data_json, patient_id)
-        if (
-            not data.get("vitals")
-            and not data.get("diagnoses")
-            and not data.get("medications")
-            and not data.get("report_summaries")
-        ):
+        if not _patient_data_has_content(data):
             raise HTTPException(status_code=404, detail=f"No data found for patient {patient_id}")
         return data
     except HTTPException:
@@ -1504,6 +1499,16 @@ def _merge_summary_with_fallback(payload: dict, fallback: dict) -> dict:
     return merged
 
 
+def _patient_data_has_content(patient_data: Optional[dict]) -> bool:
+    if not patient_data:
+        return False
+
+    return any(
+        patient_data.get(key)
+        for key in ("vitals", "diagnoses", "medications", "report_summaries")
+    )
+
+
 @app.post("/patient/{patient_id}/summary")
 async def patient_summary(patient_id: str):
     """
@@ -1513,7 +1518,7 @@ async def patient_summary(patient_id: str):
     try:
         # Get raw clinical data
         patient_data = await asyncio.to_thread(get_patient_data_json, patient_id)
-        if not patient_data or "error" in str(patient_data).lower():
+        if not _patient_data_has_content(patient_data):
             raise HTTPException(status_code=404, detail="Patient not found")
 
         fallback_result = _build_patient_summary_fallback(patient_data)

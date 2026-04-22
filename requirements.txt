@@ -36,6 +36,7 @@ python-dotenv>=1.2.2
 
 # Data Processing
 pandas>=3.0.2
+psycopg2-binary>=2.9.10
 
 # Optional: For UMLS API
 # requests is already included above

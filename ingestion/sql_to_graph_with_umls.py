@@ -1,8 +1,8 @@
 import os
 import time
 from neo4j import GraphDatabase
-from umls_client import UMLSClient
-from sql_to_chroma import get_connection, fetch_all_rows
+from src.umls_client import UMLSClient
+from ingestion.sql_to_chroma import get_connection, fetch_all_rows
 from dotenv import load_dotenv
 
 load_dotenv()

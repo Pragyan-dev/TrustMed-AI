@@ -45,6 +45,8 @@ pillow>=12.2.0
 opencv-python>=4.13.0.92
 torch>=2.11.0
 transformers>=5.5.4
+pypdf>=6.1.1
+pymupdf>=1.26.5
 
 # HuggingFace Datasets
 datasets>=4.8.4

@@ -71,6 +71,15 @@ function getAttachmentTypeLabel(fileKind) {
     return fileKind === 'pdf' ? 'PDF report' : 'Imaging file'
 }
 
+function getAttachmentProcessingLabel(attachment) {
+    const status = attachment?.processing_status
+    if (!status || attachment?.file_kind !== 'pdf') return ''
+    if (status === 'completed') return 'Parsed'
+    if (status === 'completed_with_fallback') return 'Parsed with OCR fallback'
+    if (status === 'failed') return 'Could not parse'
+    return 'Processing'
+}
+
 function PatientInfoPanel({ patientData, attachments = [], attachmentsLoading = false, attachmentsError = '', onClose }) {
     const [collapsed, setCollapsed] = useState(false)
     const [diagnosesExpanded, setDiagnosesExpanded] = useState(false)
@@ -332,7 +341,20 @@ function PatientInfoPanel({ patientData, attachments = [], attachmentsLoading = 
                                                 <span>{getAttachmentSourceLabel(attachment.uploaded_by)}</span>
                                                 <span>{getAttachmentTypeLabel(attachment.file_kind)}</span>
                                                 <span>{formatAttachmentDate(attachment.uploaded_at)}</span>
+                                                {getAttachmentProcessingLabel(attachment) && (
+                                                    <span>{getAttachmentProcessingLabel(attachment)}</span>
+                                                )}
                                             </div>
+                                            {attachment.summary_preview && (
+                                                <div className="patient-attachment-row__meta">
+                                                    <span>{attachment.summary_preview}</span>
+                                                </div>
+                                            )}
+                                            {attachment.extraction_error && attachment.processing_status === 'failed' && (
+                                                <div className="patient-attachment-row__meta">
+                                                    <span>{attachment.extraction_error}</span>
+                                                </div>
+                                            )}
                                         </div>
                                         <a
                                             className="patient-attachment-row__link"

@@ -108,5 +108,16 @@
     "uploaded_by": "patient",
     "uploaded_at": "2026-04-21T22:01:55.956595Z",
     "url": "/uploads/patient-files/10002428/image_3ed52e1f220e.jpg"
+  },
+  {
+    "id": "bdab1805d51c4110",
+    "patient_id": "10002428",
+    "title": "Z677",
+    "original_filename": "Z677.pdf",
+    "mime_type": "application/pdf",
+    "file_kind": "pdf",
+    "uploaded_by": "patient",
+    "uploaded_at": "2026-04-22T18:51:35.784568Z",
+    "url": "/uploads/patient-files/10002428/pdf_f5ace5fec916.pdf"
   }
 ]

@@ -422,24 +422,24 @@ export default function ClinicianDashboard() {
         const imagePath = resolvedImagePath
         removeImage()
 
-        let apiMessage = userMessage.content
-        if (selectedPatient) {
-            apiMessage += `\n\n[System Note: Contextualize response for Patient ${selectedPatient}]`
-        }
-
         try {
             const res = await fetch(`${API_BASE}/chat/stream`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    message: apiMessage,
+                    message: userMessage.content,
                     session_id: currentSessionId,
                     image_path: imagePath || null,
+                    patient_id: selectedPatient || null,
+                    assistant_mode: 'clinician',
                     temperature,
                     model: selectedModel,
                     vision_model: selectedVisionModel,
                 })
             })
+            if (!res.ok) {
+                throw new Error(await readApiError(res, 'Clinical chat request failed.'))
+            }
 
             let assistantAdded = false
 

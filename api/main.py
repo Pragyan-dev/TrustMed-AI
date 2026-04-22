@@ -41,6 +41,10 @@ from src.vision_agent import get_vision_cache_stats, clear_vision_cache
 from src.graph_visualizer import get_graph_json
 from src.subfigure_detector import detect_compound_figure, split_compound_figure
 from src.patient_context_tool import get_patient_data_json
+from src.patient_report_context import (
+    load_attachment_sidecar,
+    process_attachment_report,
+)
 
 app = FastAPI(
     title="TrustMed AI API",
@@ -78,6 +82,10 @@ ATTACHMENT_PUBLIC_FIELDS = (
     "uploaded_by",
     "uploaded_at",
     "url",
+    "processing_status",
+    "processed_at",
+    "summary_preview",
+    "extraction_error",
 )
 
 
@@ -200,11 +208,36 @@ def _make_attachment_record(
     }
 
 
+def _process_report_attachment(record: dict, force: bool = False) -> Optional[dict]:
+    if str(record.get("file_kind")) != "pdf":
+        return None
+
+    attachment_path = _attachment_path_from_url(record.get("url"))
+    if not attachment_path or not os.path.exists(attachment_path):
+        return None
+
+    try:
+        return process_attachment_report(record, force=force)
+    except Exception as exc:
+        print(f"[PatientReports] Failed to process attachment {record.get('id')}: {exc}")
+        return load_attachment_sidecar(attachment_path)
+
+
 def _serialize_attachment(record: dict) -> dict:
-    return {
+    attachment = {
         field: record.get(field)
         for field in ATTACHMENT_PUBLIC_FIELDS
     }
+
+    attachment_path = _attachment_path_from_url(record.get("url"))
+    sidecar = load_attachment_sidecar(attachment_path)
+    if isinstance(sidecar, dict):
+        attachment["processing_status"] = sidecar.get("processing_status")
+        attachment["processed_at"] = sidecar.get("processed_at")
+        attachment["summary_preview"] = sidecar.get("summary_preview")
+        attachment["extraction_error"] = sidecar.get("extraction_error")
+
+    return attachment
 
 
 def _load_patient_attachment_registry() -> List[dict]:
@@ -246,6 +279,7 @@ def _list_patient_attachments(patient_id: str) -> List[dict]:
         if attachment_path and not os.path.exists(attachment_path):
             continue
 
+        _process_report_attachment(record)
         attachments.append(_serialize_attachment(record))
 
     attachments.sort(key=lambda item: item.get("uploaded_at") or "", reverse=True)
@@ -436,7 +470,33 @@ def _build_patient_portal_context(patient_data: dict, patient_id: Optional[str])
     if medications:
         parts.append(f"Current Medications: {', '.join(m.get('name', '') for m in medications if m.get('name'))}")
 
-    if resolved_patient_id:
+    report_summaries = patient_data.get("report_summaries") or []
+    if report_summaries:
+        latest_report = report_summaries[0]
+        latest_label = latest_report.get("title") or "uploaded report"
+        latest_date = latest_report.get("report_date") or latest_report.get("uploaded_at") or "unknown date"
+        processing_status = latest_report.get("processing_status") or "completed"
+        if processing_status.startswith("completed"):
+            parts.append(
+                f"Uploaded Reports: {len(report_summaries)} in patient record; latest report is '{latest_label}' ({latest_date})."
+            )
+        elif processing_status == "failed":
+            parts.append(
+                f"Uploaded Reports: {len(report_summaries)} in patient record; latest report '{latest_label}' could not be parsed automatically."
+            )
+        else:
+            parts.append(
+                f"Uploaded Reports: {len(report_summaries)} in patient record; latest report '{latest_label}' is still processing."
+            )
+
+        report_preview = latest_report.get("summary_preview") or latest_report.get("summary")
+        if report_preview:
+            parts.append(f"Latest uploaded report summary: {report_preview}")
+
+        report_findings = patient_data.get("report_findings") or []
+        if report_findings:
+            parts.append(f"Report-derived findings: {', '.join(report_findings[:6])}")
+    elif resolved_patient_id:
         attachments = _list_patient_attachments(str(resolved_patient_id))
         if attachments:
             attachment_count = len(attachments)
@@ -452,19 +512,23 @@ def _build_patient_portal_context(patient_data: dict, patient_id: Optional[str])
     return "\n\nPatient clinical context:\n" + "\n".join(parts)
 
 
-async def _prepare_chat_query(request, session: dict) -> tuple[str, Optional[str]]:
+async def _prepare_chat_query(request, session: dict) -> tuple[str, Optional[str], Optional[str], str]:
     visible_message = request.message.strip()
     mode = _get_assistant_mode(request, session)
-    if mode != "patient":
-        return visible_message, None
-
-    if _is_off_topic_patient_question(visible_message):
-        return "", PATIENT_ASSISTANT_SCOPE_REPLY
+    patient_id = str(request.patient_id).strip() if request.patient_id else None
 
     patient_context = ""
-    if request.patient_id:
-        patient_data = await asyncio.to_thread(get_patient_data_json, request.patient_id)
-        patient_context = _build_patient_portal_context(patient_data, request.patient_id)
+    report_context = ""
+    if patient_id:
+        patient_data = await asyncio.to_thread(get_patient_data_json, patient_id)
+        patient_context = _build_patient_portal_context(patient_data, patient_id)
+        report_context = str(patient_data.get("report_digest") or "").strip()
+
+    if mode != "patient":
+        return visible_message, None, patient_id, report_context
+
+    if _is_off_topic_patient_question(visible_message):
+        return "", PATIENT_ASSISTANT_SCOPE_REPLY, patient_id, report_context
 
     wrapped_message = (
         "[PATIENT PORTAL] You are TrustMed AI's patient visit assistant. "
@@ -477,7 +541,7 @@ async def _prepare_chat_query(request, session: dict) -> tuple[str, Optional[str
         "Be warm, direct, and concise. Use short sentences and bullet points when helpful. "
         "Answer specifically about this patient's data when relevant."
     )
-    return wrapped_message, None
+    return wrapped_message, None, patient_id, report_context
 
 
 def _persist_session_turn(session_id: str, session: dict, request, assistant_response: str):
@@ -581,7 +645,7 @@ async def _stream_chat(request: ChatRequest):
     ):
         request.image_path = _resolve_latest_patient_image_path(request.patient_id)
 
-    query, direct_response = await _prepare_chat_query(request, session)
+    query, direct_response, resolved_patient_id, report_context = await _prepare_chat_query(request, session)
     if request.image_path and os.path.exists(request.image_path):
         query += f" [ATTACHMENT: {request.image_path}]"
 
@@ -603,7 +667,9 @@ async def _stream_chat(request: ChatRequest):
             query, history,
             temperature=request.temperature,
             model=request.model,
-            vision_model=request.vision_model
+            vision_model=request.vision_model,
+            patient_id=resolved_patient_id,
+            report_context=report_context,
         ):
             if event["type"] == "done":
                 final_response = event.get("final_response", "")
@@ -660,7 +726,7 @@ async def chat(request: ChatRequest):
         request.image_path = _resolve_latest_patient_image_path(request.patient_id)
 
     # Build query with image attachment if present
-    query, direct_response = await _prepare_chat_query(request, session)
+    query, direct_response, resolved_patient_id, report_context = await _prepare_chat_query(request, session)
     if request.image_path and os.path.exists(request.image_path):
         query += f" [ATTACHMENT: {request.image_path}]"
 
@@ -676,7 +742,15 @@ async def chat(request: ChatRequest):
 
     # Call TrustMed Brain (already async)
     try:
-        response = await ask_trustmed(query, history, temperature=request.temperature, model=request.model, vision_model=request.vision_model)
+        response = await ask_trustmed(
+            query,
+            history,
+            temperature=request.temperature,
+            model=request.model,
+            vision_model=request.vision_model,
+            patient_id=resolved_patient_id,
+            report_context=report_context,
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -758,6 +832,7 @@ async def upload_patient_attachment(patient_id: str, file: UploadFile = File(...
             title=original_filename,
         )
         _append_patient_attachment(record)
+        _process_report_attachment(record)
         return _serialize_attachment(record)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -799,6 +874,7 @@ async def link_clinician_upload(patient_id: str, request: LinkClinicianUploadReq
             title=display_name,
         )
         _append_patient_attachment(record)
+        _process_report_attachment(record)
         return _serialize_attachment(record)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -819,7 +895,7 @@ async def soap_note(request: SOAPRequest):
     try:
         patient_context = "N/A"
         if request.patient_id:
-            patient_context = await asyncio.to_thread(get_patient_context, request.patient_id)
+            patient_context = await asyncio.to_thread(get_patient_context, "", request.patient_id)
             if not patient_context:
                 patient_context = f"No patient context found for ID {request.patient_id}"
 
@@ -840,7 +916,12 @@ async def get_patient(patient_id: str):
     """
     try:
         data = await asyncio.to_thread(get_patient_data_json, patient_id)
-        if not data.get("vitals") and not data.get("diagnoses") and not data.get("medications"):
+        if (
+            not data.get("vitals")
+            and not data.get("diagnoses")
+            and not data.get("medications")
+            and not data.get("report_summaries")
+        ):
             raise HTTPException(status_code=404, detail=f"No data found for patient {patient_id}")
         return data
     except HTTPException:
@@ -1340,6 +1421,8 @@ def _build_patient_summary_fallback(patient_data: dict) -> dict:
     vitals = patient_data.get("vitals") or {}
     diagnoses = patient_data.get("diagnoses") or []
     medications = patient_data.get("medications") or []
+    report_findings = patient_data.get("report_findings") or []
+    report_summaries = patient_data.get("report_summaries") or []
 
     diagnosis_names: List[str] = []
     for diagnosis in diagnoses:
@@ -1368,6 +1451,11 @@ def _build_patient_summary_fallback(patient_data: dict) -> dict:
     else:
         summary = "Your chart includes recent health information from your care team."
 
+    if report_summaries:
+        latest_report = report_summaries[0]
+        latest_report_title = latest_report.get("title") or "an uploaded report"
+        summary += f" Your record also includes {latest_report_title}, which was added to your uploaded reports."
+
     if abnormal_flags:
         if len(abnormal_flags) == 1:
             summary += f" Your most recent vital signs also show {abnormal_flags[0]}, so your team is likely watching that closely."
@@ -1378,6 +1466,9 @@ def _build_patient_summary_fallback(patient_data: dict) -> dict:
     elif medications:
         summary += " Your current medicine list is also available in the chart."
 
+    if report_findings:
+        summary += f" The uploaded reports mention findings such as {', '.join(report_findings[:3])}."
+
     next_steps: List[str] = []
     if abnormal_flags:
         next_steps.append("Ask whether your recent vital signs should be rechecked soon.")
@@ -1385,6 +1476,8 @@ def _build_patient_summary_fallback(patient_data: dict) -> dict:
         next_steps.append("Bring your medication list to your next visit and ask what each medicine is for.")
     if any("lung infection" in item or "breathing problem" in item or "fluid around the lungs" in item for item in diagnosis_names):
         next_steps.append("Tell your care team right away if breathing feels worse, especially if you are more short of breath than usual.")
+    if report_summaries:
+        next_steps.append("Ask your care team to review any newly uploaded report findings with you at your next visit.")
     next_steps.append("Keep your next follow-up appointment so your care team can review these results with you.")
 
     deduped_steps: List[str] = []
@@ -1460,7 +1553,7 @@ async def patient_summary(patient_id: str):
 
 
 
-from medical_dictionary import MEDICAL_DICTIONARY, get_medical_explanation
+from api.medical_dictionary import MEDICAL_DICTIONARY, get_medical_explanation
 
 EXPLAIN_TERM_PROMPT = """You are a medical dictionary and clinical summarizer.
 Explain the term "{term}" in a way that is clear for clinicians but understandable for patients.

@@ -457,7 +457,7 @@ def get_graph_context(query: str, model_name: str = None) -> str:
 # Patient Context (MIMIC Data)
 # =============================================================================
 
-def get_patient_context(query: str) -> str:
+def get_patient_context(query: str, patient_id: str = None) -> str:
     """
     Extract patient ID from query and fetch their medical context.
     
@@ -467,21 +467,22 @@ def get_patient_context(query: str) -> str:
     Returns:
         Formatted patient context or empty string if no ID found
     """
-    match = re.search(PATIENT_ID_PATTERN, query)
-    
-    if not match:
-        return ""
-    
-    patient_id = match.group(1)
-    print(f"\n[PatientContext] Detected Patient ID: {patient_id}")
+    resolved_patient_id = str(patient_id).strip() if patient_id else None
+    if not resolved_patient_id:
+        match = re.search(PATIENT_ID_PATTERN, query)
+        if not match:
+            return ""
+        resolved_patient_id = match.group(1)
+
+    print(f"\n[PatientContext] Detected Patient ID: {resolved_patient_id}")
     
     try:
-        vitals = get_patient_vitals.invoke(patient_id)
-        diagnoses = get_patient_diagnoses.invoke(patient_id)
-        meds = get_patient_meds.invoke(patient_id)
+        vitals = get_patient_vitals.invoke(resolved_patient_id)
+        diagnoses = get_patient_diagnoses.invoke(resolved_patient_id)
+        meds = get_patient_meds.invoke(resolved_patient_id)
         
         return f"""
-=== PATIENT CONTEXT (ID: {patient_id}) ===
+=== PATIENT CONTEXT (ID: {resolved_patient_id}) ===
 
 {vitals}
 
@@ -491,7 +492,7 @@ def get_patient_context(query: str) -> str:
 """
     except Exception as e:
         print(f"[PatientContext] Error: {e}")
-        return f"Error fetching patient data for ID {patient_id}"
+        return f"Error fetching patient data for ID {resolved_patient_id}"
 
 
 # =============================================================================
@@ -927,12 +928,13 @@ def _extract_diagnosis_names(patient_context: str) -> list:
 
 SYNTHESIS_PROMPT = """You are TrustMed AI, a Neuro-Symbolic Clinical Decision Support System.
 
-You synthesize FOUR knowledge streams to provide comprehensive medical insights:
+You synthesize FIVE knowledge streams to provide comprehensive medical insights:
 
 1. PATIENT CONTEXT: Real-time vitals, diagnoses, and medications
-2. KNOWLEDGE GRAPH: Verified medical facts (diseases, symptoms, precautions)
-3. MEDICAL LITERATURE: Semantic search over clinical documents
-4. MULTIMODAL IMAGING REPORT: Vision analysis + Text guidelines + Similar historical cases
+2. UPLOADED REPORTS: Structured summaries extracted from newly uploaded patient PDF reports
+3. KNOWLEDGE GRAPH: Verified medical facts (diseases, symptoms, precautions)
+4. MEDICAL LITERATURE: Semantic search over clinical documents
+5. MULTIMODAL IMAGING REPORT: Vision analysis + Text guidelines + Similar historical cases
 
 CRITICAL INSTRUCTIONS:
 - **CONVERSATION CONTINUITY**: The CONVERSATION HISTORY below contains ALL previous exchanges
@@ -960,6 +962,9 @@ CRITICAL INSTRUCTIONS:
   * 🔍 POTENTIALLY MISSED conditions should be mentioned as worth investigating
   You MUST include these cross-reference results in your output under a dedicated section.
 - When NO image is provided but history contains image analysis, USE that prior analysis.
+- When UPLOADED REPORTS are available, treat them as supplemental patient evidence from
+  patient-uploaded files. Clearly label report-derived facts as coming from uploaded reports,
+  especially if they differ from chart-derived data.
 - Integrate ALL sources to form a complete clinical picture.
 - If Knowledge Graph contradicts Literature, PRIORITIZE the Knowledge Graph.
 - Cite sources naturally: "The imaging suggests...", "Based on similar cases..."
@@ -1021,6 +1026,9 @@ CONVERSATION HISTORY (previous exchanges in this session — USE THIS for follow
 {chat_history}
 ---
 {patient_context}
+---
+UPLOADED REPORTS:
+{report_context}
 ---
 KNOWLEDGE GRAPH FACTS (includes drug safety alerts if detected):
 {graph_context}
@@ -1125,7 +1133,8 @@ IMPORTANT:
 def _extract_medical_terms_for_graph(
     clean_query: str,
     vision_result: str = "",
-    patient_context: str = ""
+    patient_context: str = "",
+    report_context: str = ""
 ) -> str:
     """
     Extract medical terms from available context to form a smart Knowledge Graph query.
@@ -1136,12 +1145,14 @@ def _extract_medical_terms_for_graph(
     This function extracts actual medical conditions from:
     1. Vision findings ([HIGH] and [LOW] tagged findings)
     2. Patient diagnoses (from MIMIC data)
-    3. The user query itself (stripping common non-medical words)
+    3. Uploaded report findings and diagnoses
+    4. The user query itself (stripping common non-medical words)
 
     Args:
         clean_query: User query with image attachment tags removed
         vision_result: Full vision agent output (may contain findings)
         patient_context: Patient context string (may contain diagnoses)
+        report_context: Uploaded report digest string (may contain findings/diagnoses)
 
     Returns:
         A focused medical query string suitable for Knowledge Graph search
@@ -1178,7 +1189,26 @@ def _extract_medical_terms_for_graph(
                 if len(diagnosis) > 3 and not diagnosis.startswith("V") and not diagnosis[0].isdigit():
                     medical_terms.append(diagnosis)
 
-    # 3. Extract from user query (strip non-medical stop words)
+    # 3. Extract diagnoses and findings from uploaded report context
+    if report_context and "No uploaded patient reports provided." not in report_context:
+        current_section = None
+        for line in report_context.split('\n'):
+            stripped = line.strip()
+            lowered = stripped.lower()
+
+            if lowered.startswith("diagnoses:"):
+                current_section = "diagnoses"
+                continue
+            if lowered.startswith("findings:"):
+                current_section = "findings"
+                continue
+            if current_section and stripped.startswith(('- ', '• ', '* ')):
+                medical_terms.append(stripped.lstrip('-•* ').strip())
+                continue
+            if current_section and stripped and not stripped.startswith(('- ', '• ', '* ')):
+                current_section = None
+
+    # 4. Extract from user query (strip non-medical stop words)
     stop_words = {
         'assess', 'analyze', 'analyse', 'patient', 'check', 'look', 'tell',
         'show', 'find', 'what', 'this', 'that', 'with', 'from', 'about',
@@ -1317,7 +1347,15 @@ def _check_visual_rag_consistency(vision_result: str, draft_response: str) -> st
     return ""
 
 
-async def ask_trustmed(query: str, chat_history: list = None, temperature: float = None, model: str = None, vision_model: str = None) -> str:
+async def ask_trustmed(
+    query: str,
+    chat_history: list = None,
+    temperature: float = None,
+    model: str = None,
+    vision_model: str = None,
+    patient_id: str = None,
+    report_context: str = "",
+) -> str:
     """
     Main orchestrator - combines all knowledge sources to answer medical queries.
     
@@ -1398,15 +1436,20 @@ async def ask_trustmed(query: str, chat_history: list = None, temperature: float
     
     # Step A: Patient Context (synchronous, fast)
     print("📋 Step A: Fetching Patient Context...")
-    patient_context = get_patient_context(clean_query)
+    patient_context = get_patient_context(clean_query, patient_id)
     if patient_context:
         print("  ✓ Patient data retrieved")
     else:
         print("  ⚠ No patient ID detected in query")
         patient_context = "No patient-specific data requested."
+    report_context = (report_context or "").strip()
+    if report_context:
+        print("  ✓ Uploaded patient report context retrieved")
+    else:
+        report_context = "No uploaded patient reports provided."
 
     # Build smart query for Knowledge Graph using vision findings + patient diagnoses
-    graph_query = _extract_medical_terms_for_graph(clean_query, vision_result, patient_context)
+    graph_query = _extract_medical_terms_for_graph(clean_query, vision_result, patient_context, report_context)
     print(f"🔍 Smart Graph Query: {graph_query[:100]}...")
 
     # Build enriched vector search query: combine user query with vision findings
@@ -1448,11 +1491,19 @@ async def ask_trustmed(query: str, chat_history: list = None, temperature: float
 
     # Step B2: Deterministic Drug Interaction Check (No LLM — pure graph traversal)
     drug_safety_alerts = ""
-    if patient_context and "No patient-specific" not in patient_context:
+    combined_patient_context = "\n\n".join(
+        part for part in (patient_context, report_context)
+        if part and "No uploaded patient reports provided." not in part
+    )
+    has_structured_patient_context = (
+        (patient_context and "No patient-specific" not in patient_context)
+        or (report_context and "No uploaded patient reports provided." not in report_context)
+    )
+    if combined_patient_context and has_structured_patient_context:
         print("💊 Step B2: Checking Drug Interactions (deterministic)...")
         try:
             drug_safety_alerts = await asyncio.wait_for(
-                asyncio.to_thread(check_drug_interactions, patient_context),
+                asyncio.to_thread(check_drug_interactions, combined_patient_context),
                 timeout=15.0  # 15-second hard timeout
             )
             if drug_safety_alerts:
@@ -1478,6 +1529,7 @@ async def ask_trustmed(query: str, chat_history: list = None, temperature: float
     final_prompt = SYNTHESIS_PROMPT.format(
         chat_history=history_text,
         patient_context=patient_context,
+        report_context=report_context,
         graph_context=enriched_graph_context,
         vector_context=vector_context,
         vision_context=vision_result,
@@ -1519,6 +1571,9 @@ async def ask_trustmed(query: str, chat_history: list = None, temperature: float
     # F.2: Independent LLM Safety Critic (DIFFERENT model from synthesizer)
     # This ensures the critic has genuinely different failure modes
     safety_context = f"""Patient Context: {patient_context}
+
+Uploaded Reports:
+{report_context}
 
 Knowledge Graph: {enriched_graph_context}
 
@@ -1638,7 +1693,8 @@ async def ask_trustmed_direct(query: str, model: str = None) -> str:
 
 async def ask_trustmed_streaming(query: str, chat_history: list = None,
                                   temperature: float = None, model: str = None,
-                                  vision_model: str = None):
+                                  vision_model: str = None, patient_id: str = None,
+                                  report_context: str = ""):
     """
     Streaming version of ask_trustmed — yields SSE event dicts.
 
@@ -1700,19 +1756,23 @@ async def ask_trustmed_streaming(query: str, chat_history: list = None,
 
         # ── Step A: Patient Context ──────────────────────────────────────
         yield {"type": "progress", "step": "patient", "message": "📋 Retrieving patient context…"}
-        patient_context = get_patient_context(clean_query)
-        patient_id = None
+        resolved_patient_id = str(patient_id).strip() if patient_id else None
+        patient_context = get_patient_context(clean_query, resolved_patient_id)
         if not patient_context:
             patient_context = "No patient-specific data requested."
-        else:
-            # Extract patient ID and send to frontend for panel display
+        if not resolved_patient_id:
             import re as _re
             _pid_match = _re.search(r'\b(\d{7,8})\b', clean_query)
             if _pid_match:
-                patient_id = _pid_match.group(1)
-                yield {"type": "patient_context", "patient_id": patient_id}
+                resolved_patient_id = _pid_match.group(1)
+        if resolved_patient_id:
+            yield {"type": "patient_context", "patient_id": resolved_patient_id}
 
-        graph_query = _extract_medical_terms_for_graph(clean_query, vision_result, patient_context)
+        report_context = (report_context or "").strip()
+        if not report_context:
+            report_context = "No uploaded patient reports provided."
+
+        graph_query = _extract_medical_terms_for_graph(clean_query, vision_result, patient_context, report_context)
         diagnosis_names = _extract_diagnosis_names(patient_context) if patient_context else []
         graph_source = "query"
         if diagnosis_names and any(diag in graph_query.lower() for diag in diagnosis_names):
@@ -1720,7 +1780,7 @@ async def ask_trustmed_streaming(query: str, chat_history: list = None,
         yield {
             "type": "graph_context",
             "search_term": graph_query,
-            "patient_id": patient_id,
+            "patient_id": resolved_patient_id,
             "source": graph_source,
         }
 
@@ -1758,11 +1818,19 @@ async def ask_trustmed_streaming(query: str, chat_history: list = None,
 
         # ── Step B2: Drug Interaction Check ───────────────────────────────
         drug_safety_alerts = ""
-        if patient_context and "No patient-specific" not in patient_context:
+        combined_patient_context = "\n\n".join(
+            part for part in (patient_context, report_context)
+            if part and "No uploaded patient reports provided." not in part
+        )
+        has_structured_patient_context = (
+            (patient_context and "No patient-specific" not in patient_context)
+            or (report_context and "No uploaded patient reports provided." not in report_context)
+        )
+        if combined_patient_context and has_structured_patient_context:
             yield {"type": "progress", "step": "drugs", "message": "💊 Checking drug interactions…"}
             try:
                 drug_safety_alerts = await asyncio.wait_for(
-                    asyncio.to_thread(check_drug_interactions, patient_context),
+                    asyncio.to_thread(check_drug_interactions, combined_patient_context),
                     timeout=15.0
                 )
             except Exception:
@@ -1797,6 +1865,7 @@ async def ask_trustmed_streaming(query: str, chat_history: list = None,
         final_prompt = SYNTHESIS_PROMPT.format(
             chat_history=history_text,
             patient_context=patient_context,
+            report_context=report_context,
             graph_context=enriched_graph_context,
             vector_context=vector_context,
             vision_context=vision_result,
@@ -1848,6 +1917,9 @@ async def ask_trustmed_streaming(query: str, chat_history: list = None,
         else:
             # F.2: Independent LLM Safety Critic
             safety_context = f"""Patient Context: {patient_context}
+
+Uploaded Reports:
+{report_context}
 
 Knowledge Graph: {enriched_graph_context}
 

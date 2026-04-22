@@ -142,6 +142,23 @@ function getAttachmentTypeLabel(attachment) {
     return attachment?.file_kind === 'pdf' ? 'PDF report' : 'Imaging file'
 }
 
+function getAttachmentProcessingMeta(attachment) {
+    const status = attachment?.processing_status
+    if (!status || attachment?.file_kind !== 'pdf') return null
+
+    if (status === 'completed') {
+        return { label: 'Parsed', tone: 'ok' }
+    }
+    if (status === 'completed_with_fallback') {
+        return { label: 'Parsed with OCR fallback', tone: 'info' }
+    }
+    if (status === 'failed') {
+        return { label: 'Could not parse', tone: 'error' }
+    }
+
+    return { label: 'Processing', tone: 'info' }
+}
+
 // Strip wrapping quotes from LLM responses
 const cleanContent = (text) => {
     if (!text) return ''
@@ -376,6 +393,54 @@ export default function PatientPortal() {
         }
     }
 
+    const refreshPatientSnapshot = async (patId, requestId = summaryRequestRef.current) => {
+        const res = await fetch(`${API_BASE}/patient/${patId}`)
+        if (!res.ok) {
+            throw new Error(await readApiError(
+                res,
+                'Patient data could not be loaded. Make sure the FastAPI backend is running on http://localhost:8000.'
+            ))
+        }
+
+        const data = await res.json()
+        if (summaryRequestRef.current !== requestId) return
+        setPatientData(data)
+        setLoadError('')
+
+        setSummaryLoading(true)
+        const summaryPromise = (async () => {
+            try {
+                const summaryRes = await fetch(`${API_BASE}/patient/${patId}/summary`, {
+                    method: 'POST',
+                })
+                if (!summaryRes.ok) {
+                    throw new Error(await readApiError(
+                        summaryRes,
+                        'Personalized care plan unavailable right now.'
+                    ))
+                }
+
+                const summaryData = await summaryRes.json()
+                if (summaryRequestRef.current !== requestId) return
+                setPatientSummary(summaryData)
+                setSummaryError('')
+            } catch (summaryErr) {
+                console.error('Failed to load patient summary:', summaryErr)
+                if (summaryRequestRef.current === requestId) {
+                    setPatientSummary(null)
+                    setSummaryError(normalizeFetchError(summaryErr, 'Personalized care plan unavailable right now.'))
+                }
+            } finally {
+                if (summaryRequestRef.current === requestId) {
+                    setSummaryLoading(false)
+                }
+            }
+        })()
+
+        const attachmentsPromise = loadPatientAttachments(patId, requestId)
+        await Promise.allSettled([summaryPromise, attachmentsPromise])
+    }
+
     // ── Load patient data ────────────────────────────────────────────
     const loadPatient = async (patId) => {
         const requestId = ++summaryRequestRef.current
@@ -398,52 +463,10 @@ export default function PatientPortal() {
         }
         setLoading(true)
         try {
-            const res = await fetch(`${API_BASE}/patient/${patId}`)
-            if (!res.ok) {
-                throw new Error(await readApiError(
-                    res,
-                    'Patient data could not be loaded. Make sure the FastAPI backend is running on http://localhost:8000.'
-                ))
+            await refreshPatientSnapshot(patId, requestId)
+            if (summaryRequestRef.current === requestId) {
+                setLoading(false)
             }
-
-            const data = await res.json()
-            if (summaryRequestRef.current !== requestId) return
-            setPatientData(data)
-            setLoading(false)
-            setLoadError('')
-
-            setSummaryLoading(true)
-            const summaryPromise = (async () => {
-                try {
-                    const summaryRes = await fetch(`${API_BASE}/patient/${patId}/summary`, {
-                        method: 'POST',
-                    })
-                    if (!summaryRes.ok) {
-                        throw new Error(await readApiError(
-                            summaryRes,
-                            'Personalized care plan unavailable right now.'
-                        ))
-                    }
-
-                    const summaryData = await summaryRes.json()
-                    if (summaryRequestRef.current !== requestId) return
-                    setPatientSummary(summaryData)
-                    setSummaryError('')
-                } catch (summaryErr) {
-                    console.error('Failed to load patient summary:', summaryErr)
-                    if (summaryRequestRef.current === requestId) {
-                        setPatientSummary(null)
-                        setSummaryError(normalizeFetchError(summaryErr, 'Personalized care plan unavailable right now.'))
-                    }
-                } finally {
-                    if (summaryRequestRef.current === requestId) {
-                        setSummaryLoading(false)
-                    }
-                }
-            })()
-
-            const attachmentsPromise = loadPatientAttachments(patId, requestId)
-            await Promise.allSettled([summaryPromise, attachmentsPromise])
         } catch (err) {
             console.error('Failed to load patient:', err)
             if (summaryRequestRef.current === requestId) {
@@ -491,7 +514,7 @@ export default function PatientPortal() {
                 ))
             }
 
-            await loadPatientAttachments(patientId)
+            await refreshPatientSnapshot(patientId)
         } catch (err) {
             console.error('Failed to upload patient attachment:', err)
             setAttachmentUploadError(normalizeFetchError(err, 'Your file could not be uploaded right now.'))
@@ -606,7 +629,12 @@ export default function PatientPortal() {
         ? patientData.vitals_history
         : vitals ? [vitals] : []
     const latestVitalsRecordedAt = vitals?.recorded_at || vitalsHistory[vitalsHistory.length - 1]?.recorded_at || null
-    const recentReadingLabel = vitalsHistory.length > 1 ? `Last ${vitalsHistory.length} readings` : 'Latest reading'
+    const latestVitalSourceLabel = vitals?.source === 'report' ? 'Latest uploaded report' : 'Latest charted'
+    const recentReadingLabel = vitalsHistory.some(row => row?.source === 'report')
+        ? `Last ${vitalsHistory.length} chart + report readings`
+        : vitalsHistory.length > 1
+            ? `Last ${vitalsHistory.length} readings`
+            : 'Latest reading'
     const vitalsTrendCharts = vitals ? [
         {
             key: 'heartRate',
@@ -617,6 +645,10 @@ export default function PatientPortal() {
             unit: 'bpm',
             points: vitalsHistory.map(row => row.heart_rate),
             labels: vitalsHistory.map(row => row.recorded_at),
+            pointMeta: vitalsHistory.map((row, index) => ({
+                ...row,
+                sort_order: Number.isFinite(row?.sort_order) ? row.sort_order : index,
+            })),
             lowerBound: 60,
             upperBound: 100,
             referenceText: 'Typical resting range: 60-100 bpm',
@@ -634,6 +666,10 @@ export default function PatientPortal() {
             unit: 'mmHg',
             points: vitalsHistory.map(row => row.systolic_bp),
             labels: vitalsHistory.map(row => row.recorded_at),
+            pointMeta: vitalsHistory.map((row, index) => ({
+                ...row,
+                sort_order: Number.isFinite(row?.sort_order) ? row.sort_order : index,
+            })),
             lowerBound: 90,
             upperBound: 140,
             referenceText: 'Trend shows systolic blood pressure. Latest reading includes diastolic pressure.',
@@ -648,6 +684,10 @@ export default function PatientPortal() {
             unit: '%',
             points: vitalsHistory.map(row => row.o2_saturation),
             labels: vitalsHistory.map(row => row.recorded_at),
+            pointMeta: vitalsHistory.map((row, index) => ({
+                ...row,
+                sort_order: Number.isFinite(row?.sort_order) ? row.sort_order : index,
+            })),
             lowerBound: 95,
             referenceText: 'Goal oxygen saturation: at least 95%',
         },
@@ -660,6 +700,10 @@ export default function PatientPortal() {
             unit: '°F',
             points: vitalsHistory.map(row => row.temperature),
             labels: vitalsHistory.map(row => row.recorded_at),
+            pointMeta: vitalsHistory.map((row, index) => ({
+                ...row,
+                sort_order: Number.isFinite(row?.sort_order) ? row.sort_order : index,
+            })),
             lowerBound: 97,
             upperBound: 99,
             referenceText: 'Typical oral temperature: 97.0-99.0°F',
@@ -950,7 +994,7 @@ export default function PatientPortal() {
                                         {vitals ? (
                                             <>
                                                 <div className="pp-vitals-meta">
-                                                    <span className="pp-vitals-meta__stamp">Latest charted {formatRecordedAt(latestVitalsRecordedAt)}</span>
+                                                    <span className="pp-vitals-meta__stamp">{latestVitalSourceLabel} {formatRecordedAt(latestVitalsRecordedAt)}</span>
                                                     <span className="pp-vitals-meta__window">{recentReadingLabel}</span>
                                                 </div>
 
@@ -1006,6 +1050,7 @@ export default function PatientPortal() {
                                                             unit={chart.unit}
                                                             points={chart.points}
                                                             labels={chart.labels}
+                                                            pointMeta={chart.pointMeta}
                                                             lowerBound={chart.lowerBound}
                                                             upperBound={chart.upperBound}
                                                             pointColor={VITAL_STATUS_COLORS[chart.statusTone]}
@@ -1017,7 +1062,7 @@ export default function PatientPortal() {
                                                     {latestVitalsRecordedAt && (
                                                         <div className="pp-vitals-footnote__item">
                                                             <Clock size={14} />
-                                                            <span>Trends reflect recent bedside charting</span>
+                                                            <span>{vitalsHistory.some(row => row?.source === 'report') ? 'Trends combine chart readings and uploaded report values' : 'Trends reflect recent bedside charting'}</span>
                                                         </div>
                                                     )}
                                                 </div>
@@ -1203,6 +1248,7 @@ export default function PatientPortal() {
                                                     {attachments.map(attachment => {
                                                         const source = getAttachmentSourceMeta(attachment.uploaded_by)
                                                         const isPdf = attachment.file_kind === 'pdf'
+                                                        const processingMeta = getAttachmentProcessingMeta(attachment)
 
                                                         return (
                                                             <div key={attachment.id} className="pp-attachment-card">
@@ -1224,6 +1270,11 @@ export default function PatientPortal() {
                                                                         <span className="pp-attachment-card__type">
                                                                             {getAttachmentTypeLabel(attachment)}
                                                                         </span>
+                                                                        {processingMeta && (
+                                                                            <span className={`pp-attachment-card__type pp-attachment-card__type--${processingMeta.tone}`}>
+                                                                                {processingMeta.label}
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                     <div className="pp-attachment-card__title">
                                                                         {attachment.title || attachment.original_filename}
@@ -1234,6 +1285,16 @@ export default function PatientPortal() {
                                                                     <div className="pp-attachment-card__meta">
                                                                         Added {formatAttachmentDate(attachment.uploaded_at)}
                                                                     </div>
+                                                                    {attachment.summary_preview && (
+                                                                        <div className="pp-attachment-card__meta">
+                                                                            {attachment.summary_preview}
+                                                                        </div>
+                                                                    )}
+                                                                    {attachment.extraction_error && attachment.processing_status === 'failed' && (
+                                                                        <div className="pp-attachment-card__meta">
+                                                                            {attachment.extraction_error}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                                 <div className="pp-attachment-card__actions">
                                                                     <a

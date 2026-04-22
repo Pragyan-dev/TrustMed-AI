@@ -19,21 +19,36 @@ function parseLabelTimestamp(label) {
     return Number.isNaN(parsed.getTime()) ? null : parsed.getTime()
 }
 
-function buildSeries(points = [], labels = []) {
+function buildSeries(points = [], labels = [], pointMeta = []) {
     return points
         .map((value, index) => ({
             index,
             value,
             label: labels[index] || '',
             timestamp: parseLabelTimestamp(labels[index] || ''),
+            meta: pointMeta[index] || {},
         }))
         .filter(point => isFiniteNumber(point.value))
         .sort((left, right) => {
+            const leftOrder = Number.isFinite(left.meta?.sort_order) ? left.meta.sort_order : null
+            const rightOrder = Number.isFinite(right.meta?.sort_order) ? right.meta.sort_order : null
+            if (leftOrder !== null && rightOrder !== null) return leftOrder - rightOrder
+            if (leftOrder !== null) return -1
+            if (rightOrder !== null) return 1
             if (left.timestamp !== null && right.timestamp !== null) return left.timestamp - right.timestamp
             if (left.timestamp !== null) return -1
             if (right.timestamp !== null) return 1
             return left.index - right.index
         })
+}
+
+function formatPointSource(meta = {}) {
+    if (meta?.source === 'report') {
+        const title = meta.report_title ? ` from ${meta.report_title}` : ''
+        return `Uploaded report${title}`
+    }
+
+    return 'Chart reading'
 }
 
 function computeTicks(min, max, count = 5) {
@@ -134,6 +149,7 @@ export default function VitalTrendChart({
     unit,
     points = [],
     labels = [],
+    pointMeta = [],
     lowerBound = null,
     upperBound = null,
     pointColor = '#16A34A',
@@ -141,7 +157,7 @@ export default function VitalTrendChart({
 }) {
     const clipId = useId().replace(/:/g, '')
     const [hoveredIndex, setHoveredIndex] = useState(null)
-    const series = buildSeries(points, labels)
+    const series = buildSeries(points, labels, pointMeta)
 
     if (!series.length) {
         return (
@@ -340,6 +356,7 @@ export default function VitalTrendChart({
                             const cx = xForIndex(index)
                             const cy = yForValue(point.value)
                             const isActive = hoveredIndex === index
+                            const isReportPoint = point.meta?.source === 'report'
                             const delay = `${Math.min(index * 60, 1400)}ms`
                             return (
                                 <g
@@ -362,8 +379,8 @@ export default function VitalTrendChart({
                                         cy={cy}
                                         r={isActive ? '6.5' : '5'}
                                         fill={pointColor}
-                                        stroke="#ffffff"
-                                        strokeWidth="1.5"
+                                        stroke={isReportPoint ? '#0F172A' : '#ffffff'}
+                                        strokeWidth={isReportPoint ? '2.2' : '1.5'}
                                         className={`pp-trend-chart__point pp-trend-chart__point--v2 ${isActive ? 'pp-trend-chart__point--active' : ''}`}
                                     />
                                     <circle
@@ -379,7 +396,7 @@ export default function VitalTrendChart({
                                         tabIndex="0"
                                         aria-label={`${title} on ${formatTooltipLabel(point.label)}: ${typeof tooltipValueFormatter === 'function'
                                             ? tooltipValueFormatter(point.value)
-                                            : formatTooltipValue(point.value, unit)}`}
+                                            : formatTooltipValue(point.value, unit)} (${formatPointSource(point.meta)})`}
                                     />
                                 </g>
                             )
@@ -408,6 +425,7 @@ export default function VitalTrendChart({
                                 ? tooltipValueFormatter(hoveredPoint.value)
                                 : formatTooltipValue(hoveredPoint.value, unit)}
                         </div>
+                        <div className="pp-trend-chart__tooltip-date">{formatPointSource(hoveredPoint.meta)}</div>
                     </div>
                 )}
             </div>

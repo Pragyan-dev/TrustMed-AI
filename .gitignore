@@ -11,3 +11,10 @@ out.log
 .codex/
 .claude/
 data/
+.skill-staging/
+graphify-out/
+.graphify_ast.json
+.graphify_detect.json
+.graphify_python
+.graphify_uncached.txt
+.graphifyignore

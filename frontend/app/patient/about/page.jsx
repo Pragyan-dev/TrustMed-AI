@@ -1,120 +1,318 @@
 'use client'
 
-import { Shield, Brain, Activity, Heart, Globe, Stethoscope } from 'lucide-react'
-import PatientLayout from '../../../src/layouts/PatientLayout'
+import {
+    Activity,
+    Brain,
+    CheckCircle2,
+    ClipboardList,
+    Droplets,
+    FileHeart,
+    Heart,
+    MessageCircle,
+    Shield,
+    Stethoscope,
+} from 'lucide-react'
+import {
+    AboutCareSignalCard,
+    AboutDemoTrendPanel,
+    AboutKnowledgeGraphCard,
+    AboutPipelineCard,
+} from '../../../src/components/AboutDemoCharts'
+
+const HERO_FEATURES = [
+    {
+        title: 'Translate the chart',
+        description: 'Synapse turns dense clinical details into a calmer summary patients can scan before a visit.',
+        icon: Stethoscope,
+        tone: 'green',
+    },
+    {
+        title: 'Watch the trend',
+        description: 'Range bands and clearer labels make it easier to tell what is improving, stable, or needs a question.',
+        icon: Brain,
+        tone: 'blue',
+    },
+    {
+        title: 'Prepare the follow-up',
+        description: 'The patient view is designed to support better conversations with the care team, not replace them.',
+        icon: MessageCircle,
+        tone: 'purple',
+    },
+]
+
+const HERO_METRICS = [
+    {
+        label: 'Improving signals',
+        value: '2',
+        note: 'Oxygen and pulse readings are settling toward the goal range.',
+        icon: Activity,
+        tone: 'green',
+    },
+    {
+        label: 'Follow-up prompts',
+        value: '1',
+        note: 'Medication timing is worth confirming at the next check-in.',
+        icon: Shield,
+        tone: 'blue',
+    },
+    {
+        label: 'Context layers',
+        value: '4',
+        note: 'Vitals, notes, medications, and prior results stay connected.',
+        icon: FileHeart,
+        tone: 'purple',
+    },
+]
+
+const HERO_SPARKLINE = {
+    label: 'Example recovery signal',
+    value: 'Stabilizing over 24h',
+    tag: 'Illustrative example',
+    points: [82, 83, 85, 87, 89, 92, 94],
+    secondaryPoints: [84, 84, 85, 85, 86, 86, 87],
+    color: '#2E7D52',
+    secondaryColor: '#94A3B8',
+    ariaLabel: 'Illustrative recovery signal trend',
+    caption: 'The solid line shows a steadier recent pattern, while the dotted line represents the earlier baseline.',
+}
+
+const DEMO_TREND_LABELS = [
+    '2026-04-22 07:00',
+    '2026-04-22 10:00',
+    '2026-04-22 13:00',
+    '2026-04-22 16:00',
+    '2026-04-22 19:00',
+    '2026-04-22 22:00',
+    '2026-04-23 01:00',
+]
+
+const DEMO_TREND = {
+    title: 'Oxygen Saturation',
+    recordedAt: 'Example data · Last 24 hours',
+    valueText: '96%',
+    statusText: 'Back in range',
+    statusTone: 'normal',
+    referenceText: 'Illustrative example only: the shaded band represents the typical target range for this demo view.',
+    unit: '%',
+    points: [92, 91, 92, 93, 94, 95, 96],
+    labels: DEMO_TREND_LABELS,
+    pointMeta: DEMO_TREND_LABELS.map((_, index) => ({ source: 'chart', sort_order: index })),
+    lowerBound: 95,
+    upperBound: 100,
+    pointColor: '#16A34A',
+}
+
+const TREND_NOTES = [
+    {
+        label: 'Range awareness',
+        text: 'Patients can see when a value moves into the safer band instead of decoding every number in isolation.',
+    },
+    {
+        label: 'Trend over snapshot',
+        text: 'The design emphasizes direction of change, which usually matters more than a single reading on its own.',
+    },
+    {
+        label: 'Plain-language cue',
+        text: 'Status labels like “Back in range” make the takeaway readable at a glance before a follow-up conversation.',
+    },
+]
+
+const KNOWLEDGE_GRAPH_NODES = [
+    { id: 'vitals', label: 'Vitals', x: 20, y: 28, tone: 'red' },
+    { id: 'history', label: 'Prior Results', x: 22, y: 76, tone: 'green' },
+    { id: 'summary', label: 'Patient Summary', x: 50, y: 50, tone: 'accent', primary: true },
+    { id: 'guidance', label: 'Care Guidance', x: 78, y: 24, tone: 'blue' },
+    { id: 'meds', label: 'Medications', x: 78, y: 76, tone: 'purple' },
+]
+
+const KNOWLEDGE_GRAPH_NOTES = [
+    'Related details stay connected before Synapse writes a patient-friendly explanation.',
+    'The visual model is meant to preserve context across symptoms, medications, and prior findings.',
+]
+
+const PIPELINE_STEPS = [
+    {
+        title: 'Collect the record',
+        body: 'Bring together bedside vitals, medications, imaging context, and prior chart notes.',
+        icon: FileHeart,
+    },
+    {
+        title: 'Detect the signal',
+        body: 'Spot movement, compare against a healthy range, and highlight what changed recently.',
+        icon: Activity,
+    },
+    {
+        title: 'Translate the meaning',
+        body: 'Convert clinical jargon into patient language without stripping away the important nuance.',
+        icon: Brain,
+    },
+    {
+        title: 'Support next steps',
+        body: 'Surface calmer summaries and follow-up prompts patients can bring back to their care team.',
+        icon: ClipboardList,
+    },
+]
+
+const TRUST_PILLARS = [
+    {
+        tag: 'Privacy',
+        title: 'Protected by design',
+        description: 'This page uses illustrative demo visuals. In the patient experience, protected information is meant to stay scoped to you and authorized care contexts.',
+        icon: Shield,
+        tone: 'green',
+    },
+    {
+        tag: 'Clarity',
+        title: 'Readable under stress',
+        description: 'Large labels, calmer color decisions, and explicit ranges reduce the cognitive load of reading a medical chart during a difficult moment.',
+        icon: CheckCircle2,
+        tone: 'blue',
+    },
+    {
+        tag: 'Empathy',
+        title: 'Built for real questions',
+        description: 'The goal is to help patients understand what is stable, what changed, and what they should ask next, without escalating fear.',
+        icon: Heart,
+        tone: 'purple',
+    },
+]
 
 export default function AboutPage() {
     return (
-        <div className="about-animate-container">
-            <div className="pp-page-hero anim-fade-in">
-                <div className="pp-hero-left">
-                    <div className="pp-page-kicker">Information</div>
-                    <h1 className="pp-page-title">About Synapse AI</h1>
-                    <p className="pp-page-subtitle">
-                        Empowering patients with clear, accessible, and AI-driven insights into their clinical care.
+        <div className="pp-about pp-content-stack">
+            <section className="pp-about-hero pp-about__band">
+                <div className="pp-about-hero__content">
+                    <div className="pp-about-hero__copy">
+                        <div className="pp-page-kicker">About Synapse AI</div>
+                        <h1 className="pp-page-title">Clinical context, explained in patient language.</h1>
+                        <p className="pp-page-subtitle">
+                            Synapse is designed to turn chart details, vital trends, and medical context into a calmer,
+                            clearer experience for patients who need to understand what their care team is seeing.
+                        </p>
+
+                        <div className="pp-about-chip-row">
+                            <span className="pp-about-chip pp-about-chip--accent">Patient-facing explainer</span>
+                            <span className="pp-about-chip">No live patient record on this page</span>
+                        </div>
+
+                        <div className="pp-about-feature-list">
+                            {HERO_FEATURES.map((feature) => {
+                                const Icon = feature.icon
+
+                                return (
+                                    <div key={feature.title} className="pp-about-feature">
+                                        <div className={`pp-about-feature__icon pp-about-feature__icon--${feature.tone}`}>
+                                            <Icon size={18} aria-hidden="true" />
+                                        </div>
+                                        <div>
+                                            <div className="pp-about-feature__title">{feature.title}</div>
+                                            <p className="pp-about-feature__copy">{feature.description}</p>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+
+                    <AboutCareSignalCard
+                        eyebrow="Illustrative example data"
+                        title="Care Signal Overview"
+                        description="A sample patient-facing summary showing how Synapse can compress multiple clinical cues into one readable visual card."
+                        metrics={HERO_METRICS}
+                        sparkline={HERO_SPARKLINE}
+                    />
+                </div>
+            </section>
+
+            <section className="pp-card pp-section-card pp-about-section pp-about__band pp-about__band--delay-1">
+                <div className="pp-card__header">
+                    <div className="pp-card__heading">
+                        <div className="pp-card__icon pp-card__icon--blue">
+                            <Droplets size={18} />
+                        </div>
+                        <span className="pp-card__title">How the visuals work</span>
+                    </div>
+                </div>
+
+                <div className="pp-card__body">
+                    <div className="pp-about-section__intro">
+                        <p>
+                            These example visuals show the style of guidance Synapse aims to provide: clearer trend
+                            reading, more connected clinical context, and patient-friendly explanations that support a
+                            follow-up conversation with the care team.
+                        </p>
+                    </div>
+
+                    <div className="pp-about-analytics-grid">
+                        <AboutDemoTrendPanel
+                            eyebrow="Illustrative example data"
+                            title="Trend cards show movement, not just numbers"
+                            description="This sample oxygen trend highlights a value returning into range so patients can understand the direction of change before they interpret the details."
+                            chart={DEMO_TREND}
+                            notes={TREND_NOTES}
+                        />
+
+                        <div className="pp-about-support-stack">
+                            <AboutKnowledgeGraphCard
+                                eyebrow="Connected context"
+                                title="A lightweight knowledge graph keeps details related"
+                                description="Instead of treating each chart element as an isolated note, Synapse can connect readings, treatments, and care guidance into one explainable picture."
+                                nodes={KNOWLEDGE_GRAPH_NODES}
+                                notes={KNOWLEDGE_GRAPH_NOTES}
+                            />
+
+                            <AboutPipelineCard
+                                eyebrow="Four-step flow"
+                                title="How Synapse turns records into guidance"
+                                description="The interface is built around a simple flow patients can understand without seeing the underlying model complexity."
+                                steps={PIPELINE_STEPS}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section className="pp-card pp-section-card pp-about-section pp-about__band pp-about__band--delay-2">
+                <div className="pp-card__header">
+                    <div className="pp-card__heading">
+                        <div className="pp-card__icon pp-card__icon--green">
+                            <Shield size={18} />
+                        </div>
+                        <span className="pp-card__title">Trust, safety, and empathy</span>
+                    </div>
+                </div>
+
+                <div className="pp-card__body">
+                    <div className="pp-about-section__intro">
+                        <p>
+                            The patient experience should feel supportive, not theatrical. The visual system aims to
+                            reduce confusion while keeping privacy, readability, and emotional tone front and center.
+                        </p>
+                    </div>
+
+                    <div className="pp-about-trust-grid">
+                        {TRUST_PILLARS.map((pillar) => {
+                            const Icon = pillar.icon
+
+                            return (
+                                <div key={pillar.title} className={`pp-about-trust-card pp-about-trust-card--${pillar.tone}`}>
+                                    <div className="pp-about-trust-card__tag">{pillar.tag}</div>
+                                    <div className="pp-about-trust-card__icon">
+                                        <Icon size={18} aria-hidden="true" />
+                                    </div>
+                                    <h3 className="pp-about-trust-card__title">{pillar.title}</h3>
+                                    <p className="pp-about-trust-card__copy">{pillar.description}</p>
+                                </div>
+                            )
+                        })}
+                    </div>
+
+                    <p className="pp-about-trust-footnote">
+                        This About page intentionally uses example-only visuals. Live patient information remains in the
+                        main patient portal workflow.
                     </p>
                 </div>
-            </div>
-
-            <div className="pp-content-stack anim-slide-up" style={{ marginTop: '2rem' }}>
-                <section className="pp-card pp-section-card">
-                    <div className="pp-card__header">
-                        <div className="pp-card__heading">
-                            <div className="pp-card__icon pp-card__icon--green"><Shield size={18} /></div>
-                            <span className="pp-card__title">Our Mission</span>
-                        </div>
-                    </div>
-                    <div className="pp-card__body">
-                        <p style={{ lineHeight: '1.6', color: '#4b5563' }}>
-                            Synapse AI is designed to bridge the gap between complex clinical data and patient understanding. 
-                            Our platform analyzes your medical records, vital signs, and imaging results to provide a 
-                            clear, easy-to-read summary of your health journey.
-                        </p>
-                    </div>
-                </section>
-
-                <div className="pp-profile-grid">
-                    <div className="pp-profile-panel anim-stagger-1">
-                        <div className="pp-section-mini-title">Key Technology</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '1rem' }}>
-                            <div className="tech-item">
-                                <div style={{ color: '#2E7D52' }}><Brain size={24} /></div>
-                                <div>
-                                    <h4 style={{ margin: '0 0 0.25rem', fontSize: '0.95rem' }}>Medical Knowledge Graph</h4>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#636E72' }}>Connected clinical data ensuring accurate medical context for all analyses.</p>
-                                </div>
-                            </div>
-                            <div className="tech-item">
-                                <div style={{ color: '#3B82F6' }}><Activity size={24} /></div>
-                                <div>
-                                    <h4 style={{ margin: '0 0 0.25rem', fontSize: '0.95rem' }}>Vital Trend Analysis</h4>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#636E72' }}>Predictive tracking of heart rate, blood pressure, and oxygen levels.</p>
-                                </div>
-                            </div>
-                            <div className="tech-item">
-                                <div style={{ color: '#8B5CF6' }}><Globe size={24} /></div>
-                                <div>
-                                    <h4 style={{ margin: '0 0 0.25rem', fontSize: '0.95rem' }}>Literature Search</h4>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#636E72' }}>AI-powered search through peer-reviewed medical journals and guidelines.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="pp-profile-panel anim-stagger-2">
-                        <div className="pp-section-mini-title">Patient Privacy</div>
-                        <p style={{ fontSize: '0.9rem', color: '#4b5563', lineHeight: '1.5' }}>
-                            Your medical data is processed locally and securely. Synapse AI adheres to strict data 
-                            privacy standards to ensure your protected health information (PHI) remains confidential 
-                            and only accessible to you and your authorized care providers.
-                        </p>
-                        <div className="privacy-badge">
-                            <div style={{ color: '#2E7D52' }}><Heart size={20} /></div>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#2E7D52' }}>Designed with empathy for every patient.</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <style jsx>{`
-                .about-animate-container { animation: fadeIn 0.8s ease-out; }
-                .anim-fade-in { animation: fadeIn 0.8s ease-out; }
-                .anim-slide-up { animation: slideUp 0.8s ease-out forwards; opacity: 0; }
-                .anim-stagger-1 { animation: slideUp 0.8s ease-out 0.2s forwards; opacity: 0; }
-                .anim-stagger-2 { animation: slideUp 0.8s ease-out 0.4s forwards; opacity: 0; }
-                
-                @keyframes fadeIn {
-                    from { opacity: 0; }
-                    to { opacity: 1; }
-                }
-                
-                @keyframes slideUp {
-                    from { opacity: 0; transform: translateY(20px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-
-                .pp-page-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.25rem; }
-                .pp-page-kicker { display: inline-flex; align-items: center; padding: 0.3rem 0.7rem; border-radius: 999px; background: #E8F5E9; color: #2E7D52; font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.9rem; }
-                .pp-page-title { margin: 0; font-size: 2.35rem; line-height: 1.05; letter-spacing: -0.03em; font-weight: 800; }
-                .pp-page-subtitle { max-width: 760px; margin: 0.7rem 0 0; color: #636E72; font-size: 1.1rem; line-height: 1.7; }
-                
-                .pp-card { background: white; border-radius: 24px; border: 1px solid rgba(17, 24, 39, 0.06); box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04); overflow: hidden; transition: transform 0.3s ease; }
-                .pp-card:hover { transform: translateY(-4px); }
-                .pp-card__header { padding: 1.25rem 1.5rem; border-bottom: 1px solid rgba(46, 125, 82, 0.1); }
-                .pp-card__heading { display: flex; align-items: center; gap: 0.6rem; }
-                .pp-card__icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-                .pp-card__icon--green { background: #E8F5E9; color: #2E7D52; }
-                .pp-card__title { font-size: 1.1rem; font-weight: 700; color: #2D3436; }
-                .pp-card__body { padding: 1.5rem; }
-                
-                .pp-profile-grid { display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem; margin-top: 1.5rem; }
-                .pp-profile-panel { padding: 1.75rem; border-radius: 24px; background: white; border: 1px solid rgba(17, 24, 39, 0.06); box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
-                .pp-section-mini-title { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: #9CA3AF; margin-bottom: 1.25rem; }
-                
-                .tech-item { display: flex; gap: 1.25rem; transition: transform 0.2s ease; }
-                .tech-item:hover { transform: translateX(8px); }
-                .privacy-badge { margin-top: 1.5rem; padding: 1.25rem; background: #f0fdf4; border-radius: 16px; border: 1px dashed #2E7D52; display: flex; align-items: center; gap: 0.85rem; }
-            `}</style>
+            </section>
         </div>
     )
 }

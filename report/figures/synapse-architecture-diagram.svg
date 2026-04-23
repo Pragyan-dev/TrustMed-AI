@@ -1,0 +1,360 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Synapse AI architecture diagram</title>
+  <desc id="desc">Architecture map for Synapse AI showing Next.js frontend, FastAPI backend, TrustMed Brain orchestration, data stores, retrieval services, vision analysis, external models, and ingestion pipelines.</desc>
+  <defs>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+
+      text {
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        fill: #17202a;
+      }
+
+      .canvas {
+        fill: #f6f8fb;
+      }
+
+      .eyebrow {
+        fill: #5c6b7a;
+        font-size: 18px;
+        font-weight: 650;
+        letter-spacing: 0;
+      }
+
+      .title {
+        fill: #111827;
+        font-size: 44px;
+        font-weight: 780;
+        letter-spacing: 0;
+      }
+
+      .subtitle {
+        fill: #536171;
+        font-size: 18px;
+        font-weight: 450;
+      }
+
+      .section-title {
+        fill: #263443;
+        font-size: 18px;
+        font-weight: 760;
+        letter-spacing: 0;
+      }
+
+      .box-title {
+        fill: #142235;
+        font-size: 20px;
+        font-weight: 760;
+      }
+
+      .box-subtitle {
+        fill: #425466;
+        font-size: 14px;
+        font-weight: 560;
+      }
+
+      .body {
+        fill: #324254;
+        font-size: 14px;
+        font-weight: 480;
+      }
+
+      .small {
+        fill: #556779;
+        font-size: 12px;
+        font-weight: 520;
+      }
+
+      .tiny {
+        fill: #6b7b8c;
+        font-size: 11px;
+        font-weight: 540;
+      }
+
+      .container {
+        fill: #ffffff;
+        stroke: #cdd7e2;
+        stroke-width: 1.4;
+      }
+
+      .frontend {
+        fill: #eef7f4;
+        stroke: #67a998;
+      }
+
+      .backend {
+        fill: #eef2ff;
+        stroke: #7587d9;
+      }
+
+      .brain {
+        fill: #fff6e7;
+        stroke: #d49a36;
+      }
+
+      .store {
+        fill: #f6eefb;
+        stroke: #ad78c5;
+      }
+
+      .external {
+        fill: #fff0f0;
+        stroke: #d47a7a;
+      }
+
+      .ingest {
+        fill: #eef6ff;
+        stroke: #5c95cc;
+      }
+
+      .module {
+        fill: #ffffff;
+        stroke: #d8e0ea;
+        stroke-width: 1.2;
+      }
+
+      .pill {
+        fill: rgba(255, 255, 255, 0.78);
+        stroke-width: 0;
+      }
+
+      .line {
+        fill: none;
+        stroke: #75869a;
+        stroke-width: 2.2;
+      }
+
+      .line-strong {
+        fill: none;
+        stroke: #40566f;
+        stroke-width: 3;
+      }
+
+      .line-data {
+        fill: none;
+        stroke: #9361ad;
+        stroke-width: 2.4;
+      }
+
+      .line-model {
+        fill: none;
+        stroke: #bd625f;
+        stroke-width: 2.4;
+      }
+
+      .line-ingest {
+        fill: none;
+        stroke: #4f88bf;
+        stroke-width: 2.4;
+      }
+
+      .legend-line {
+        stroke-width: 3;
+        stroke-linecap: round;
+      }
+    </style>
+
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#75869a" />
+    </marker>
+    <marker id="arrowStrong" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#40566f" />
+    </marker>
+    <marker id="arrowData" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#9361ad" />
+    </marker>
+    <marker id="arrowModel" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#bd625f" />
+    </marker>
+    <marker id="arrowIngest" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#4f88bf" />
+    </marker>
+
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#223044" flood-opacity="0.12" />
+    </filter>
+  </defs>
+
+  <rect class="canvas" width="1600" height="1000" />
+
+  <g transform="translate(64 50)">
+    <text class="eyebrow" x="0" y="0">Graphify-guided system architecture</text>
+    <text class="title" x="0" y="54">Synapse AI / TrustMed AI</text>
+    <text class="subtitle" x="0" y="86">Multimodal clinical decision support: Next.js UI, FastAPI, TrustMed Brain, RAG, and vision.</text>
+    <text class="tiny" x="0" y="112">Context source: graphify-out/GRAPH_REPORT.md, graph.json, README.md. Graphify report: 814 nodes, 1056 edges, 328 communities.</text>
+  </g>
+
+  <g transform="translate(64 172)">
+    <rect class="container frontend" x="0" y="0" width="320" height="396" rx="8" filter="url(#shadow)" />
+    <text class="section-title" x="24" y="34">Next.js + React frontend</text>
+    <text class="small" x="24" y="58">frontend/app + frontend/src</text>
+
+    <rect class="module" x="24" y="82" width="272" height="72" rx="8" />
+    <text class="box-title" x="46" y="113">Role selector</text>
+    <text class="body" x="46" y="137">/ routes users to care views</text>
+
+    <rect class="module" x="24" y="174" width="272" height="86" rx="8" />
+    <text class="box-title" x="46" y="205">Clinician dashboard</text>
+    <text class="body" x="46" y="230">/clinician streaming chat, graph,</text>
+    <text class="body" x="46" y="250">patient panel, upload, SOAP note</text>
+
+    <rect class="module" x="24" y="280" width="272" height="74" rx="8" />
+    <text class="box-title" x="46" y="311">Patient portal</text>
+    <text class="body" x="46" y="336">/patient summaries, vitals, meds, files</text>
+
+    <rect class="pill" x="24" y="367" width="272" height="14" rx="7" />
+    <text class="tiny" x="40" y="378">API_BASE=/api | uploads proxied via /uploads</text>
+  </g>
+
+  <g transform="translate(446 172)">
+    <rect class="container backend" x="0" y="0" width="314" height="396" rx="8" filter="url(#shadow)" />
+    <text class="section-title" x="24" y="34">FastAPI backend</text>
+    <text class="small" x="24" y="58">api/main.py</text>
+
+    <rect class="module" x="24" y="82" width="266" height="68" rx="8" />
+    <text class="box-title" x="46" y="111">Chat API</text>
+    <text class="body" x="46" y="135">/chat and /chat/stream SSE</text>
+
+    <rect class="module" x="24" y="166" width="266" height="74" rx="8" />
+    <text class="box-title" x="46" y="195">Clinical assets</text>
+    <text class="body" x="46" y="219">image upload, panels, attachments</text>
+
+    <rect class="module" x="24" y="256" width="266" height="80" rx="8" />
+    <text class="box-title" x="46" y="285">Workflow endpoints</text>
+    <text class="body" x="46" y="309">sessions, graph JSON, SOAP note,</text>
+    <text class="body" x="46" y="329">patient summaries, term explainers</text>
+
+    <rect class="pill" x="24" y="367" width="266" height="14" rx="7" />
+    <text class="tiny" x="40" y="378">persists chat_history + upload metadata</text>
+  </g>
+
+  <g transform="translate(826 120)">
+    <rect class="container brain" x="0" y="0" width="360" height="500" rx="8" filter="url(#shadow)" />
+    <text class="section-title" x="24" y="34">TrustMed Brain orchestrator</text>
+    <text class="small" x="24" y="58">src/trustmed_brain.py</text>
+
+    <rect class="module" x="24" y="82" width="312" height="70" rx="8" />
+    <text class="box-title" x="46" y="112">Request grounding</text>
+    <text class="body" x="46" y="136">patient ID, chat history, image context</text>
+
+    <rect class="module" x="24" y="170" width="312" height="82" rx="8" />
+    <text class="box-title" x="46" y="200">Parallel context fetch</text>
+    <text class="body" x="46" y="224">patient records + graph retrieval +</text>
+    <text class="body" x="46" y="244">vector retrieval with optional rerank</text>
+
+    <rect class="module" x="24" y="270" width="312" height="72" rx="8" />
+    <text class="box-title" x="46" y="300">Safety and synthesis</text>
+    <text class="body" x="46" y="324">drug checks, hallucination guardrails, LLM</text>
+
+    <rect class="module" x="24" y="360" width="312" height="82" rx="8" />
+    <text class="box-title" x="46" y="390">Response products</text>
+    <text class="body" x="46" y="414">SSE events, clinical answer, graph sync,</text>
+    <text class="body" x="46" y="434">next steps, structured SOAP note</text>
+
+    <text class="tiny" x="24" y="474">Graphify hyperedge: TrustMed Brain response pipeline</text>
+  </g>
+
+  <g transform="translate(1252 72)">
+    <rect class="container store" x="0" y="0" width="284" height="592" rx="8" filter="url(#shadow)" />
+    <text class="section-title" x="24" y="34">Context and data stores</text>
+
+    <rect class="module" x="24" y="62" width="236" height="76" rx="8" />
+    <text class="box-title" x="44" y="92">SQLite demo DB</text>
+    <text class="body" x="44" y="116">MIMIC-style vitals, diagnoses, meds</text>
+
+    <rect class="module" x="24" y="154" width="236" height="80" rx="8" />
+    <text class="box-title" x="44" y="184">Patient files</text>
+    <text class="body" x="44" y="208">uploads, reports, sidecars, digests</text>
+
+    <rect class="module" x="24" y="250" width="236" height="82" rx="8" />
+    <text class="box-title" x="44" y="280">Neo4j knowledge graph</text>
+    <text class="body" x="44" y="304">disease, symptom, drug, treatment</text>
+    <text class="body" x="44" y="324">relationships and graph panel data</text>
+
+    <rect class="module" x="24" y="348" width="236" height="86" rx="8" />
+    <text class="box-title" x="44" y="378">ChromaDB vector stores</text>
+    <text class="body" x="44" y="402">medical text and image embeddings</text>
+    <text class="body" x="44" y="422">Sentence Transformers + reranker</text>
+
+    <rect class="module" x="24" y="450" width="236" height="96" rx="8" />
+    <text class="box-title" x="44" y="480">Vision pipeline</text>
+    <text class="body" x="44" y="504">vision_tool, vision_agent, subfigure</text>
+    <text class="body" x="44" y="524">detector, cache, panel analysis</text>
+  </g>
+
+  <g transform="translate(1252 704)">
+    <rect class="container external" x="0" y="0" width="284" height="166" rx="8" filter="url(#shadow)" />
+    <text class="section-title" x="24" y="34">External services</text>
+
+    <rect class="module" x="24" y="58" width="236" height="38" rx="8" />
+    <text class="body" x="44" y="82">OpenRouter text + vision models</text>
+
+    <rect class="module" x="24" y="108" width="236" height="38" rx="8" />
+    <text class="body" x="44" y="132">Vertex AI MedGemma endpoint</text>
+  </g>
+
+  <g transform="translate(64 690)">
+    <rect class="container ingest" x="0" y="0" width="1122" height="180" rx="8" filter="url(#shadow)" />
+    <text class="section-title" x="24" y="36">Ingestion and bootstrap pipelines</text>
+    <text class="small" x="24" y="60">scripts/ + ingestion/ feed the runtime stores used by API and Brain</text>
+
+    <rect class="module" x="24" y="86" width="230" height="64" rx="8" />
+    <text class="box-title" x="44" y="114">Sample patient data</text>
+    <text class="body" x="44" y="138">init_sample_db -> mimic_demo.db</text>
+
+    <rect class="module" x="284" y="86" width="236" height="64" rx="8" />
+    <text class="box-title" x="304" y="114">Text retrieval</text>
+    <text class="body" x="304" y="138">SQL rows -> chunks -> ChromaDB</text>
+
+    <rect class="module" x="550" y="86" width="234" height="64" rx="8" />
+    <text class="box-title" x="570" y="114">Knowledge graph</text>
+    <text class="body" x="570" y="138">Kaggle, UMLS, SQL -> Neo4j</text>
+
+    <rect class="module" x="814" y="86" width="270" height="64" rx="8" />
+    <text class="box-title" x="834" y="114">Medical imaging</text>
+    <text class="body" x="834" y="138">ROCO, MIMIC-CXR, BiomedCLIP</text>
+  </g>
+
+  <path class="line-strong" d="M 384 370 C 410 370, 418 370, 446 370" marker-end="url(#arrowStrong)" />
+  <text class="tiny" x="391" y="350">/api rewrites</text>
+
+  <path class="line-strong" d="M 760 370 C 788 370, 796 370, 826 370" marker-end="url(#arrowStrong)" />
+  <text class="tiny" x="772" y="350">request + SSE</text>
+
+  <path class="line-data" d="M 1186 252 C 1216 162, 1224 110, 1252 110" marker-end="url(#arrowData)" />
+  <path class="line-data" d="M 1186 300 C 1218 246, 1224 194, 1252 194" marker-end="url(#arrowData)" />
+  <path class="line-data" d="M 1186 348 C 1216 318, 1224 292, 1252 292" marker-end="url(#arrowData)" />
+  <path class="line-data" d="M 1186 404 C 1218 404, 1224 394, 1252 394" marker-end="url(#arrowData)" />
+  <path class="line-data" d="M 1186 464 C 1218 504, 1224 502, 1252 502" marker-end="url(#arrowData)" />
+  <text class="tiny" x="1198" y="244">records</text>
+  <text class="tiny" x="1198" y="333">graph</text>
+  <text class="tiny" x="1198" y="389">vectors</text>
+  <text class="tiny" x="1196" y="525">image context</text>
+
+  <path class="line-model" d="M 1112 620 C 1140 752, 1200 784, 1252 784" marker-end="url(#arrowModel)" />
+  <path class="line-model" d="M 1138 594 C 1168 678, 1210 734, 1252 734" marker-end="url(#arrowModel)" />
+  <text class="tiny" x="1138" y="714">LLM + vision calls</text>
+
+  <path class="line-ingest" d="M 1186 780 C 1218 780, 1224 620, 1252 620" marker-end="url(#arrowIngest)" />
+  <text class="tiny" x="1195" y="776">populates stores</text>
+
+  <path class="line" d="M 760 466 C 788 506, 794 536, 826 536" marker-end="url(#arrow)" />
+  <text class="tiny" x="770" y="512">uploads / panels</text>
+
+  <path class="line" d="M 826 486 C 792 504, 786 512, 760 512" marker-end="url(#arrow)" />
+  <text class="tiny" x="768" y="546">answers + metadata</text>
+
+  <g transform="translate(64 918)">
+    <text class="small" x="0" y="0">Legend</text>
+    <line class="legend-line" x1="70" y1="-5" x2="112" y2="-5" stroke="#40566f" />
+    <text class="tiny" x="120" y="0">runtime request flow</text>
+    <line class="legend-line" x1="274" y1="-5" x2="316" y2="-5" stroke="#9361ad" />
+    <text class="tiny" x="324" y="0">context retrieval</text>
+    <line class="legend-line" x1="472" y1="-5" x2="514" y2="-5" stroke="#bd625f" />
+    <text class="tiny" x="522" y="0">model service call</text>
+    <line class="legend-line" x1="684" y1="-5" x2="726" y2="-5" stroke="#4f88bf" />
+    <text class="tiny" x="734" y="0">ingestion/bootstrap feed</text>
+  </g>
+</svg>

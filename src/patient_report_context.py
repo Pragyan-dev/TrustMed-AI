@@ -23,6 +23,13 @@ except ImportError:  # pragma: no cover - optional runtime dependency
     PdfReader = None
 
 from src.ssl_bootstrap import get_ssl_cert_path
+from src.runtime_config import (
+    PROJECT_ROOT,
+    UPLOADS_DIR,
+    STORAGE_DIR,
+    PATIENT_FILES_REGISTRY,
+    REPORT_OCR_MAX_TOKENS,
+)
 from src.vision_tool import OPENROUTER_API_KEY, OPENROUTER_URL, VISION_MODELS, encode_image
 
 try:
@@ -31,10 +38,6 @@ except ImportError:  # pragma: no cover - optional runtime dependency
     fitz = None
 
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-UPLOADS_DIR = os.path.join(PROJECT_ROOT, "uploads")
-STORAGE_DIR = os.path.join(PROJECT_ROOT, "storage")
-PATIENT_FILES_REGISTRY = os.path.join(STORAGE_DIR, "patient_files.json")
 REPORT_SIDECAR_SUFFIX = ".report.json"
 
 REPORT_DOCUMENT_VISION_PROMPT = """You are reading a scanned clinical report page.
@@ -275,7 +278,7 @@ def _transcribe_report_page_with_vision(image_path: str) -> str:
                 }
             ],
             "temperature": 0.1,
-            "max_tokens": 1200,
+            "max_tokens": REPORT_OCR_MAX_TOKENS,
         }
 
         response = requests.post(

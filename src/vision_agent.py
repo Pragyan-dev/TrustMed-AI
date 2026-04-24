@@ -17,13 +17,15 @@ import os
 import sys
 import json
 import hashlib
-import tempfile
+import importlib.util
 import chromadb
 from collections import OrderedDict
 from langchain_core.tools import tool
 
 # Add project root to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.runtime_config import CHROMA_DB_DIR, ENABLE_VISUAL_RAG
 
 # --- IMPORTS FROM EXISTING TOOLS ---
 
@@ -40,30 +42,18 @@ except ImportError:
         print("❌ CRITICAL: vision_tool not found. Vision analysis will be unavailable.")
 
 # 2. The "Visual Memory" (BiomedCLIP Search)
-try:
-    from ingestion.ingest_images import search_similar_images, search_by_text
-except ImportError:
-    print("⚠️ Warning: ingest_images not found. Visual search disabled.")
+if ENABLE_VISUAL_RAG and importlib.util.find_spec("open_clip"):
+    try:
+        from ingestion.ingest_images import search_similar_images, search_by_text
+    except ImportError:
+        print("⚠️ Warning: ingest_images not found. Visual search disabled.")
+        search_similar_images = None
+        search_by_text = None
+else:
     search_similar_images = None
     search_by_text = None
 
-# 3. Compound Figure Detection (MedICaT-inspired)
-try:
-    from src.subfigure_detector import (
-        detect_compound_figure, split_compound_figure, get_analysis_summary
-    )
-except ImportError:
-    try:
-        from subfigure_detector import (
-            detect_compound_figure, split_compound_figure, get_analysis_summary
-        )
-    except ImportError:
-        print("⚠️ Warning: subfigure_detector not found. Compound figure detection disabled.")
-        detect_compound_figure = None
-        split_compound_figure = None
-        get_analysis_summary = None
-
-# 4. Cross-Encoder Reranker for Text-RAG
+# 3. Cross-Encoder Reranker for Text-RAG
 try:
     from src.reranker import rerank_documents
 except ImportError:
@@ -74,7 +64,7 @@ except ImportError:
         rerank_documents = None
 
 # --- CONFIGURATION ---
-CHROMA_PATH = "./data/chroma_db"
+CHROMA_PATH = CHROMA_DB_DIR
 TEXT_COLLECTION_NAME = "diseases"  # From Phase 2 text ingestion
 VISUAL_SIMILARITY_THRESHOLD = 0.70  # Only show cases above 70% similarity
 TEXT_RAG_RERANK_TOP_K = 3           # Keep top 3 after reranking
@@ -533,7 +523,10 @@ def analyze_and_retrieve_context(image_path: str) -> str:
         except Exception as e:
             report.append(f"   ⚠️ Visual search error: {e}")
     else:
-        report.append("\n⚠️ Visual Search not available (Phase 3 skipped).")
+        if ENABLE_VISUAL_RAG:
+            report.append("\n⚠️ Visual-RAG unavailable (open_clip/ingestion support not loaded).")
+        else:
+            report.append("\nVisual-RAG disabled by configuration.")
 
     # =========================================================================
     # STEP 4: CROSS-REFERENCE VALIDATION (Anti-Hallucination)
@@ -559,90 +552,12 @@ def analyze_and_retrieve_context(image_path: str) -> str:
     return "\n".join(report)
 
 
-# --- COMPOUND FIGURE ANALYSIS ---
-
-def analyze_compound_figure(image_path: str) -> str:
-    """
-    Analyze a compound (multi-panel) medical figure by splitting it into
-    individual panels and running the full analysis on each.
-
-    Inspired by MedICaT (Subramanian et al., EMNLP 2020) which showed that
-    analyzing subfigures individually improves retrieval and understanding.
-
-    Args:
-        image_path: Path to the compound medical image
-
-    Returns:
-        Comprehensive per-panel analysis with cross-panel synthesis
-    """
-    analysis = detect_compound_figure(image_path)
-    subfigures = split_compound_figure(image_path)
-
-    report = []
-    report.append(f"🔬 COMPOUND FIGURE ANALYSIS: {os.path.basename(image_path)}")
-    report.append("=" * 60)
-    report.append(f"📊 {get_analysis_summary(analysis)}")
-    report.append("")
-
-    panel_findings = {}
-
-    for sf in subfigures:
-        panel_id = sf.panel_id
-        print(f"\n📋 Analyzing Panel {panel_id} ({sf.bbox.width}x{sf.bbox.height}px)...")
-
-        # Save subfigure to a temporary file for analysis
-        temp_path = os.path.join(tempfile.gettempdir(), f"trustmed_panel_{panel_id}.jpg")
-        try:
-            sf.image.save(temp_path, "JPEG", quality=95)
-
-            # Run the standard 3-phase analysis on this panel
-            panel_result = analyze_and_retrieve_context.invoke(temp_path)
-            panel_findings[panel_id] = panel_result
-
-            report.append(f"\n{'─' * 50}")
-            report.append(f"📌 PANEL {panel_id} (Row {sf.grid_position[0]+1}, Col {sf.grid_position[1]+1}):")
-            report.append(f"{'─' * 50}")
-            report.append(panel_result)
-
-        except Exception as e:
-            report.append(f"\n❌ Panel {panel_id} analysis failed: {e}")
-            panel_findings[panel_id] = f"Error: {e}"
-
-        finally:
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
-
-    # Cross-panel synthesis
-    if len(panel_findings) > 1:
-        report.append(f"\n{'=' * 60}")
-        report.append("📊 CROSS-PANEL SYNTHESIS:")
-        report.append("=" * 60)
-        report.append(
-            "The above panels were analyzed independently. "
-            "Compare findings across panels for temporal progression, "
-            "multi-view correlation, or treatment response assessment."
-        )
-        report.append(
-            f"Total panels analyzed: {len(panel_findings)} | "
-            f"Layout: {analysis.layout.value}"
-        )
-
-    report.append("\n" + "=" * 60)
-    report.append("🏁 Compound Figure Analysis Complete")
-
-    return "\n".join(report)
-
-
-# --- SMART ENTRY POINT (auto-detects compound figures) ---
+# --- SMART ENTRY POINT ---
 
 @tool
-def analyze_with_compound_support(image_path: str) -> str:
+def analyze_medical_image_pipeline(image_path: str) -> str:
     """
-    Smart analysis that auto-detects compound figures.
-
-    If the image contains multiple panels (e.g., A/B/C/D panels common in
-    medical literature), each panel is analyzed independently for better
-    results. Single images are processed normally.
+    Analyze a medical image with the standard single-image vision pipeline.
 
     Results are cached by image SHA-256 hash. Re-uploading the same image
     or asking follow-up questions returns the cached result instantly.
@@ -651,7 +566,7 @@ def analyze_with_compound_support(image_path: str) -> str:
         image_path: Path to the medical image file
 
     Returns:
-        Comprehensive analysis report (per-panel if compound)
+        Comprehensive analysis report
     """
     if not os.path.exists(image_path):
         return f"Error: File not found at {image_path}"
@@ -670,20 +585,7 @@ def analyze_with_compound_support(image_path: str) -> str:
     _cache_stats["misses"] += 1
     print(f"🔄 Cache miss — running full vision pipeline (hash: {image_hash[:12]}…)")
 
-    # ── Run full pipeline ─────────────────────────────────────────
-    # Try compound figure detection
-    if detect_compound_figure is not None:
-        try:
-            analysis = detect_compound_figure(image_path)
-            if analysis.is_compound and analysis.confidence >= 0.5:
-                print(f"📊 Compound figure detected! {get_analysis_summary(analysis)}")
-                result = analyze_compound_figure(image_path)
-                _cache_put(image_hash, result)
-                return result
-        except Exception as e:
-            print(f"⚠️ Compound detection failed, using standard pipeline: {e}")
-
-    # Standard single-image analysis
+    # ── Run standard single-image analysis ────────────────────────
     result = analyze_and_retrieve_context.invoke(image_path)
     _cache_put(image_hash, result)
     return result
@@ -702,7 +604,6 @@ def _cache_put(key: str, value: str):
 def run_full_analysis(image_path: str) -> str:
     """
     Run the complete multimodal analysis pipeline.
-    Auto-detects compound figures for panel-level analysis.
 
     Args:
         image_path: Path to medical image
@@ -710,7 +611,7 @@ def run_full_analysis(image_path: str) -> str:
     Returns:
         Full analysis report
     """
-    return analyze_with_compound_support.invoke(image_path)
+    return analyze_medical_image_pipeline.invoke(image_path)
 
 
 # --- TEST BLOCK ---

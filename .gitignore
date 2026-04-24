@@ -1,4 +1,5 @@
 .env
+.venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -11,6 +12,11 @@ out.log
 .codex/
 .claude/
 data/
+api/data/
+storage/storage/
+storage/uploads/
+storage/patient_files.json.bak-*
+results/api_evaluation_*.json
 .skill-staging/
 graphify-out/
 .graphify_ast.json

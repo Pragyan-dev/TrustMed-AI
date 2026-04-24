@@ -13,6 +13,7 @@ from langchain_openai import ChatOpenAI
 from langchain.tools import Tool
 from langchain_core.prompts import PromptTemplate
 from src.ssl_bootstrap import configure_ssl_certificates
+from src.runtime_config import GRAPH_MAX_TOKENS, GRAPH_TIMEOUT_SECONDS
 
 load_dotenv()
 configure_ssl_certificates()
@@ -74,7 +75,9 @@ def get_chain() -> GraphCypherQAChain:
             model=OPENROUTER_MODEL,
             openai_api_key=OPENROUTER_API_KEY,
             openai_api_base="https://openrouter.ai/api/v1",
-            temperature=0  # Deterministic for Cypher generation
+            temperature=0,
+            max_tokens=GRAPH_MAX_TOKENS,
+            request_timeout=GRAPH_TIMEOUT_SECONDS,
         )
         
         _chain = GraphCypherQAChain.from_llm(

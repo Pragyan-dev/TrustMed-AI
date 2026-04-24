@@ -26,6 +26,7 @@ import os
 from typing import List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
+from src.runtime_config import CHROMA_DB_DIR
 
 # Load environment variables
 load_dotenv()
@@ -41,7 +42,6 @@ from src.graph_tool import get_graph_retriever_tool, GraphRetriever
 # Configuration
 # ----------------------------
 
-CHROMA_DB_DIR = os.getenv("CHROMA_DB_DIR", "./chroma_db")
 EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "sentence-transformers/all-MiniLM-L6-v2")
 VECTOR_TOP_K = 3  # Number of chunks to retrieve from vector search
 

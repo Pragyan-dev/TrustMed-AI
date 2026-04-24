@@ -9,7 +9,7 @@ The current implementation is built on a `Next.js + React` frontend, a `FastAPI`
 - Clinician dashboard with streaming chat, session history, patient selection, image upload, graph context, drug safety alerts, and SOAP note generation
 - Patient portal with vitals, diagnoses, medications, care-plan summaries, and attachment viewing
 - Neuro-symbolic orchestration that combines patient data, graph retrieval, vector retrieval, and multimodal reasoning
-- Medical image pipeline with upload handling, compound figure detection, and per-panel analysis
+- Medical image pipeline with upload handling and multimodal image analysis
 - Knowledge graph integration through Neo4j and semantic retrieval through ChromaDB
 - Evaluation and ingestion tooling for expanding the demo and testing the system
 
@@ -24,7 +24,7 @@ The clinician workflow is available at `/clinician` and is designed for richer d
 - text and vision model selection
 - knowledge graph exploration
 - drug safety summaries
-- image upload and panel analysis
+- image upload and medical image analysis
 - SOAP note generation
 
 ### Patient portal
@@ -117,9 +117,16 @@ Create a `.env` file in the project root and provide the values you need for you
 | `OPENROUTER_API_KEY` | Required for default text generation flows |
 | `OPENROUTER_MODEL` | Optional override for the default text model |
 | `SAFETY_CRITIC_MODEL` | Optional override for the review model |
+| `CHAT_MAX_TOKENS`, `STREAM_MAX_TOKENS`, `GRAPH_MAX_TOKENS`, `SAFETY_MAX_TOKENS`, `SOAP_MAX_TOKENS`, `DIRECT_MAX_TOKENS` | Optional token caps for bounded OpenRouter/Vertex calls |
+| `TRUSTMED_SAFETY_MODE` | `balanced` by default; use `strict` for always-on LLM safety review or `off` for deterministic-only review |
+| `ENABLE_LLM_GRAPH` | Disabled by default; set `true` to allow LLM-generated Cypher fallback |
+| `TRUSTMED_QUALITY_MODE` | Disabled by default; set `true` to enable cross-encoder reranking in the main chat pipeline |
+| `CHROMA_DB_DIR` | Optional absolute override for ChromaDB; defaults to project-root `data/chroma_db` |
 | `NEO4J_URI` | Required for graph features |
 | `NEO4J_USERNAME` | Neo4j username |
 | `NEO4J_PASSWORD` | Neo4j password |
+| `VISION_PROVIDER` | `openrouter` by default; set `vertex` only when Vertex auth is configured |
+| `ENABLE_VISUAL_RAG` | Disabled by default; requires optional `open_clip_torch` runtime support |
 | `VERTEX_PROJECT_ID` | Required for Vertex AI MedGemma usage |
 | `VERTEX_ENDPOINT_ID` | Required for Vertex AI MedGemma usage |
 | `VERTEX_REGION` | Vertex region |
@@ -141,6 +148,15 @@ These scripts:
 - build the baseline Chroma vector store
 - populate the baseline Neo4j graph
 
+Before validation, check the runtime state:
+
+```bash
+python3 scripts/validate_runtime_state.py
+python3 scripts/validate_runtime_state.py --repair
+```
+
+The repair mode backs up `storage/patient_files.json`, prunes missing patient-file entries, and registers real files under `uploads/patient-files/`.
+
 ### Run the Application
 
 Preferred:
@@ -160,8 +176,13 @@ Manual startup:
 Backend:
 
 ```bash
-cd api
-python3 -m uvicorn main:app --reload --port 8000 --reload-dir ../api --reload-dir ../src
+python3 -m uvicorn api.main:app --port 8000
+```
+
+Reload is optional and can be noisy in restricted sandboxes:
+
+```bash
+DEV_RELOAD=1 ./run_dev.sh
 ```
 
 Frontend:

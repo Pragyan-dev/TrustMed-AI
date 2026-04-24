@@ -14,12 +14,13 @@ import chromadb
 from chromadb.utils import embedding_functions
 from langchain_openai import ChatOpenAI
 
-from graph_tool import GraphRetriever
+from src.graph_tool import GraphRetriever
+from src.runtime_config import CHROMA_DB_DIR, CHAT_MAX_TOKENS, SYNTHESIS_TIMEOUT_SECONDS
 
 load_dotenv()
 
 # Configuration
-CHROMA_DB_PATH = "./chroma_db"
+CHROMA_DB_PATH = CHROMA_DB_DIR
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-nano-30b-a3b:free")
@@ -211,7 +212,9 @@ def generate_response(query: str, context: str) -> str:
             model=OPENROUTER_MODEL,
             openai_api_key=OPENROUTER_API_KEY,
             openai_api_base="https://openrouter.ai/api/v1",
-            temperature=0.3
+            temperature=0.3,
+            max_tokens=CHAT_MAX_TOKENS,
+            request_timeout=SYNTHESIS_TIMEOUT_SECONDS,
         )
         
         messages = [

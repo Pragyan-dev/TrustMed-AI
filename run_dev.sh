@@ -22,10 +22,18 @@ trap cleanup INT TERM
 
 # Start backend
 echo "🔧 Starting FastAPI backend on port 8000..."
-cd api
-python3 -m uvicorn main:app --reload --port 8000 --reload-dir ../api --reload-dir ../src &
+if [ -x ".venv/bin/python" ]; then
+    PYTHON_BIN=".venv/bin/python"
+else
+    PYTHON_BIN="python3"
+fi
+
+if [ "${DEV_RELOAD:-0}" = "1" ]; then
+    $PYTHON_BIN -m uvicorn api.main:app --reload --port 8000 --reload-dir api --reload-dir src &
+else
+    $PYTHON_BIN -m uvicorn api.main:app --port 8000 &
+fi
 BACKEND_PID=$!
-cd ..
 
 # Wait for backend to start
 sleep 3

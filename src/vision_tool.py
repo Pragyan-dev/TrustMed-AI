@@ -15,9 +15,11 @@ import os
 import base64
 import requests
 import json
+import importlib.util
 from langchain_core.tools import tool
 from dotenv import load_dotenv
 from src.ssl_bootstrap import configure_ssl_certificates, get_ssl_cert_path
+from src.runtime_config import VISION_PROVIDER, VISION_MAX_TOKENS, VERTEX_VISION_MAX_TOKENS
 
 load_dotenv()
 configure_ssl_certificates()
@@ -95,7 +97,7 @@ def call_medgemma_vertex(image_path: str, prompt: str) -> str:
             }
         ],
         "temperature": 0.1,
-        "max_tokens": 500,
+        "max_tokens": VERTEX_VISION_MAX_TOKENS,
     }
 
     resp = requests.post(
@@ -180,6 +182,18 @@ def set_preferred_vision_model(model_id: str = None):
 def get_vision_models_list() -> list:
     """Return the list of available vision models for UI display."""
     return list(VISION_MODELS)
+
+
+def _vertex_vision_available() -> bool:
+    """Return True only when Vertex was explicitly selected and deps/config exist."""
+    if VISION_PROVIDER != "vertex":
+        return False
+    if not (VERTEX_PROJECT_ID and VERTEX_ENDPOINT_ID and VERTEX_DEDICATED_DOMAIN):
+        return False
+    try:
+        return importlib.util.find_spec("google.auth") is not None
+    except ModuleNotFoundError:
+        return False
 
 
 # =============================================================================
@@ -328,8 +342,8 @@ def analyze_medical_image(image_path: str) -> str:
             "X-Title": "TrustMed AI Vision"
         }
         
-        # Try MedGemma on Vertex AI first (medically fine-tuned)
-        if VERTEX_PROJECT_ID and VERTEX_ENDPOINT_ID:
+        # Try MedGemma on Vertex AI only when explicitly configured.
+        if _vertex_vision_available():
             try:
                 print("  🧬 Trying MedGemma 27B (Vertex AI)...")
                 raw = call_medgemma_vertex(image_path, VISION_SYSTEM_PROMPT)
@@ -371,7 +385,7 @@ def analyze_medical_image(image_path: str) -> str:
                     }
                 ],
                 "temperature": 0.1,   # Near-deterministic: reduces confabulation
-                "max_tokens": 400     # Constrained output prevents verbose hallucination
+                "max_tokens": VISION_MAX_TOKENS,
             }
             
             try:

@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from threading import Lock
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -29,6 +29,14 @@ from pydantic import BaseModel
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
+from src.runtime_config import (
+    PROJECT_ROOT as RUNTIME_PROJECT_ROOT,
+    CHAT_HISTORY_DIR,
+    UPLOADS_DIR,
+    STORAGE_DIR,
+    PATIENT_FILES_DIR,
+    PATIENT_FILES_REGISTRY,
+)
 from src.trustmed_brain import (
     ask_trustmed,
     ask_trustmed_streaming,
@@ -39,7 +47,6 @@ from src.trustmed_brain import (
 import traceback
 from src.vision_agent import get_vision_cache_stats, clear_vision_cache
 from src.graph_visualizer import get_graph_json
-from src.subfigure_detector import detect_compound_figure, split_compound_figure
 from src.patient_context_tool import get_patient_data_json
 from src.patient_report_context import (
     load_attachment_sidecar,
@@ -66,11 +73,8 @@ app.add_middleware(
 # Persistent Chat History
 # =============================================================================
 
-HISTORY_DIR = os.path.join(PROJECT_ROOT, "chat_history")
-UPLOADS_DIR = os.path.join(PROJECT_ROOT, "uploads")
-STORAGE_DIR = os.path.join(PROJECT_ROOT, "storage")
-PATIENT_FILES_DIR = os.path.join(UPLOADS_DIR, "patient-files")
-PATIENT_FILES_REGISTRY = os.path.join(STORAGE_DIR, "patient_files.json")
+PROJECT_ROOT = RUNTIME_PROJECT_ROOT
+HISTORY_DIR = CHAT_HISTORY_DIR
 ATTACHMENT_REGISTRY_LOCK = Lock()
 ATTACHMENT_PUBLIC_FIELDS = (
     "id",
@@ -599,10 +603,6 @@ class LinkClinicianUploadRequest(BaseModel):
     title: Optional[str] = None
 
 
-class DetectPanelsRequest(BaseModel):
-    image_path: str
-
-
 # =============================================================================
 # Endpoints
 # =============================================================================
@@ -991,11 +991,8 @@ async def create_session(source: str = "clinician"):
 
 
 # =============================================================================
-# Knowledge Graph & Panel Detection Endpoints
+# Knowledge Graph Endpoints
 # =============================================================================
-
-PANELS_DIR = os.path.join(UPLOADS_DIR, "panels")
-
 
 def _get_graph_data(search_term: str, patient_id: str = None) -> dict:
     """Fetch graph data from Neo4j as plain JSON."""
@@ -1031,66 +1028,6 @@ async def get_graph(search_term: str = Query(..., min_length=2), patient_id: str
         return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/detect-panels")
-async def detect_panels(request: DetectPanelsRequest):
-    """
-    Detect if an image is a compound figure and split into panels.
-    Saves each panel as a separate PNG in uploads/panels/.
-    """
-    image_path = request.image_path
-    if not os.path.exists(image_path):
-        raise HTTPException(status_code=404, detail="Image file not found")
-
-    try:
-        # Run detection in thread (OpenCV is CPU-bound)
-        analysis = await asyncio.to_thread(detect_compound_figure, image_path)
-
-        result = {
-            "is_compound": analysis.is_compound,
-            "confidence": round(analysis.confidence, 3),
-            "num_panels": analysis.num_panels,
-            "layout": analysis.layout.value if analysis.layout else "single",
-            "grid_structure": analysis.grid_structure,
-            "panels": []
-        }
-
-        if analysis.is_compound:
-            # Split and save each panel
-            os.makedirs(PANELS_DIR, exist_ok=True)
-            subfigures = await asyncio.to_thread(split_compound_figure, image_path)
-
-            for sf in subfigures:
-                panel_filename = f"panel_{uuid.uuid4().hex[:8]}_{sf.panel_id}.png"
-                panel_path = os.path.join(PANELS_DIR, panel_filename)
-                sf.image.save(panel_path)
-
-                result["panels"].append({
-                    "panel_id": sf.panel_id,
-                    "label": sf.label or sf.panel_id,
-                    "image_url": f"/panels/{panel_filename}",
-                    "bbox": {
-                        "x1": sf.bbox.x1, "y1": sf.bbox.y1,
-                        "x2": sf.bbox.x2, "y2": sf.bbox.y2,
-                        "width": sf.bbox.width, "height": sf.bbox.height
-                    },
-                    "grid_position": list(sf.grid_position),
-                    "confidence": round(sf.confidence, 3)
-                })
-
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/panels/{filename}")
-async def serve_panel(filename: str):
-    """Serve a split panel image."""
-    filepath = os.path.join(PANELS_DIR, filename)
-    if not os.path.exists(filepath):
-        raise HTTPException(status_code=404, detail="Panel image not found")
-    return FileResponse(filepath, media_type="image/png")
 
 
 # =============================================================================

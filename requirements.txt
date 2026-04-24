@@ -26,6 +26,7 @@ langchain-neo4j>=0.9.0
 
 # OpenAI Compatible API (for OpenRouter)
 openai>=2.32.0
+google-auth>=2.43.0
 
 # HTTP Requests
 requests>=2.33.1
@@ -48,6 +49,8 @@ torch>=2.11.0
 transformers>=5.5.4
 pypdf>=6.1.1
 pymupdf>=1.26.5
+# Optional Visual-RAG ingestion/runtime when ENABLE_VISUAL_RAG=true:
+# open_clip_torch>=3.2.0
 
 # HuggingFace Datasets
 datasets>=4.8.4

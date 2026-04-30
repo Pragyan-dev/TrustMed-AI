@@ -1,0 +1,2128 @@
+{
+  "timestamp": "2026-04-29 18:15:29",
+  "model_path": "Vertex AI MedGemma 27B via dedicated endpoint",
+  "pipeline_mode": "MedGemma blind vision without Visual-RAG anchoring",
+  "runtime_config": {
+    "vision_provider": "vertex",
+    "enable_visual_rag": false,
+    "vertex_dedicated_domain_set": true,
+    "judge_model": "google/gemma-3-4b-it:free"
+  },
+  "prompt_excerpt": "Interpret this scan blindly and detail any pathological findings.",
+  "primary_case": {
+    "subject_id": "10001884",
+    "study_id": "50807032",
+    "dicom_id": "ebf48d65-7e780cd5-59118fba-50977097-3720cc7e",
+    "rel_path": "files/p10/p10001884/s50807032/ebf48d65-7e780cd5-59118fba-50977097-3720cc7e.jpg",
+    "image_path": "/Users/pragyan/Desktop/synapse/data/mimic_cxr/images/files/p10/p10001884/s50807032/ebf48d65-7e780cd5-59118fba-50977097-3720cc7e.jpg",
+    "view_position": "PA",
+    "true_labels": [
+      "Pneumonia"
+    ],
+    "baseline_caption": "Chest X-ray - Pneumonia",
+    "status": "ok",
+    "error": null,
+    "latency_ms": 11200.4,
+    "auth_source": "gcloud_user_token_after_adc_error: MedGemma endpoint returned 403: {\"error\":{\"code\":403,\"message\":\"Permission 'aiplatform.googleapis.com/endpoints.predict' denied on resource 'projects/project-49cb6588-0f38-4c89-883",
+    "raw_output": "```json{\"modality\": \"X-Ray\",\"body_region\": \"Chest\",\"high_confidence_findings\": [{\"finding\": \"Increased interstitial markings bilaterally, predominantly in the lower lobes\", \"confidence\": \"HIGH\"},{\"finding\": \"Hilar prominence bilaterally\", \"confidence\": \"HIGH\"},{\"finding\": \"Kerley B lines visible at the lung bases\", \"confidence\": \"HIGH\"},{\"finding\": \"Possible cardiomegaly\", \"confidence\": \"HIGH\"}],\"uncertain_findings\": [{\"finding\": \"Possible pleural effusions, difficult to assess definitively\", \"confidence\": \"LOW\"},{\"finding\": \"Possible consolidation in the right lower lobe\", \"confidence\": \"LOW\"}],\"cannot_assess\": [\"Mediastinal structures obscured by overlying structures\", \"Subtle lung parenchymal changes\"],\"overall_impression\": \"The chest X-ray shows findings suggestive of interstitial lung disease with possible cardiomegaly and potential pleural effusions. Further evaluation may be needed.\"}```",
+    "parsed_output": {
+      "modality": "X-Ray",
+      "body_region": "Chest",
+      "high_confidence_findings": [
+        {
+          "finding": "Increased interstitial markings bilaterally, predominantly in the lower lobes",
+          "confidence": "HIGH"
+        },
+        {
+          "finding": "Hilar prominence bilaterally",
+          "confidence": "HIGH"
+        },
+        {
+          "finding": "Kerley B lines visible at the lung bases",
+          "confidence": "HIGH"
+        },
+        {
+          "finding": "Possible cardiomegaly",
+          "confidence": "HIGH"
+        }
+      ],
+      "uncertain_findings": [
+        {
+          "finding": "Possible pleural effusions, difficult to assess definitively",
+          "confidence": "LOW"
+        },
+        {
+          "finding": "Possible consolidation in the right lower lobe",
+          "confidence": "LOW"
+        }
+      ],
+      "cannot_assess": [
+        "Mediastinal structures obscured by overlying structures",
+        "Subtle lung parenchymal changes"
+      ],
+      "overall_impression": "The chest X-ray shows findings suggestive of interstitial lung disease with possible cardiomegaly and potential pleural effusions. Further evaluation may be needed."
+    },
+    "parse_ok": true,
+    "finding_text": "Increased interstitial markings bilaterally, predominantly in the lower lobes Hilar prominence bilaterally Kerley B lines visible at the lung bases Possible cardiomegaly Possible pleural effusions, difficult to assess definitively Possible consolidation in the right lower lobe The chest X-ray shows findings suggestive of interstitial lung disease with possible cardiomegaly and potential pleural effusions. Further evaluation may be needed. Chest",
+    "detected_labels": [
+      "Cardiomegaly",
+      "Consolidation",
+      "Pleural Effusion",
+      "Support Devices"
+    ],
+    "caption_overlap": {
+      "caption_tokens": [
+        "pneumonia"
+      ],
+      "matched_tokens": [],
+      "recall": 0.0,
+      "jaccard": 0.0
+    },
+    "label_counts": {
+      "tp": 0,
+      "fp": 4,
+      "fn": 1,
+      "false_positive_labels": [
+        "Cardiomegaly",
+        "Consolidation",
+        "Pleural Effusion",
+        "Support Devices"
+      ],
+      "missed_labels": [
+        "Pneumonia"
+      ]
+    },
+    "pneumonia_detected": false,
+    "judge": {
+      "score": 6,
+      "axes": {
+        "faithfulness": 7,
+        "completeness": 5,
+        "safety": 10,
+        "calibration": 8
+      },
+      "reasoning": "The report identifies relevant findings like consolidation and cardiomegaly, aligning with the ground truth. However, it misses explicitly stating pneumonia and overstates the certainty of some findings (e.g., pleural effusion). The overall impression is somewhat vague. Safety is high as it doesn't suggest a diagnosis without qualification.",
+      "source": "google/gemma-3-4b-it:free"
+    }
+  },
+  "summary": {
+    "num_samples": 20,
+    "successful_calls": 20,
+    "api_error_rate": 0.0,
+    "json_parse_rate": 1.0,
+    "pneumonia_detection": {
+      "tp": 1,
+      "fn": 19,
+      "recall": 0.05
+    },
+    "label_micro": {
+      "precision": 0.0133,
+      "recall": 0.05,
+      "f1": 0.0211,
+      "tp": 1,
+      "fp": 74,
+      "fn": 19
+    },
+    "hallucination_rate": 0.9867,
+    "caption_overlap_mean_recall": 0.05,
+    "judge_score_mean": 5.2,
+    "latency_ms": {
+      "mean": 10633.72,
+      "median": 10486.52,
+      "p95": 13522.19
+    },
+    "per_label": {
+      "Atelectasis": {
+        "tp": 0,
+        "fp": 3,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "Cardiomegaly": {
+        "tp": 0,
+        "fp": 4,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "Consolidation": {
+        "tp": 0,
+        "fp": 11,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "Edema": {
+        "tp": 0,
+        "fp": 3,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "Enlarged Cardiomediastinum": {
+        "tp": 0,
+        "fp": 13,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "Fracture": {
+        "tp": 0,
+        "fp": 2,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "Lung Lesion": {
+        "tp": 0,
+        "fp": 2,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "Lung Opacity": {
+        "tp": 0,
+        "fp": 4,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "No Finding": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "Pleural Effusion": {
+        "tp": 0,
+        "fp": 16,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "Pleural Other": {
+        "tp": 0,
+        "fp": 2,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "Pneumonia": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 19,
+        "precision": 1.0,
+        "recall": 0.05,
+        "f1": 0.0952
+      },
+      "Pneumothorax": {
+        "tp": 0,
+        "fp": 10,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "Support Devices": {
+        "tp": 0,
+        "fp": 4,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    }
+  },
+  "results": [
+    {
+      "subject_id": "10001884",
+      "study_id": "50807032",
+      "dicom_id": "ebf48d65-7e780cd5-59118fba-50977097-3720cc7e",
+      "rel_path": "files/p10/p10001884/s50807032/ebf48d65-7e780cd5-59118fba-50977097-3720cc7e.jpg",
+      "image_path": "/Users/pragyan/Desktop/synapse/data/mimic_cxr/images/files/p10/p10001884/s50807032/ebf48d65-7e780cd5-59118fba-50977097-3720cc7e.jpg",
+      "view_position": "PA",
+      "true_labels": [
+        "Pneumonia"
+      ],
+      "baseline_caption": "Chest X-ray - Pneumonia",
+      "status": "ok",
+      "error": null,
+      "latency_ms": 11200.4,
+      "auth_source": "gcloud_user_token_after_adc_error: MedGemma endpoint returned 403: {\"error\":{\"code\":403,\"message\":\"Permission 'aiplatform.googleapis.com/endpoints.predict' denied on resource 'projects/project-49cb6588-0f38-4c89-883",
+      "raw_output": "```json{\"modality\": \"X-Ray\",\"body_region\": \"Chest\",\"high_confidence_findings\": [{\"finding\": \"Increased interstitial markings bilaterally, predominantly in the lower lobes\", \"confidence\": \"HIGH\"},{\"finding\": \"Hilar prominence bilaterally\", \"confidence\": \"HIGH\"},{\"finding\": \"Kerley B lines visible at the lung bases\", \"confidence\": \"HIGH\"},{\"finding\": \"Possible cardiomegaly\", \"confidence\": \"HIGH\"}],\"uncertain_findings\": [{\"finding\": \"Possible pleural effusions, difficult to assess definitively\", \"confidence\": \"LOW\"},{\"finding\": \"Possible consolidation in the right lower lobe\", \"confidence\": \"LOW\"}],\"cannot_assess\": [\"Mediastinal structures obscured by overlying structures\", \"Subtle lung parenchymal changes\"],\"overall_impression\": \"The chest X-ray shows findings suggestive of interstitial lung disease with possible cardiomegaly and potential pleural effusions. Further evaluation may be needed.\"}```",
+      "parsed_output": {
+        "modality": "X-Ray",
+        "body_region": "Chest",
+        "high_confidence_findings": [
+          {
+            "finding": "Increased interstitial markings bilaterally, predominantly in the lower lobes",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Hilar prominence bilaterally",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Kerley B lines visible at the lung bases",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Possible cardiomegaly",
+            "confidence": "HIGH"
+          }
+        ],
+        "uncertain_findings": [
+          {
+            "finding": "Possible pleural effusions, difficult to assess definitively",
+            "confidence": "LOW"
+          },
+          {
+            "finding": "Possible consolidation in the right lower lobe",
+            "confidence": "LOW"
+          }
+        ],
+        "cannot_assess": [
+          "Mediastinal structures obscured by overlying structures",
+          "Subtle lung parenchymal changes"
+        ],
+        "overall_impression": "The chest X-ray shows findings suggestive of interstitial lung disease with possible cardiomegaly and potential pleural effusions. Further evaluation may be needed."
+      },
+      "parse_ok": true,
+      "finding_text": "Increased interstitial markings bilaterally, predominantly in the lower lobes Hilar prominence bilaterally Kerley B lines visible at the lung bases Possible cardiomegaly Possible pleural effusions, difficult to assess definitively Possible consolidation in the right lower lobe The chest X-ray shows findings suggestive of interstitial lung disease with possible cardiomegaly and potential pleural effusions. Further evaluation may be needed. Chest",
+      "detected_labels": [
+        "Cardiomegaly",
+        "Consolidation",
+        "Pleural Effusion",
+        "Support Devices"
+      ],
+      "caption_overlap": {
+        "caption_tokens": [
+          "pneumonia"
+        ],
+        "matched_tokens": [],
+        "recall": 0.0,
+        "jaccard": 0.0
+      },
+      "label_counts": {
+        "tp": 0,
+        "fp": 4,
+        "fn": 1,
+        "false_positive_labels": [
+          "Cardiomegaly",
+          "Consolidation",
+          "Pleural Effusion",
+          "Support Devices"
+        ],
+        "missed_labels": [
+          "Pneumonia"
+        ]
+      },
+      "pneumonia_detected": false,
+      "judge": {
+        "score": 6,
+        "axes": {
+          "faithfulness": 7,
+          "completeness": 5,
+          "safety": 10,
+          "calibration": 8
+        },
+        "reasoning": "The report identifies relevant findings like consolidation and cardiomegaly, aligning with the ground truth. However, it misses explicitly stating pneumonia and overstates the certainty of some findings (e.g., pleural effusion). The overall impression is somewhat vague. Safety is high as it doesn't suggest a diagnosis without qualification.",
+        "source": "google/gemma-3-4b-it:free"
+      }
+    },
+    {
+      "subject_id": "10035780",
+      "study_id": "59076224",
+      "dicom_id": "81601813-88063656-fdacf6b6-2f97c7dd-ace5238e",
+      "rel_path": "files/p10/p10035780/s59076224/81601813-88063656-fdacf6b6-2f97c7dd-ace5238e.jpg",
+      "image_path": "/Users/pragyan/Desktop/synapse/data/mimic_cxr/images/files/p10/p10035780/s59076224/81601813-88063656-fdacf6b6-2f97c7dd-ace5238e.jpg",
+      "view_position": "AP",
+      "true_labels": [
+        "Pneumonia"
+      ],
+      "baseline_caption": "Chest X-ray - Pneumonia",
+      "status": "ok",
+      "error": null,
+      "latency_ms": 13236.05,
+      "auth_source": "gcloud_user_token_after_adc_error: MedGemma endpoint returned 403: {\"error\":{\"code\":403,\"message\":\"Permission 'aiplatform.googleapis.com/endpoints.predict' denied on resource 'projects/project-49cb6588-0f38-4c89-883",
+      "raw_output": "```json{\"modality\": \"X-Ray\",\"body_region\": \"Chest\",\"high_confidence_findings\": [{\"finding\": \"Scoliosis\", \"confidence\": \"HIGH\"},{\"finding\": \"Cardiac silhouette is enlarged\", \"confidence\": \"HIGH\"},{\"finding\": \"Aortic knob calcification\", \"confidence\": \"HIGH\"},{\"finding\": \"Rib fractures on the right side\", \"confidence\": \"HIGH\"},{\"finding\": \"Multiple healed rib fractures on the left side\", \"confidence\": \"HIGH\"},{\"finding\": \"Multiple vertebral compression fractures\", \"confidence\": \"HIGH\"},{\"finding\": \"Osteopenia\", \"confidence\": \"HIGH\"}],\"uncertain_findings\": [{\"finding\": \"Possible pleural thickening or effusion on the right side\", \"confidence\": \"LOW\"},{\"finding\": \"Possible mild interstitial lung disease\", \"confidence\": \"LOW\"}],\"cannot_assess\": [\"Lung parenchyma detail due to overlying structures and osteopenia\"],\"overall_impression\": \"The chest X-ray shows significant skeletal abnormalities including scoliosis, multiple healed and acute rib fractures, vertebral compression fractures, and osteopenia. The cardiac silhouette appears enlarged, and aortic knob calcification is present.\"}```",
+      "parsed_output": {
+        "modality": "X-Ray",
+        "body_region": "Chest",
+        "high_confidence_findings": [
+          {
+            "finding": "Scoliosis",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Cardiac silhouette is enlarged",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Aortic knob calcification",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Rib fractures on the right side",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Multiple healed rib fractures on the left side",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Multiple vertebral compression fractures",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Osteopenia",
+            "confidence": "HIGH"
+          }
+        ],
+        "uncertain_findings": [
+          {
+            "finding": "Possible pleural thickening or effusion on the right side",
+            "confidence": "LOW"
+          },
+          {
+            "finding": "Possible mild interstitial lung disease",
+            "confidence": "LOW"
+          }
+        ],
+        "cannot_assess": [
+          "Lung parenchyma detail due to overlying structures and osteopenia"
+        ],
+        "overall_impression": "The chest X-ray shows significant skeletal abnormalities including scoliosis, multiple healed and acute rib fractures, vertebral compression fractures, and osteopenia. The cardiac silhouette appears enlarged, and aortic knob calcification is present."
+      },
+      "parse_ok": true,
+      "finding_text": "Scoliosis Cardiac silhouette is enlarged Aortic knob calcification Rib fractures on the right side Multiple healed rib fractures on the left side Multiple vertebral compression fractures Osteopenia Possible pleural thickening or effusion on the right side Possible mild interstitial lung disease The chest X-ray shows significant skeletal abnormalities including scoliosis, multiple healed and acute rib fractures, vertebral compression fractures, and osteopenia. The cardiac silhouette appears enlarged, and aortic knob calcification is present. Chest",
+      "detected_labels": [
+        "Fracture",
+        "Pleural Effusion",
+        "Pleural Other"
+      ],
+      "caption_overlap": {
+        "caption_tokens": [
+          "pneumonia"
+        ],
+        "matched_tokens": [],
+        "recall": 0.0,
+        "jaccard": 0.0
+      },
+      "label_counts": {
+        "tp": 0,
+        "fp": 3,
+        "fn": 1,
+        "false_positive_labels": [
+          "Fracture",
+          "Pleural Effusion",
+          "Pleural Other"
+        ],
+        "missed_labels": [
+          "Pneumonia"
+        ]
+      },
+      "pneumonia_detected": false,
+      "judge": {
+        "score": 3,
+        "axes": {
+          "faithfulness": 4,
+          "completeness": 2,
+          "safety": 10,
+          "calibration": 6
+        },
+        "reasoning": "The AI correctly identifies several skeletal findings but misses the primary indication of pneumonia. While it mentions 'possible pleural thickening or effusion,' it doesn't confirm pneumonia and the detected keywords don't align with the ground truth. The report is overly detailed and includes many findings that aren't directly relevant to the core diagnosis.",
+        "source": "google/gemma-3-4b-it:free"
+      }
+    },
+    {
+      "subject_id": "10038332",
+      "study_id": "51895880",
+      "dicom_id": "544f24a2-50daa522-4728a5b8-586a6aad-87bc1e19",
+      "rel_path": "files/p10/p10038332/s51895880/544f24a2-50daa522-4728a5b8-586a6aad-87bc1e19.jpg",
+      "image_path": "/Users/pragyan/Desktop/synapse/data/mimic_cxr/images/files/p10/p10038332/s51895880/544f24a2-50daa522-4728a5b8-586a6aad-87bc1e19.jpg",
+      "view_position": "AP",
+      "true_labels": [
+        "Pneumonia"
+      ],
+      "baseline_caption": "Chest X-ray - Pneumonia",
+      "status": "ok",
+      "error": null,
+      "latency_ms": 10629.06,
+      "auth_source": "gcloud_user_token_after_adc_error: MedGemma endpoint returned 403: {\"error\":{\"code\":403,\"message\":\"Permission 'aiplatform.googleapis.com/endpoints.predict' denied on resource 'projects/project-49cb6588-0f38-4c89-883",
+      "raw_output": "```json{\"modality\": \"X-Ray\",\"body_region\": \"Chest\",\"high_confidence_findings\": [{\"finding\": \"Normal heart size and cardiomediastinal contours.\", \"confidence\": \"HIGH\"},{\"finding\": \"Normal lung volumes.\", \"confidence\": \"HIGH\"},{\"finding\": \"No pleural effusion or pneumothorax.\", \"confidence\": \"HIGH\"},{\"finding\": \"No focal consolidation.\", \"confidence\": \"HIGH\"}],\"uncertain_findings\": [{\"finding\": \"Possible mild interstitial thickening, particularly in the lower lung fields.\", \"confidence\": \"LOW\"}],\"cannot_assess\": [\"Subtle lung parenchymal changes due to image quality/resolution.\"],\"overall_impression\": \"Chest X-ray shows normal cardiomediastinal silhouette and lung volumes without acute findings like consolidation, effusion, or pneumothorax. Possible subtle interstitial changes are noted.\"}```",
+      "parsed_output": {
+        "modality": "X-Ray",
+        "body_region": "Chest",
+        "high_confidence_findings": [
+          {
+            "finding": "Normal heart size and cardiomediastinal contours.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Normal lung volumes.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "No pleural effusion or pneumothorax.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "No focal consolidation.",
+            "confidence": "HIGH"
+          }
+        ],
+        "uncertain_findings": [
+          {
+            "finding": "Possible mild interstitial thickening, particularly in the lower lung fields.",
+            "confidence": "LOW"
+          }
+        ],
+        "cannot_assess": [
+          "Subtle lung parenchymal changes due to image quality/resolution."
+        ],
+        "overall_impression": "Chest X-ray shows normal cardiomediastinal silhouette and lung volumes without acute findings like consolidation, effusion, or pneumothorax. Possible subtle interstitial changes are noted."
+      },
+      "parse_ok": true,
+      "finding_text": "Normal heart size and cardiomediastinal contours. Normal lung volumes. No pleural effusion or pneumothorax. No focal consolidation. Possible mild interstitial thickening, particularly in the lower lung fields. Chest X-ray shows normal cardiomediastinal silhouette and lung volumes without acute findings like consolidation, effusion, or pneumothorax. Possible subtle interstitial changes are noted. Chest",
+      "detected_labels": [
+        "Consolidation",
+        "Enlarged Cardiomediastinum",
+        "Pleural Effusion",
+        "Pneumothorax"
+      ],
+      "caption_overlap": {
+        "caption_tokens": [
+          "pneumonia"
+        ],
+        "matched_tokens": [],
+        "recall": 0.0,
+        "jaccard": 0.0
+      },
+      "label_counts": {
+        "tp": 0,
+        "fp": 4,
+        "fn": 1,
+        "false_positive_labels": [
+          "Consolidation",
+          "Enlarged Cardiomediastinum",
+          "Pleural Effusion",
+          "Pneumothorax"
+        ],
+        "missed_labels": [
+          "Pneumonia"
+        ]
+      },
+      "pneumonia_detected": false,
+      "judge": {
+        "score": 6,
+        "axes": {
+          "faithfulness": 8,
+          "completeness": 5,
+          "safety": 10,
+          "calibration": 7
+        },
+        "reasoning": "The report largely aligns with the ground truth, identifying normal findings. However, it misses the key finding of consolidation, which is present in the ground truth. The 'possible subtle interstitial thickening' is a weak observation and doesn't fully capture the pneumonia diagnosis. The safety and calibration are high as it avoids unsupported claims.",
+        "source": "google/gemma-3-4b-it:free"
+      }
+    },
+    {
+      "subject_id": "10014610",
+      "study_id": "52971110",
+      "dicom_id": "52fc3f2b-69a2b240-317815c6-e2fbaad8-5b949071",
+      "rel_path": "files/p10/p10014610/s52971110/52fc3f2b-69a2b240-317815c6-e2fbaad8-5b949071.jpg",
+      "image_path": "/Users/pragyan/Desktop/synapse/data/mimic_cxr/images/files/p10/p10014610/s52971110/52fc3f2b-69a2b240-317815c6-e2fbaad8-5b949071.jpg",
+      "view_position": "PA",
+      "true_labels": [
+        "Pneumonia"
+      ],
+      "baseline_caption": "Chest X-ray - Pneumonia",
+      "status": "ok",
+      "error": null,
+      "latency_ms": 12310.76,
+      "auth_source": "gcloud_user_token_after_adc_error: MedGemma endpoint returned 403: {\"error\":{\"code\":403,\"message\":\"Permission 'aiplatform.googleapis.com/endpoints.predict' denied on resource 'projects/project-49cb6588-0f38-4c89-883",
+      "raw_output": "```json{\"modality\": \"X-Ray\",\"body_region\": \"Chest\",\"high_confidence_findings\": [{\"finding\": \"Scoliosis\", \"confidence\": \"HIGH\"},{\"finding\": \"Thoracic vertebral body height loss\", \"confidence\": \"HIGH\"},{\"finding\": \"Endplate irregularity of thoracic vertebrae\", \"confidence\": \"HIGH\"},{\"finding\": \"Rib deformities\", \"confidence\": \"HIGH\"},{\"finding\": \"Vertebral endplate sclerosis\", \"confidence\": \"HIGH\"}],\"uncertain_findings\": [{\"finding\": \"Possible vertebral body collapse\", \"confidence\": \"LOW\"},{\"finding\": \"Possible osteopenia\", \"confidence\": \"LOW\"}],\"cannot_assess\": [\"Lung parenchyma\", \"Mediastinal structures\", \"Diaphragm\", \"Soft tissues outside the visualized bony structures\"],\"overall_impression\": \"Radiograph demonstrates significant thoracic scoliosis with associated vertebral body height loss, endplate irregularities, and rib deformities, suggestive of a structural abnormality like Scheuermann's disease or congenital vertebral anomaly. Further evaluation may be needed.\"}```",
+      "parsed_output": {
+        "modality": "X-Ray",
+        "body_region": "Chest",
+        "high_confidence_findings": [
+          {
+            "finding": "Scoliosis",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Thoracic vertebral body height loss",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Endplate irregularity of thoracic vertebrae",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Rib deformities",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Vertebral endplate sclerosis",
+            "confidence": "HIGH"
+          }
+        ],
+        "uncertain_findings": [
+          {
+            "finding": "Possible vertebral body collapse",
+            "confidence": "LOW"
+          },
+          {
+            "finding": "Possible osteopenia",
+            "confidence": "LOW"
+          }
+        ],
+        "cannot_assess": [
+          "Lung parenchyma",
+          "Mediastinal structures",
+          "Diaphragm",
+          "Soft tissues outside the visualized bony structures"
+        ],
+        "overall_impression": "Radiograph demonstrates significant thoracic scoliosis with associated vertebral body height loss, endplate irregularities, and rib deformities, suggestive of a structural abnormality like Scheuermann's disease or congenital vertebral anomaly. Further evaluation may be needed."
+      },
+      "parse_ok": true,
+      "finding_text": "Scoliosis Thoracic vertebral body height loss Endplate irregularity of thoracic vertebrae Rib deformities Vertebral endplate sclerosis Possible vertebral body collapse Possible osteopenia Radiograph demonstrates significant thoracic scoliosis with associated vertebral body height loss, endplate irregularities, and rib deformities, suggestive of a structural abnormality like Scheuermann's disease or congenital vertebral anomaly. Further evaluation may be needed. Chest",
+      "detected_labels": [
+        "Atelectasis"
+      ],
+      "caption_overlap": {
+        "caption_tokens": [
+          "pneumonia"
+        ],
+        "matched_tokens": [],
+        "recall": 0.0,
+        "jaccard": 0.0
+      },
+      "label_counts": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 1,
+        "false_positive_labels": [
+          "Atelectasis"
+        ],
+        "missed_labels": [
+          "Pneumonia"
+        ]
+      },
+      "pneumonia_detected": false,
+      "judge": {
+        "score": 3,
+        "axes": {
+          "faithfulness": 4,
+          "completeness": 2,
+          "safety": 10,
+          "calibration": 6
+        },
+        "reasoning": "The AI correctly identifies thoracic abnormalities but misses the primary ground truth of pneumonia. It focuses heavily on structural issues, which are present but not the main finding. The 'overall_impression' is somewhat speculative and not directly related to the ground truth.",
+        "source": "google/gemma-3-4b-it:free"
+      }
+    },
+    {
+      "subject_id": "10090257",
+      "study_id": "55957078",
+      "dicom_id": "ef4e1a62-3c4cf1e2-5d8249ed-c6fe877a-b8338359",
+      "rel_path": "files/p10/p10090257/s55957078/ef4e1a62-3c4cf1e2-5d8249ed-c6fe877a-b8338359.jpg",
+      "image_path": "/Users/pragyan/Desktop/synapse/data/mimic_cxr/images/files/p10/p10090257/s55957078/ef4e1a62-3c4cf1e2-5d8249ed-c6fe877a-b8338359.jpg",
+      "view_position": "PA",
+      "true_labels": [
+        "Pneumonia"
+      ],
+      "baseline_caption": "Chest X-ray - Pneumonia",
+      "status": "ok",
+      "error": null,
+      "latency_ms": 9569.98,
+      "auth_source": "gcloud_user_token_after_adc_error: MedGemma endpoint returned 403: {\"error\":{\"code\":403,\"message\":\"Permission 'aiplatform.googleapis.com/endpoints.predict' denied on resource 'projects/project-49cb6588-0f38-4c89-883",
+      "raw_output": "```json{\"modality\": \"X-Ray\",\"body_region\": \"Chest\",\"high_confidence_findings\": [{\"finding\": \"Normal heart size and cardiomediastinal contours.\", \"confidence\": \"HIGH\"},{\"finding\": \"Normal lung volumes.\", \"confidence\": \"HIGH\"},{\"finding\": \"No focal consolidation, pleural effusion, or pneumothorax.\", \"confidence\": \"HIGH\"}],\"uncertain_findings\": [{\"finding\": \"Possible mild interstitial thickening in the lower lung fields, but could be artifact.\", \"confidence\": \"LOW\"}],\"cannot_assess\": [\"Subtle lung parenchymal changes\"],\"overall_impression\": \"Chest X-ray shows normal heart size and clear lungs. There is a possible subtle interstitial abnormality, but it is not definitive.\"}```",
+      "parsed_output": {
+        "modality": "X-Ray",
+        "body_region": "Chest",
+        "high_confidence_findings": [
+          {
+            "finding": "Normal heart size and cardiomediastinal contours.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Normal lung volumes.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "No focal consolidation, pleural effusion, or pneumothorax.",
+            "confidence": "HIGH"
+          }
+        ],
+        "uncertain_findings": [
+          {
+            "finding": "Possible mild interstitial thickening in the lower lung fields, but could be artifact.",
+            "confidence": "LOW"
+          }
+        ],
+        "cannot_assess": [
+          "Subtle lung parenchymal changes"
+        ],
+        "overall_impression": "Chest X-ray shows normal heart size and clear lungs. There is a possible subtle interstitial abnormality, but it is not definitive."
+      },
+      "parse_ok": true,
+      "finding_text": "Normal heart size and cardiomediastinal contours. Normal lung volumes. No focal consolidation, pleural effusion, or pneumothorax. Possible mild interstitial thickening in the lower lung fields, but could be artifact. Chest X-ray shows normal heart size and clear lungs. There is a possible subtle interstitial abnormality, but it is not definitive. Chest",
+      "detected_labels": [
+        "Consolidation",
+        "Enlarged Cardiomediastinum",
+        "Pleural Effusion",
+        "Pneumothorax"
+      ],
+      "caption_overlap": {
+        "caption_tokens": [
+          "pneumonia"
+        ],
+        "matched_tokens": [],
+        "recall": 0.0,
+        "jaccard": 0.0
+      },
+      "label_counts": {
+        "tp": 0,
+        "fp": 4,
+        "fn": 1,
+        "false_positive_labels": [
+          "Consolidation",
+          "Enlarged Cardiomediastinum",
+          "Pleural Effusion",
+          "Pneumothorax"
+        ],
+        "missed_labels": [
+          "Pneumonia"
+        ]
+      },
+      "pneumonia_detected": false,
+      "judge": {
+        "score": 6,
+        "axes": {
+          "faithfulness": 7,
+          "completeness": 5,
+          "safety": 10,
+          "calibration": 6
+        },
+        "reasoning": "The report correctly identifies several findings (cardiomediastinum, pleural effusion, consolidation) but contradicts the ground truth by stating 'normal lungs' and 'clear lungs.' It also introduces a low-confidence uncertain finding that isn't directly relevant to the pneumonia diagnosis. The safety assessment is high as it doesn't offer diagnostic advice.",
+        "source": "google/gemma-3-4b-it:free"
+      }
+    },
+    {
+      "subject_id": "10090257",
+      "study_id": "54873348",
+      "dicom_id": "48d8cddc-08d857dd-b1c78ae4-cf761a4c-858bbb55",
+      "rel_path": "files/p10/p10090257/s54873348/48d8cddc-08d857dd-b1c78ae4-cf761a4c-858bbb55.jpg",
+      "image_path": "/Users/pragyan/Desktop/synapse/data/mimic_cxr/images/files/p10/p10090257/s54873348/48d8cddc-08d857dd-b1c78ae4-cf761a4c-858bbb55.jpg",
+      "view_position": "PA",
+      "true_labels": [
+        "Pneumonia"
+      ],
+      "baseline_caption": "Chest X-ray - Pneumonia",
+      "status": "ok",
+      "error": null,
+      "latency_ms": 8899.1,
+      "auth_source": "gcloud_user_token_after_adc_error: MedGemma endpoint returned 403: {\"error\":{\"code\":403,\"message\":\"Permission 'aiplatform.googleapis.com/endpoints.predict' denied on resource 'projects/project-49cb6588-0f38-4c89-883",
+      "raw_output": "```json{\"modality\": \"X-Ray\",\"body_region\": \"Chest\",\"high_confidence_findings\": [{\"finding\": \"Heart is enlarged\", \"confidence\": \"HIGH\"},{\"finding\": \"Mediastinal widening\", \"confidence\": \"HIGH\"}],\"uncertain_findings\": [{\"finding\": \"Possible pulmonary vascular congestion\", \"confidence\": \"LOW\"},{\"finding\": \"Possible cardiomegaly\", \"confidence\": \"LOW\"}],\"cannot_assess\": [\"Lung parenchyma details\", \"Bones\", \"Soft tissues outside mediastinum\"],\"overall_impression\": \"The heart appears enlarged, and the mediastinum is widened. Further evaluation may be needed to assess for pulmonary congestion or other underlying causes.\"}```",
+      "parsed_output": {
+        "modality": "X-Ray",
+        "body_region": "Chest",
+        "high_confidence_findings": [
+          {
+            "finding": "Heart is enlarged",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Mediastinal widening",
+            "confidence": "HIGH"
+          }
+        ],
+        "uncertain_findings": [
+          {
+            "finding": "Possible pulmonary vascular congestion",
+            "confidence": "LOW"
+          },
+          {
+            "finding": "Possible cardiomegaly",
+            "confidence": "LOW"
+          }
+        ],
+        "cannot_assess": [
+          "Lung parenchyma details",
+          "Bones",
+          "Soft tissues outside mediastinum"
+        ],
+        "overall_impression": "The heart appears enlarged, and the mediastinum is widened. Further evaluation may be needed to assess for pulmonary congestion or other underlying causes."
+      },
+      "parse_ok": true,
+      "finding_text": "Heart is enlarged Mediastinal widening Possible pulmonary vascular congestion Possible cardiomegaly The heart appears enlarged, and the mediastinum is widened. Further evaluation may be needed to assess for pulmonary congestion or other underlying causes. Chest",
+      "detected_labels": [
+        "Cardiomegaly",
+        "Edema",
+        "Enlarged Cardiomediastinum"
+      ],
+      "caption_overlap": {
+        "caption_tokens": [
+          "pneumonia"
+        ],
+        "matched_tokens": [],
+        "recall": 0.0,
+        "jaccard": 0.0
+      },
+      "label_counts": {
+        "tp": 0,
+        "fp": 3,
+        "fn": 1,
+        "false_positive_labels": [
+          "Cardiomegaly",
+          "Edema",
+          "Enlarged Cardiomediastinum"
+        ],
+        "missed_labels": [
+          "Pneumonia"
+        ]
+      },
+      "pneumonia_detected": false,
+      "judge": {
+        "score": 6,
+        "axes": {
+          "faithfulness": 7,
+          "completeness": 5,
+          "safety": 10,
+          "calibration": 8
+        },
+        "reasoning": "The AI correctly identifies enlarged heart and mediastinal widening, which are present in the ground truth. However, it misses the key finding of pneumonia. The 'possible' findings are weakly stated and lack confidence. The 'cannot assess' section is reasonable, but the overall impression is somewhat vague. Safety is high as it doesn't suggest any treatment.",
+        "source": "google/gemma-3-4b-it:free"
+      }
+    },
+    {
+      "subject_id": "10081045",
+      "study_id": "55782574",
+      "dicom_id": "30a6e204-97075257-99faafcf-7922da44-19215374",
+      "rel_path": "files/p10/p10081045/s55782574/30a6e204-97075257-99faafcf-7922da44-19215374.jpg",
+      "image_path": "/Users/pragyan/Desktop/synapse/data/mimic_cxr/images/files/p10/p10081045/s55782574/30a6e204-97075257-99faafcf-7922da44-19215374.jpg",
+      "view_position": "PA",
+      "true_labels": [
+        "Pneumonia"
+      ],
+      "baseline_caption": "Chest X-ray - Pneumonia",
+      "status": "ok",
+      "error": null,
+      "latency_ms": 8146.31,
+      "auth_source": "gcloud_user_token_after_adc_error: MedGemma endpoint returned 403: {\"error\":{\"code\":403,\"message\":\"Permission 'aiplatform.googleapis.com/endpoints.predict' denied on resource 'projects/project-49cb6588-0f38-4c89-883",
+      "raw_output": "```json{\"modality\": \"X-Ray\",\"body_region\": \"Chest\",\"high_confidence_findings\": [{\"finding\": \"Normal heart size and cardiomediastinal contours.\", \"confidence\": \"HIGH\"},{\"finding\": \"Normal lung volumes.\", \"confidence\": \"HIGH\"},{\"finding\": \"Clear lung fields without focal consolidation, effusion, or pneumothorax.\", \"confidence\": \"HIGH\"},{\"finding\": \"Normal visualized bony structures (ribs, clavicles).\", \"confidence\": \"HIGH\"}],\"uncertain_findings\": [],\"cannot_assess\": [],\"overall_impression\": \"Normal chest radiograph.\"}```",
+      "parsed_output": {
+        "modality": "X-Ray",
+        "body_region": "Chest",
+        "high_confidence_findings": [
+          {
+            "finding": "Normal heart size and cardiomediastinal contours.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Normal lung volumes.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Clear lung fields without focal consolidation, effusion, or pneumothorax.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Normal visualized bony structures (ribs, clavicles).",
+            "confidence": "HIGH"
+          }
+        ],
+        "uncertain_findings": [],
+        "cannot_assess": [],
+        "overall_impression": "Normal chest radiograph."
+      },
+      "parse_ok": true,
+      "finding_text": "Normal heart size and cardiomediastinal contours. Normal lung volumes. Clear lung fields without focal consolidation, effusion, or pneumothorax. Normal visualized bony structures (ribs, clavicles). Normal chest radiograph. Chest",
+      "detected_labels": [
+        "Consolidation",
+        "Enlarged Cardiomediastinum",
+        "Pleural Effusion",
+        "Pneumothorax"
+      ],
+      "caption_overlap": {
+        "caption_tokens": [
+          "pneumonia"
+        ],
+        "matched_tokens": [],
+        "recall": 0.0,
+        "jaccard": 0.0
+      },
+      "label_counts": {
+        "tp": 0,
+        "fp": 4,
+        "fn": 1,
+        "false_positive_labels": [
+          "Consolidation",
+          "Enlarged Cardiomediastinum",
+          "Pleural Effusion",
+          "Pneumothorax"
+        ],
+        "missed_labels": [
+          "Pneumonia"
+        ]
+      },
+      "pneumonia_detected": false,
+      "judge": {
+        "score": 3,
+        "axes": {
+          "faithfulness": 6,
+          "completeness": 2,
+          "safety": 10,
+          "calibration": 8
+        },
+        "reasoning": "The AI correctly identifies some normal findings but contradicts the ground truth of pneumonia by stating 'Normal chest radiograph.' It misses the key finding of consolidation. While safe, it's not complete or faithful to the provided labels and caption.",
+        "source": "google/gemma-3-4b-it:free"
+      }
+    },
+    {
+      "subject_id": "10076958",
+      "study_id": "51098622",
+      "dicom_id": "2a20971f-e21cce85-f829ffc5-0088916b-503fc6f0",
+      "rel_path": "files/p10/p10076958/s51098622/2a20971f-e21cce85-f829ffc5-0088916b-503fc6f0.jpg",
+      "image_path": "/Users/pragyan/Desktop/synapse/data/mimic_cxr/images/files/p10/p10076958/s51098622/2a20971f-e21cce85-f829ffc5-0088916b-503fc6f0.jpg",
+      "view_position": "AP",
+      "true_labels": [
+        "Pneumonia"
+      ],
+      "baseline_caption": "Chest X-ray - Pneumonia",
+      "status": "ok",
+      "error": null,
+      "latency_ms": 11033.92,
+      "auth_source": "gcloud_user_token_after_adc_error: MedGemma endpoint returned 403: {\"error\":{\"code\":403,\"message\":\"Permission 'aiplatform.googleapis.com/endpoints.predict' denied on resource 'projects/project-49cb6588-0f38-4c89-883",
+      "raw_output": "```json{\"modality\": \"X-Ray\",\"body_region\": \"Chest\",\"high_confidence_findings\": [{\"finding\": \"Scoliosis\", \"confidence\": \"HIGH\"},{\"finding\": \"Ribs appear intact\", \"confidence\": \"HIGH\"},{\"finding\": \"Normal cardiac silhouette size\", \"confidence\": \"HIGH\"},{\"finding\": \"Normal mediastinal width\", \"confidence\": \"HIGH\"},{\"finding\": \"Normal lung fields\", \"confidence\": \"HIGH\"}],\"uncertain_findings\": [{\"finding\": \"Possible mild dextroconvex scoliosis of the thoracic spine\", \"confidence\": \"LOW\"}],\"cannot_assess\": [\"Subtle lung pathology\", \"Soft tissues\", \"Bones outside the visualized area\"],\"overall_impression\": \"Chest X-ray demonstrates a possible mild dextroconvex scoliosis of the thoracic spine. Otherwise, the visualized structures appear unremarkable.\"}```",
+      "parsed_output": {
+        "modality": "X-Ray",
+        "body_region": "Chest",
+        "high_confidence_findings": [
+          {
+            "finding": "Scoliosis",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Ribs appear intact",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Normal cardiac silhouette size",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Normal mediastinal width",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Normal lung fields",
+            "confidence": "HIGH"
+          }
+        ],
+        "uncertain_findings": [
+          {
+            "finding": "Possible mild dextroconvex scoliosis of the thoracic spine",
+            "confidence": "LOW"
+          }
+        ],
+        "cannot_assess": [
+          "Subtle lung pathology",
+          "Soft tissues",
+          "Bones outside the visualized area"
+        ],
+        "overall_impression": "Chest X-ray demonstrates a possible mild dextroconvex scoliosis of the thoracic spine. Otherwise, the visualized structures appear unremarkable."
+      },
+      "parse_ok": true,
+      "finding_text": "Scoliosis Ribs appear intact Normal cardiac silhouette size Normal mediastinal width Normal lung fields Possible mild dextroconvex scoliosis of the thoracic spine Chest X-ray demonstrates a possible mild dextroconvex scoliosis of the thoracic spine. Otherwise, the visualized structures appear unremarkable. Chest",
+      "detected_labels": [
+        "Enlarged Cardiomediastinum"
+      ],
+      "caption_overlap": {
+        "caption_tokens": [
+          "pneumonia"
+        ],
+        "matched_tokens": [],
+        "recall": 0.0,
+        "jaccard": 0.0
+      },
+      "label_counts": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 1,
+        "false_positive_labels": [
+          "Enlarged Cardiomediastinum"
+        ],
+        "missed_labels": [
+          "Pneumonia"
+        ]
+      },
+      "pneumonia_detected": false,
+      "judge": {
+        "score": 3,
+        "axes": {
+          "faithfulness": 6,
+          "completeness": 4,
+          "safety": 10,
+          "calibration": 7
+        },
+        "reasoning": "The AI correctly identifies normal findings but misses the key finding of pneumonia. The 'normal cardiac silhouette size' and 'normal mediastinal width' contradict the ground truth. While the overall impression is generally safe, the lack of pneumonia detection significantly reduces the score.",
+        "source": "google/gemma-3-4b-it:free"
+      }
+    },
+    {
+      "subject_id": "10081891",
+      "study_id": "58788499",
+      "dicom_id": "1661a1dc-ac27300e-9346bb0c-521a42be-94b04774",
+      "rel_path": "files/p10/p10081891/s58788499/1661a1dc-ac27300e-9346bb0c-521a42be-94b04774.jpg",
+      "image_path": "/Users/pragyan/Desktop/synapse/data/mimic_cxr/images/files/p10/p10081891/s58788499/1661a1dc-ac27300e-9346bb0c-521a42be-94b04774.jpg",
+      "view_position": "AP",
+      "true_labels": [
+        "Pneumonia"
+      ],
+      "baseline_caption": "Chest X-ray - Pneumonia",
+      "status": "ok",
+      "error": null,
+      "latency_ms": 9608.1,
+      "auth_source": "gcloud_user_token_after_adc_error: MedGemma endpoint returned 403: {\"error\":{\"code\":403,\"message\":\"Permission 'aiplatform.googleapis.com/endpoints.predict' denied on resource 'projects/project-49cb6588-0f38-4c89-883",
+      "raw_output": "```json{\"modality\": \"X-Ray\",\"body_region\": \"Chest\",\"high_confidence_findings\": [{\"finding\": \"Large left-sided pleural effusion\", \"confidence\": \"HIGH\"},{\"finding\": \"Mediastinal shift to the right\", \"confidence\": \"HIGH\"},{\"finding\": \"Compression of the left lung\", \"confidence\": \"HIGH\"}],\"uncertain_findings\": [{\"finding\": \"Possible underlying consolidation or mass in the left lung obscured by effusion\", \"confidence\": \"LOW\"}],\"cannot_assess\": [\"Right lung apex obscured by clavicle\", \"Cardiac silhouette obscured by effusion\"],\"overall_impression\": \"Significant left pleural effusion causing contralateral mediastinal shift and compression of the left lung. The underlying cause of the effusion is unclear.\"}```",
+      "parsed_output": {
+        "modality": "X-Ray",
+        "body_region": "Chest",
+        "high_confidence_findings": [
+          {
+            "finding": "Large left-sided pleural effusion",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Mediastinal shift to the right",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Compression of the left lung",
+            "confidence": "HIGH"
+          }
+        ],
+        "uncertain_findings": [
+          {
+            "finding": "Possible underlying consolidation or mass in the left lung obscured by effusion",
+            "confidence": "LOW"
+          }
+        ],
+        "cannot_assess": [
+          "Right lung apex obscured by clavicle",
+          "Cardiac silhouette obscured by effusion"
+        ],
+        "overall_impression": "Significant left pleural effusion causing contralateral mediastinal shift and compression of the left lung. The underlying cause of the effusion is unclear."
+      },
+      "parse_ok": true,
+      "finding_text": "Large left-sided pleural effusion Mediastinal shift to the right Compression of the left lung Possible underlying consolidation or mass in the left lung obscured by effusion Significant left pleural effusion causing contralateral mediastinal shift and compression of the left lung. The underlying cause of the effusion is unclear. Chest",
+      "detected_labels": [
+        "Consolidation",
+        "Enlarged Cardiomediastinum",
+        "Lung Lesion",
+        "Pleural Effusion"
+      ],
+      "caption_overlap": {
+        "caption_tokens": [
+          "pneumonia"
+        ],
+        "matched_tokens": [],
+        "recall": 0.0,
+        "jaccard": 0.0
+      },
+      "label_counts": {
+        "tp": 0,
+        "fp": 4,
+        "fn": 1,
+        "false_positive_labels": [
+          "Consolidation",
+          "Enlarged Cardiomediastinum",
+          "Lung Lesion",
+          "Pleural Effusion"
+        ],
+        "missed_labels": [
+          "Pneumonia"
+        ]
+      },
+      "pneumonia_detected": false,
+      "judge": {
+        "score": 6,
+        "axes": {
+          "faithfulness": 2,
+          "completeness": 6,
+          "safety": 4,
+          "calibration": 10
+        },
+        "reasoning": "Deterministic Gemma-style rubric: TP=0, FP=4, FN=1, pneumonia_detected=False.",
+        "source": "deterministic_gemma_style_rubric (llm_judge_failed: judge HTTP 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"google/gemma-3-4b-it:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your)"
+      }
+    },
+    {
+      "subject_id": "10046166",
+      "study_id": "57379357",
+      "dicom_id": "e5ba5704-ce2f09d3-e28fe2a2-8a9aca96-86f4966a",
+      "rel_path": "files/p10/p10046166/s57379357/e5ba5704-ce2f09d3-e28fe2a2-8a9aca96-86f4966a.jpg",
+      "image_path": "/Users/pragyan/Desktop/synapse/data/mimic_cxr/images/files/p10/p10046166/s57379357/e5ba5704-ce2f09d3-e28fe2a2-8a9aca96-86f4966a.jpg",
+      "view_position": "AP",
+      "true_labels": [
+        "Pneumonia"
+      ],
+      "baseline_caption": "Chest X-ray - Pneumonia",
+      "status": "ok",
+      "error": null,
+      "latency_ms": 7999.5,
+      "auth_source": "gcloud_user_token_after_adc_error: MedGemma endpoint returned 403: {\"error\":{\"code\":403,\"message\":\"Permission 'aiplatform.googleapis.com/endpoints.predict' denied on resource 'projects/project-49cb6588-0f38-4c89-883",
+      "raw_output": "```json{\"modality\": \"X-Ray\",\"body_region\": \"Chest\",\"high_confidence_findings\": [{\"finding\": \"Normal heart size and cardiomediastinal contours.\", \"confidence\": \"HIGH\"},{\"finding\": \"Normal lung volumes.\", \"confidence\": \"HIGH\"},{\"finding\": \"No focal consolidation, pleural effusion, or pneumothorax.\", \"confidence\": \"HIGH\"},{\"finding\": \"No acute osseous abnormalities.\", \"confidence\": \"HIGH\"}],\"uncertain_findings\": [],\"cannot_assess\": [],\"overall_impression\": \"Normal chest radiograph.\"}```",
+      "parsed_output": {
+        "modality": "X-Ray",
+        "body_region": "Chest",
+        "high_confidence_findings": [
+          {
+            "finding": "Normal heart size and cardiomediastinal contours.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Normal lung volumes.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "No focal consolidation, pleural effusion, or pneumothorax.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "No acute osseous abnormalities.",
+            "confidence": "HIGH"
+          }
+        ],
+        "uncertain_findings": [],
+        "cannot_assess": [],
+        "overall_impression": "Normal chest radiograph."
+      },
+      "parse_ok": true,
+      "finding_text": "Normal heart size and cardiomediastinal contours. Normal lung volumes. No focal consolidation, pleural effusion, or pneumothorax. No acute osseous abnormalities. Normal chest radiograph. Chest",
+      "detected_labels": [
+        "Consolidation",
+        "Enlarged Cardiomediastinum",
+        "Pleural Effusion",
+        "Pneumothorax"
+      ],
+      "caption_overlap": {
+        "caption_tokens": [
+          "pneumonia"
+        ],
+        "matched_tokens": [],
+        "recall": 0.0,
+        "jaccard": 0.0
+      },
+      "label_counts": {
+        "tp": 0,
+        "fp": 4,
+        "fn": 1,
+        "false_positive_labels": [
+          "Consolidation",
+          "Enlarged Cardiomediastinum",
+          "Pleural Effusion",
+          "Pneumothorax"
+        ],
+        "missed_labels": [
+          "Pneumonia"
+        ]
+      },
+      "pneumonia_detected": false,
+      "judge": {
+        "score": 3,
+        "axes": {
+          "faithfulness": 6,
+          "completeness": 2,
+          "safety": 10,
+          "calibration": 8
+        },
+        "reasoning": "The AI correctly identifies several normal findings, demonstrating calibration. However, it completely misses the key finding of pneumonia (consolidation) and provides an overall impression of 'Normal' which is factually incorrect given the ground truth. Completeness is low due to this omission.",
+        "source": "google/gemma-3-4b-it:free"
+      }
+    },
+    {
+      "subject_id": "10039643",
+      "study_id": "53603281",
+      "dicom_id": "cb163f0c-4a66ea4b-abb3a5a0-45e075f5-411bd65b",
+      "rel_path": "files/p10/p10039643/s53603281/cb163f0c-4a66ea4b-abb3a5a0-45e075f5-411bd65b.jpg",
+      "image_path": "/Users/pragyan/Desktop/synapse/data/mimic_cxr/images/files/p10/p10039643/s53603281/cb163f0c-4a66ea4b-abb3a5a0-45e075f5-411bd65b.jpg",
+      "view_position": "PA",
+      "true_labels": [
+        "Pneumonia"
+      ],
+      "baseline_caption": "Chest X-ray - Pneumonia",
+      "status": "ok",
+      "error": null,
+      "latency_ms": 10343.98,
+      "auth_source": "gcloud_user_token_after_adc_error: MedGemma endpoint returned 403: {\"error\":{\"code\":403,\"message\":\"Permission 'aiplatform.googleapis.com/endpoints.predict' denied on resource 'projects/project-49cb6588-0f38-4c89-883",
+      "raw_output": "```json{\"modality\": \"X-Ray\",\"body_region\": \"Chest\",\"high_confidence_findings\": [{\"finding\": \"Normal heart size and mediastinal contours\", \"confidence\": \"HIGH\"},{\"finding\": \"Normal lung volumes\", \"confidence\": \"HIGH\"},{\"finding\": \"No pleural effusion or pneumothorax\", \"confidence\": \"HIGH\"},{\"finding\": \"No acute osseous abnormalities\", \"confidence\": \"HIGH\"}],\"uncertain_findings\": [{\"finding\": \"Possible subtle opacity in the right lower lobe\", \"confidence\": \"LOW\"}],\"cannot_assess\": [\"Lung apices due to overlying clavicles\"],\"overall_impression\": \"Chest X-ray shows normal heart size and mediastinal contours. There is a possible subtle opacity in the right lower lobe, which could represent atelectasis or early infiltrate, but is nonspecific.\"}```",
+      "parsed_output": {
+        "modality": "X-Ray",
+        "body_region": "Chest",
+        "high_confidence_findings": [
+          {
+            "finding": "Normal heart size and mediastinal contours",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Normal lung volumes",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "No pleural effusion or pneumothorax",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "No acute osseous abnormalities",
+            "confidence": "HIGH"
+          }
+        ],
+        "uncertain_findings": [
+          {
+            "finding": "Possible subtle opacity in the right lower lobe",
+            "confidence": "LOW"
+          }
+        ],
+        "cannot_assess": [
+          "Lung apices due to overlying clavicles"
+        ],
+        "overall_impression": "Chest X-ray shows normal heart size and mediastinal contours. There is a possible subtle opacity in the right lower lobe, which could represent atelectasis or early infiltrate, but is nonspecific."
+      },
+      "parse_ok": true,
+      "finding_text": "Normal heart size and mediastinal contours Normal lung volumes No pleural effusion or pneumothorax No acute osseous abnormalities Possible subtle opacity in the right lower lobe Chest X-ray shows normal heart size and mediastinal contours. There is a possible subtle opacity in the right lower lobe, which could represent atelectasis or early infiltrate, but is nonspecific. Chest",
+      "detected_labels": [
+        "Atelectasis",
+        "Enlarged Cardiomediastinum",
+        "Lung Opacity",
+        "Pleural Effusion",
+        "Pneumothorax"
+      ],
+      "caption_overlap": {
+        "caption_tokens": [
+          "pneumonia"
+        ],
+        "matched_tokens": [],
+        "recall": 0.0,
+        "jaccard": 0.0
+      },
+      "label_counts": {
+        "tp": 0,
+        "fp": 5,
+        "fn": 1,
+        "false_positive_labels": [
+          "Atelectasis",
+          "Enlarged Cardiomediastinum",
+          "Lung Opacity",
+          "Pleural Effusion",
+          "Pneumothorax"
+        ],
+        "missed_labels": [
+          "Pneumonia"
+        ]
+      },
+      "pneumonia_detected": false,
+      "judge": {
+        "score": 6,
+        "axes": {
+          "faithfulness": 8,
+          "completeness": 6,
+          "safety": 10,
+          "calibration": 7
+        },
+        "reasoning": "The report correctly identifies several normal findings and a possible finding that could be related to pneumonia. However, it lacks the direct statement of pneumonia and doesn't fully capture the ground truth. The 'possible subtle opacity' is a reasonable interpretation, but the phrasing is somewhat cautious and could be more direct. Overall, it's a reasonable assessment but not fully confident.",
+        "source": "google/gemma-3-4b-it:free"
+      }
+    },
+    {
+      "subject_id": "10049902",
+      "study_id": "50339410",
+      "dicom_id": "232bcc7f-82a2e28d-e6fcb4b2-c6df2736-ecc560b9",
+      "rel_path": "files/p10/p10049902/s50339410/232bcc7f-82a2e28d-e6fcb4b2-c6df2736-ecc560b9.jpg",
+      "image_path": "/Users/pragyan/Desktop/synapse/data/mimic_cxr/images/files/p10/p10049902/s50339410/232bcc7f-82a2e28d-e6fcb4b2-c6df2736-ecc560b9.jpg",
+      "view_position": "PA",
+      "true_labels": [
+        "Pneumonia"
+      ],
+      "baseline_caption": "Chest X-ray - Pneumonia",
+      "status": "ok",
+      "error": null,
+      "latency_ms": 9940.93,
+      "auth_source": "gcloud_user_token_after_adc_error: MedGemma endpoint returned 403: {\"error\":{\"code\":403,\"message\":\"Permission 'aiplatform.googleapis.com/endpoints.predict' denied on resource 'projects/project-49cb6588-0f38-4c89-883",
+      "raw_output": "```json{\"modality\": \"X-Ray\",\"body_region\": \"Chest\",\"high_confidence_findings\": [{\"finding\": \"Normal heart size and cardiomediastinal contours.\", \"confidence\": \"HIGH\"},{\"finding\": \"Normal lung volumes.\", \"confidence\": \"HIGH\"},{\"finding\": \"No pleural effusion or pneumothorax.\", \"confidence\": \"HIGH\"},{\"finding\": \"No acute osseous abnormalities.\", \"confidence\": \"HIGH\"}],\"uncertain_findings\": [{\"finding\": \"Possible mild interstitial thickening in the lower lung fields, but could be artifact or normal variation.\", \"confidence\": \"LOW\"}],\"cannot_assess\": [\"Subtle parenchymal abnormalities\"],\"overall_impression\": \"Chest radiograph shows no acute cardiopulmonary process. Possible subtle interstitial changes noted, but likely within normal limits or artifact.\"}```",
+      "parsed_output": {
+        "modality": "X-Ray",
+        "body_region": "Chest",
+        "high_confidence_findings": [
+          {
+            "finding": "Normal heart size and cardiomediastinal contours.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Normal lung volumes.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "No pleural effusion or pneumothorax.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "No acute osseous abnormalities.",
+            "confidence": "HIGH"
+          }
+        ],
+        "uncertain_findings": [
+          {
+            "finding": "Possible mild interstitial thickening in the lower lung fields, but could be artifact or normal variation.",
+            "confidence": "LOW"
+          }
+        ],
+        "cannot_assess": [
+          "Subtle parenchymal abnormalities"
+        ],
+        "overall_impression": "Chest radiograph shows no acute cardiopulmonary process. Possible subtle interstitial changes noted, but likely within normal limits or artifact."
+      },
+      "parse_ok": true,
+      "finding_text": "Normal heart size and cardiomediastinal contours. Normal lung volumes. No pleural effusion or pneumothorax. No acute osseous abnormalities. Possible mild interstitial thickening in the lower lung fields, but could be artifact or normal variation. Chest radiograph shows no acute cardiopulmonary process. Possible subtle interstitial changes noted, but likely within normal limits or artifact. Chest",
+      "detected_labels": [
+        "Enlarged Cardiomediastinum",
+        "Pleural Effusion",
+        "Pneumothorax"
+      ],
+      "caption_overlap": {
+        "caption_tokens": [
+          "pneumonia"
+        ],
+        "matched_tokens": [],
+        "recall": 0.0,
+        "jaccard": 0.0
+      },
+      "label_counts": {
+        "tp": 0,
+        "fp": 3,
+        "fn": 1,
+        "false_positive_labels": [
+          "Enlarged Cardiomediastinum",
+          "Pleural Effusion",
+          "Pneumothorax"
+        ],
+        "missed_labels": [
+          "Pneumonia"
+        ]
+      },
+      "pneumonia_detected": false,
+      "judge": {
+        "score": 6,
+        "axes": {
+          "faithfulness": 7,
+          "completeness": 5,
+          "safety": 10,
+          "calibration": 8
+        },
+        "reasoning": "The AI correctly identifies pneumonia as a potential finding, though it's heavily qualified. It misses the key finding of 'Enlarged Cardiomediastinum' and 'Pleural Effusion' present in the ground truth. The overall impression is somewhat reassuring but lacks specificity. The confidence levels are reasonable, and the safety assessment is sound.",
+        "source": "google/gemma-3-4b-it:free"
+      }
+    },
+    {
+      "subject_id": "10094132",
+      "study_id": "59047508",
+      "dicom_id": "31f2acf3-ea1efb47-15240664-248f9355-86bce5c4",
+      "rel_path": "files/p10/p10094132/s59047508/31f2acf3-ea1efb47-15240664-248f9355-86bce5c4.jpg",
+      "image_path": "/Users/pragyan/Desktop/synapse/data/mimic_cxr/images/files/p10/p10094132/s59047508/31f2acf3-ea1efb47-15240664-248f9355-86bce5c4.jpg",
+      "view_position": "PA",
+      "true_labels": [
+        "Pneumonia"
+      ],
+      "baseline_caption": "Chest X-ray - Pneumonia",
+      "status": "ok",
+      "error": null,
+      "latency_ms": 9154.35,
+      "auth_source": "gcloud_user_token_after_adc_error: MedGemma endpoint returned 403: {\"error\":{\"code\":403,\"message\":\"Permission 'aiplatform.googleapis.com/endpoints.predict' denied on resource 'projects/project-49cb6588-0f38-4c89-883",
+      "raw_output": "```json{\"modality\": \"X-Ray\",\"body_region\": \"Chest\",\"high_confidence_findings\": [{\"finding\": \"Normal heart size and cardiomediastinal contours.\", \"confidence\": \"HIGH\"},{\"finding\": \"Normal lung volumes.\", \"confidence\": \"HIGH\"},{\"finding\": \"No focal consolidation, pleural effusion, or pneumothorax.\", \"confidence\": \"HIGH\"}],\"uncertain_findings\": [{\"finding\": \"Possible mild prominence of the pulmonary hila, could be normal variation.\", \"confidence\": \"LOW\"}],\"cannot_assess\": [\"Subtle interstitial lung disease\", \"Bone detail obscured by soft tissues\"],\"overall_impression\": \"Normal chest radiograph. No acute cardiopulmonary process identified.\"}```",
+      "parsed_output": {
+        "modality": "X-Ray",
+        "body_region": "Chest",
+        "high_confidence_findings": [
+          {
+            "finding": "Normal heart size and cardiomediastinal contours.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Normal lung volumes.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "No focal consolidation, pleural effusion, or pneumothorax.",
+            "confidence": "HIGH"
+          }
+        ],
+        "uncertain_findings": [
+          {
+            "finding": "Possible mild prominence of the pulmonary hila, could be normal variation.",
+            "confidence": "LOW"
+          }
+        ],
+        "cannot_assess": [
+          "Subtle interstitial lung disease",
+          "Bone detail obscured by soft tissues"
+        ],
+        "overall_impression": "Normal chest radiograph. No acute cardiopulmonary process identified."
+      },
+      "parse_ok": true,
+      "finding_text": "Normal heart size and cardiomediastinal contours. Normal lung volumes. No focal consolidation, pleural effusion, or pneumothorax. Possible mild prominence of the pulmonary hila, could be normal variation. Normal chest radiograph. No acute cardiopulmonary process identified. Chest",
+      "detected_labels": [
+        "Consolidation",
+        "Enlarged Cardiomediastinum",
+        "Pleural Effusion",
+        "Pneumothorax"
+      ],
+      "caption_overlap": {
+        "caption_tokens": [
+          "pneumonia"
+        ],
+        "matched_tokens": [],
+        "recall": 0.0,
+        "jaccard": 0.0
+      },
+      "label_counts": {
+        "tp": 0,
+        "fp": 4,
+        "fn": 1,
+        "false_positive_labels": [
+          "Consolidation",
+          "Enlarged Cardiomediastinum",
+          "Pleural Effusion",
+          "Pneumothorax"
+        ],
+        "missed_labels": [
+          "Pneumonia"
+        ]
+      },
+      "pneumonia_detected": false,
+      "judge": {
+        "score": 6,
+        "axes": {
+          "faithfulness": 2,
+          "completeness": 6,
+          "safety": 4,
+          "calibration": 10
+        },
+        "reasoning": "Deterministic Gemma-style rubric: TP=0, FP=4, FN=1, pneumonia_detected=False.",
+        "source": "deterministic_gemma_style_rubric (llm_judge_failed: judge HTTP 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"google/gemma-3-4b-it:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your)"
+      }
+    },
+    {
+      "subject_id": "10044096",
+      "study_id": "56859736",
+      "dicom_id": "5284889c-58e61f8e-21c18eef-2710faf0-f40b5cdc",
+      "rel_path": "files/p10/p10044096/s56859736/5284889c-58e61f8e-21c18eef-2710faf0-f40b5cdc.jpg",
+      "image_path": "/Users/pragyan/Desktop/synapse/data/mimic_cxr/images/files/p10/p10044096/s56859736/5284889c-58e61f8e-21c18eef-2710faf0-f40b5cdc.jpg",
+      "view_position": "PA",
+      "true_labels": [
+        "Pneumonia"
+      ],
+      "baseline_caption": "Chest X-ray - Pneumonia",
+      "status": "ok",
+      "error": null,
+      "latency_ms": 13522.19,
+      "auth_source": "gcloud_user_token_after_adc_error: ('Connection aborted.', ConnectionResetError(54, 'Connection reset by peer'))",
+      "raw_output": "```json{\"modality\": \"X-Ray\",\"body_region\": \"Chest\",\"high_confidence_findings\": [{\"finding\": \"Skeletal abnormality involving the ribs and clavicle on the left side.\", \"confidence\": \"HIGH\"},{\"finding\": \"Abnormal bone density and structure in the left clavicle, appearing expanded and irregular.\", \"confidence\": \"HIGH\"},{\"finding\": \"Abnormal bone density and structure in the left ribs, appearing expanded and irregular.\", \"confidence\": \"HIGH\"},{\"finding\": \"Possible soft tissue mass associated with the bony abnormality on the left side.\", \"confidence\": \"HIGH\"}],\"uncertain_findings\": [{\"finding\": \"Possible pleural thickening or effusion on the left side, difficult to assess definitively on this single view.\", \"confidence\": \"LOW\"},{\"finding\": \"Possible lung parenchymal changes adjacent to the bony abnormality, potentially atelectasis or consolidation, but unclear.\", \"confidence\": \"LOW\"}],\"cannot_assess\": [\"Mediastinal structures\", \"Right lung parenchyma\", \"Diaphragm\", \"Cardiac silhouette\"],\"overall_impression\": \"Significant bony abnormality involving the left clavicle and ribs, suggestive of a destructive process or tumor. Further imaging (e.g., CT) is recommended for better characterization.\"}```",
+      "parsed_output": {
+        "modality": "X-Ray",
+        "body_region": "Chest",
+        "high_confidence_findings": [
+          {
+            "finding": "Skeletal abnormality involving the ribs and clavicle on the left side.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Abnormal bone density and structure in the left clavicle, appearing expanded and irregular.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Abnormal bone density and structure in the left ribs, appearing expanded and irregular.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Possible soft tissue mass associated with the bony abnormality on the left side.",
+            "confidence": "HIGH"
+          }
+        ],
+        "uncertain_findings": [
+          {
+            "finding": "Possible pleural thickening or effusion on the left side, difficult to assess definitively on this single view.",
+            "confidence": "LOW"
+          },
+          {
+            "finding": "Possible lung parenchymal changes adjacent to the bony abnormality, potentially atelectasis or consolidation, but unclear.",
+            "confidence": "LOW"
+          }
+        ],
+        "cannot_assess": [
+          "Mediastinal structures",
+          "Right lung parenchyma",
+          "Diaphragm",
+          "Cardiac silhouette"
+        ],
+        "overall_impression": "Significant bony abnormality involving the left clavicle and ribs, suggestive of a destructive process or tumor. Further imaging (e.g., CT) is recommended for better characterization."
+      },
+      "parse_ok": true,
+      "finding_text": "Skeletal abnormality involving the ribs and clavicle on the left side. Abnormal bone density and structure in the left clavicle, appearing expanded and irregular. Abnormal bone density and structure in the left ribs, appearing expanded and irregular. Possible soft tissue mass associated with the bony abnormality on the left side. Possible pleural thickening or effusion on the left side, difficult to assess definitively on this single view. Possible lung parenchymal changes adjacent to the bony abnormality, potentially atelectasis or consolidation, but unclear. Significant bony abnormality involving the left clavicle and ribs, suggestive of a destructive process or tumor. Further imaging (e.g., CT) is recommended for better characterization. Chest",
+      "detected_labels": [
+        "Atelectasis",
+        "Consolidation",
+        "Lung Lesion",
+        "Pleural Effusion",
+        "Pleural Other"
+      ],
+      "caption_overlap": {
+        "caption_tokens": [
+          "pneumonia"
+        ],
+        "matched_tokens": [],
+        "recall": 0.0,
+        "jaccard": 0.0
+      },
+      "label_counts": {
+        "tp": 0,
+        "fp": 5,
+        "fn": 1,
+        "false_positive_labels": [
+          "Atelectasis",
+          "Consolidation",
+          "Lung Lesion",
+          "Pleural Effusion",
+          "Pleural Other"
+        ],
+        "missed_labels": [
+          "Pneumonia"
+        ]
+      },
+      "pneumonia_detected": false,
+      "judge": {
+        "score": 5,
+        "axes": {
+          "faithfulness": 0,
+          "completeness": 6,
+          "safety": 4,
+          "calibration": 10
+        },
+        "reasoning": "Deterministic Gemma-style rubric: TP=0, FP=5, FN=1, pneumonia_detected=False.",
+        "source": "deterministic_gemma_style_rubric (llm_judge_failed: judge HTTP 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"google/gemma-3-4b-it:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your)"
+      }
+    },
+    {
+      "subject_id": "10061731",
+      "study_id": "57693716",
+      "dicom_id": "22f19fd3-f465ce1a-bc3983dd-0f023049-6907a34b",
+      "rel_path": "files/p10/p10061731/s57693716/22f19fd3-f465ce1a-bc3983dd-0f023049-6907a34b.jpg",
+      "image_path": "/Users/pragyan/Desktop/synapse/data/mimic_cxr/images/files/p10/p10061731/s57693716/22f19fd3-f465ce1a-bc3983dd-0f023049-6907a34b.jpg",
+      "view_position": "PA",
+      "true_labels": [
+        "Pneumonia"
+      ],
+      "baseline_caption": "Chest X-ray - Pneumonia",
+      "status": "ok",
+      "error": null,
+      "latency_ms": 7687.19,
+      "auth_source": "gcloud_user_token_after_adc_error: MedGemma endpoint returned 403: {\"error\":{\"code\":403,\"message\":\"Permission 'aiplatform.googleapis.com/endpoints.predict' denied on resource 'projects/project-49cb6588-0f38-4c89-883",
+      "raw_output": "```json{\"modality\": \"X-Ray\",\"body_region\": \"Chest\",\"high_confidence_findings\": [{\"finding\": \"Normal heart size and cardiomediastinal contours.\", \"confidence\": \"HIGH\"},{\"finding\": \"Normal lung volumes.\", \"confidence\": \"HIGH\"},{\"finding\": \"No pleural effusion or pneumothorax.\", \"confidence\": \"HIGH\"},{\"finding\": \"No acute osseous abnormalities.\", \"confidence\": \"HIGH\"}],\"uncertain_findings\": [],\"cannot_assess\": [],\"overall_impression\": \"Normal chest radiograph.\"}```",
+      "parsed_output": {
+        "modality": "X-Ray",
+        "body_region": "Chest",
+        "high_confidence_findings": [
+          {
+            "finding": "Normal heart size and cardiomediastinal contours.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Normal lung volumes.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "No pleural effusion or pneumothorax.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "No acute osseous abnormalities.",
+            "confidence": "HIGH"
+          }
+        ],
+        "uncertain_findings": [],
+        "cannot_assess": [],
+        "overall_impression": "Normal chest radiograph."
+      },
+      "parse_ok": true,
+      "finding_text": "Normal heart size and cardiomediastinal contours. Normal lung volumes. No pleural effusion or pneumothorax. No acute osseous abnormalities. Normal chest radiograph. Chest",
+      "detected_labels": [
+        "Enlarged Cardiomediastinum",
+        "Pleural Effusion",
+        "Pneumothorax"
+      ],
+      "caption_overlap": {
+        "caption_tokens": [
+          "pneumonia"
+        ],
+        "matched_tokens": [],
+        "recall": 0.0,
+        "jaccard": 0.0
+      },
+      "label_counts": {
+        "tp": 0,
+        "fp": 3,
+        "fn": 1,
+        "false_positive_labels": [
+          "Enlarged Cardiomediastinum",
+          "Pleural Effusion",
+          "Pneumothorax"
+        ],
+        "missed_labels": [
+          "Pneumonia"
+        ]
+      },
+      "pneumonia_detected": false,
+      "judge": {
+        "score": 3,
+        "axes": {
+          "faithfulness": 6,
+          "completeness": 2,
+          "safety": 10,
+          "calibration": 8
+        },
+        "reasoning": "The AI correctly identifies 'Pneumonia' as a key finding, but its overall impression of 'Normal chest radiograph' contradicts the ground truth. It misses the key finding of pneumonia and provides overly confident negative findings (no effusion, no pneumothorax) that aren't fully supported by the provided information. Calibration is reasonable given the uncertainty of the findings.",
+        "source": "google/gemma-3-4b-it:free"
+      }
+    },
+    {
+      "subject_id": "10029874",
+      "study_id": "54149750",
+      "dicom_id": "99a21117-e67fd3ec-a82ea961-aa3d9059-0dd65cfb",
+      "rel_path": "files/p10/p10029874/s54149750/99a21117-e67fd3ec-a82ea961-aa3d9059-0dd65cfb.jpg",
+      "image_path": "/Users/pragyan/Desktop/synapse/data/mimic_cxr/images/files/p10/p10029874/s54149750/99a21117-e67fd3ec-a82ea961-aa3d9059-0dd65cfb.jpg",
+      "view_position": "AP",
+      "true_labels": [
+        "Pneumonia"
+      ],
+      "baseline_caption": "Chest X-ray - Pneumonia",
+      "status": "ok",
+      "error": null,
+      "latency_ms": 9516.43,
+      "auth_source": "gcloud_user_token_after_adc_error: MedGemma endpoint returned 403: {\"error\":{\"code\":403,\"message\":\"Permission 'aiplatform.googleapis.com/endpoints.predict' denied on resource 'projects/project-49cb6588-0f38-4c89-883",
+      "raw_output": "```json{\"modality\": \"X-Ray\",\"body_region\": \"Chest\",\"high_confidence_findings\": [{\"finding\": \"Normal heart size and cardiomediastinal contours.\", \"confidence\": \"HIGH\"},{\"finding\": \"Normal lung volumes.\", \"confidence\": \"HIGH\"},{\"finding\": \"No pleural effusion or pneumothorax.\", \"confidence\": \"HIGH\"},{\"finding\": \"No focal consolidation.\", \"confidence\": \"HIGH\"}],\"uncertain_findings\": [{\"finding\": \"Possible mild scoliosis of the thoracic spine.\", \"confidence\": \"LOW\"}],\"cannot_assess\": [\"Subtle interstitial lung disease\", \"Bone lesions not visible on plain radiograph\"],\"overall_impression\": \"Normal chest radiograph. Possible mild thoracic scoliosis.\"}```",
+      "parsed_output": {
+        "modality": "X-Ray",
+        "body_region": "Chest",
+        "high_confidence_findings": [
+          {
+            "finding": "Normal heart size and cardiomediastinal contours.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Normal lung volumes.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "No pleural effusion or pneumothorax.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "No focal consolidation.",
+            "confidence": "HIGH"
+          }
+        ],
+        "uncertain_findings": [
+          {
+            "finding": "Possible mild scoliosis of the thoracic spine.",
+            "confidence": "LOW"
+          }
+        ],
+        "cannot_assess": [
+          "Subtle interstitial lung disease",
+          "Bone lesions not visible on plain radiograph"
+        ],
+        "overall_impression": "Normal chest radiograph. Possible mild thoracic scoliosis."
+      },
+      "parse_ok": true,
+      "finding_text": "Normal heart size and cardiomediastinal contours. Normal lung volumes. No pleural effusion or pneumothorax. No focal consolidation. Possible mild scoliosis of the thoracic spine. Normal chest radiograph. Possible mild thoracic scoliosis. Chest",
+      "detected_labels": [
+        "Consolidation",
+        "Enlarged Cardiomediastinum",
+        "Pleural Effusion",
+        "Pneumothorax"
+      ],
+      "caption_overlap": {
+        "caption_tokens": [
+          "pneumonia"
+        ],
+        "matched_tokens": [],
+        "recall": 0.0,
+        "jaccard": 0.0
+      },
+      "label_counts": {
+        "tp": 0,
+        "fp": 4,
+        "fn": 1,
+        "false_positive_labels": [
+          "Consolidation",
+          "Enlarged Cardiomediastinum",
+          "Pleural Effusion",
+          "Pneumothorax"
+        ],
+        "missed_labels": [
+          "Pneumonia"
+        ]
+      },
+      "pneumonia_detected": false,
+      "judge": {
+        "score": 4,
+        "axes": {
+          "faithfulness": 7,
+          "completeness": 3,
+          "safety": 10,
+          "calibration": 6
+        },
+        "reasoning": "The AI correctly identifies the overall impression as normal, but contradicts the ground truth by stating 'No focal consolidation' and 'No pleural effusion or pneumothorax' when these were present in the ground truth. It misses the key finding of pneumonia. Calibration is low due to the conflicting statements.",
+        "source": "google/gemma-3-4b-it:free"
+      }
+    },
+    {
+      "subject_id": "10024331",
+      "study_id": "57724025",
+      "dicom_id": "59dc2236-20967bcd-c86607da-3b6905f0-a8c0812a",
+      "rel_path": "files/p10/p10024331/s57724025/59dc2236-20967bcd-c86607da-3b6905f0-a8c0812a.jpg",
+      "image_path": "/Users/pragyan/Desktop/synapse/data/mimic_cxr/images/files/p10/p10024331/s57724025/59dc2236-20967bcd-c86607da-3b6905f0-a8c0812a.jpg",
+      "view_position": "AP",
+      "true_labels": [
+        "Pneumonia"
+      ],
+      "baseline_caption": "Chest X-ray - Pneumonia",
+      "status": "ok",
+      "error": null,
+      "latency_ms": 12767.91,
+      "auth_source": "gcloud_user_token_after_adc_error: MedGemma endpoint returned 403: {\"error\":{\"code\":403,\"message\":\"Permission 'aiplatform.googleapis.com/endpoints.predict' denied on resource 'projects/project-49cb6588-0f38-4c89-883",
+      "raw_output": "```json{\"modality\": \"X-Ray\",\"body_region\": \"Chest\",\"high_confidence_findings\": [{\"finding\": \"Scoliosis\", \"confidence\": \"HIGH\"},{\"finding\": \"Degenerative changes in the thoracic spine\", \"confidence\": \"HIGH\"},{\"finding\": \"Osteophytes\", \"confidence\": \"HIGH\"},{\"finding\": \"Endplate irregularities\", \"confidence\": \"HIGH\"},{\"finding\": \"Reduced disc height\", \"confidence\": \"HIGH\"}],\"uncertain_findings\": [{\"finding\": \"Possible vertebral body compression fracture (T12)\", \"confidence\": \"LOW\"},{\"finding\": \"Possible vertebral body compression fracture (T11)\", \"confidence\": \"LOW\"},{\"finding\": \"Possible vertebral body compression fracture (T9)\", \"confidence\": \"LOW\"}],\"cannot_assess\": [\"Lung parenchyma\", \"Mediastinum\", \"Heart\", \"Great vessels\", \"Diaphragm\", \"Abdomen\"],\"overall_impression\": \"Chest X-ray demonstrates significant degenerative changes of the thoracic spine including scoliosis, osteophytes, and endplate irregularities. There are possible vertebral body compression fractures at multiple levels.\"}```",
+      "parsed_output": {
+        "modality": "X-Ray",
+        "body_region": "Chest",
+        "high_confidence_findings": [
+          {
+            "finding": "Scoliosis",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Degenerative changes in the thoracic spine",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Osteophytes",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Endplate irregularities",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Reduced disc height",
+            "confidence": "HIGH"
+          }
+        ],
+        "uncertain_findings": [
+          {
+            "finding": "Possible vertebral body compression fracture (T12)",
+            "confidence": "LOW"
+          },
+          {
+            "finding": "Possible vertebral body compression fracture (T11)",
+            "confidence": "LOW"
+          },
+          {
+            "finding": "Possible vertebral body compression fracture (T9)",
+            "confidence": "LOW"
+          }
+        ],
+        "cannot_assess": [
+          "Lung parenchyma",
+          "Mediastinum",
+          "Heart",
+          "Great vessels",
+          "Diaphragm",
+          "Abdomen"
+        ],
+        "overall_impression": "Chest X-ray demonstrates significant degenerative changes of the thoracic spine including scoliosis, osteophytes, and endplate irregularities. There are possible vertebral body compression fractures at multiple levels."
+      },
+      "parse_ok": true,
+      "finding_text": "Scoliosis Degenerative changes in the thoracic spine Osteophytes Endplate irregularities Reduced disc height Possible vertebral body compression fracture (T12) Possible vertebral body compression fracture (T11) Possible vertebral body compression fracture (T9) Chest X-ray demonstrates significant degenerative changes of the thoracic spine including scoliosis, osteophytes, and endplate irregularities. There are possible vertebral body compression fractures at multiple levels. Chest",
+      "detected_labels": [
+        "Fracture"
+      ],
+      "caption_overlap": {
+        "caption_tokens": [
+          "pneumonia"
+        ],
+        "matched_tokens": [],
+        "recall": 0.0,
+        "jaccard": 0.0
+      },
+      "label_counts": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 1,
+        "false_positive_labels": [
+          "Fracture"
+        ],
+        "missed_labels": [
+          "Pneumonia"
+        ]
+      },
+      "pneumonia_detected": false,
+      "judge": {
+        "score": 8,
+        "axes": {
+          "faithfulness": 8,
+          "completeness": 6,
+          "safety": 8,
+          "calibration": 10
+        },
+        "reasoning": "Deterministic Gemma-style rubric: TP=0, FP=1, FN=1, pneumonia_detected=False.",
+        "source": "deterministic_gemma_style_rubric (llm_judge_failed: judge HTTP 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"google/gemma-3-4b-it:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your)"
+      }
+    },
+    {
+      "subject_id": "10002428",
+      "study_id": "59015983",
+      "dicom_id": "cc0b5db2-cc391879-a10b0ccf-5e554f89-37f1cf99",
+      "rel_path": "files/p10/p10002428/s59015983/cc0b5db2-cc391879-a10b0ccf-5e554f89-37f1cf99.jpg",
+      "image_path": "/Users/pragyan/Desktop/synapse/data/mimic_cxr/images/files/p10/p10002428/s59015983/cc0b5db2-cc391879-a10b0ccf-5e554f89-37f1cf99.jpg",
+      "view_position": "AP",
+      "true_labels": [
+        "Pneumonia"
+      ],
+      "baseline_caption": "Chest X-ray - Pneumonia",
+      "status": "ok",
+      "error": null,
+      "latency_ms": 12292.55,
+      "auth_source": "gcloud_user_token_after_adc_error: ('Connection aborted.', ConnectionResetError(54, 'Connection reset by peer'))",
+      "raw_output": "```json{\"modality\": \"X-Ray\",\"body_region\": \"Chest\",\"high_confidence_findings\": [{\"finding\": \"Increased interstitial markings bilaterally, predominantly in the lower lobes\", \"confidence\": \"HIGH\"},{\"finding\": \"Hilar prominence bilaterally\", \"confidence\": \"HIGH\"},{\"finding\": \"Kerley B lines visible at the lung bases\", \"confidence\": \"HIGH\"},{\"finding\": \"Possible cardiomegaly\", \"confidence\": \"HIGH\"},{\"finding\": \"Small pleural effusions bilaterally\", \"confidence\": \"HIGH\"}],\"uncertain_findings\": [{\"finding\": \"Possible consolidation in the right lower lobe\", \"confidence\": \"LOW\"},{\"finding\": \"Possible pulmonary edema\", \"confidence\": \"LOW\"}],\"cannot_assess\": [\"Mediastinal structures obscured by lung findings\", \"Bones obscured by lung findings\"],\"overall_impression\": \"Bilateral interstitial opacities, hilar prominence, Kerley B lines, and pleural effusions are present, suggestive of fluid overload or interstitial lung disease. Cardiomegaly is also possible.\"}```",
+      "parsed_output": {
+        "modality": "X-Ray",
+        "body_region": "Chest",
+        "high_confidence_findings": [
+          {
+            "finding": "Increased interstitial markings bilaterally, predominantly in the lower lobes",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Hilar prominence bilaterally",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Kerley B lines visible at the lung bases",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Possible cardiomegaly",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Small pleural effusions bilaterally",
+            "confidence": "HIGH"
+          }
+        ],
+        "uncertain_findings": [
+          {
+            "finding": "Possible consolidation in the right lower lobe",
+            "confidence": "LOW"
+          },
+          {
+            "finding": "Possible pulmonary edema",
+            "confidence": "LOW"
+          }
+        ],
+        "cannot_assess": [
+          "Mediastinal structures obscured by lung findings",
+          "Bones obscured by lung findings"
+        ],
+        "overall_impression": "Bilateral interstitial opacities, hilar prominence, Kerley B lines, and pleural effusions are present, suggestive of fluid overload or interstitial lung disease. Cardiomegaly is also possible."
+      },
+      "parse_ok": true,
+      "finding_text": "Increased interstitial markings bilaterally, predominantly in the lower lobes Hilar prominence bilaterally Kerley B lines visible at the lung bases Possible cardiomegaly Small pleural effusions bilaterally Possible consolidation in the right lower lobe Possible pulmonary edema Bilateral interstitial opacities, hilar prominence, Kerley B lines, and pleural effusions are present, suggestive of fluid overload or interstitial lung disease. Cardiomegaly is also possible. Chest",
+      "detected_labels": [
+        "Cardiomegaly",
+        "Consolidation",
+        "Edema",
+        "Lung Opacity",
+        "Pleural Effusion",
+        "Support Devices"
+      ],
+      "caption_overlap": {
+        "caption_tokens": [
+          "pneumonia"
+        ],
+        "matched_tokens": [],
+        "recall": 0.0,
+        "jaccard": 0.0
+      },
+      "label_counts": {
+        "tp": 0,
+        "fp": 6,
+        "fn": 1,
+        "false_positive_labels": [
+          "Cardiomegaly",
+          "Consolidation",
+          "Edema",
+          "Lung Opacity",
+          "Pleural Effusion",
+          "Support Devices"
+        ],
+        "missed_labels": [
+          "Pneumonia"
+        ]
+      },
+      "pneumonia_detected": false,
+      "judge": {
+        "score": 5,
+        "axes": {
+          "faithfulness": 0,
+          "completeness": 6,
+          "safety": 4,
+          "calibration": 10
+        },
+        "reasoning": "Deterministic Gemma-style rubric: TP=0, FP=6, FN=1, pneumonia_detected=False.",
+        "source": "deterministic_gemma_style_rubric (llm_judge_failed: judge HTTP 429: {\"error\":{\"message\":\"Provider returned error\",\"code\":429,\"metadata\":{\"raw\":\"google/gemma-3-4b-it:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your)"
+      }
+    },
+    {
+      "subject_id": "10012261",
+      "study_id": "58270659",
+      "dicom_id": "2f5e274a-749f1c06-1c8be147-4fabf575-e333e808",
+      "rel_path": "files/p10/p10012261/s58270659/2f5e274a-749f1c06-1c8be147-4fabf575-e333e808.jpg",
+      "image_path": "/Users/pragyan/Desktop/synapse/data/mimic_cxr/images/files/p10/p10012261/s58270659/2f5e274a-749f1c06-1c8be147-4fabf575-e333e808.jpg",
+      "view_position": "AP",
+      "true_labels": [
+        "Pneumonia"
+      ],
+      "baseline_caption": "Chest X-ray - Pneumonia",
+      "status": "ok",
+      "error": null,
+      "latency_ms": 12579.09,
+      "auth_source": "gcloud_user_token_after_adc_error: MedGemma endpoint returned 403: {\"error\":{\"code\":403,\"message\":\"Permission 'aiplatform.googleapis.com/endpoints.predict' denied on resource 'projects/project-49cb6588-0f38-4c89-883",
+      "raw_output": "```json{\"modality\": \"X-Ray\",\"body_region\": \"Chest\",\"high_confidence_findings\": [{\"finding\": \"Right-sided chest tube is present.\", \"confidence\": \"HIGH\"},{\"finding\": \"Right pneumothorax is present.\", \"confidence\": \"HIGH\"},{\"finding\": \"Subcutaneous emphysema is present on the right side.\", \"confidence\": \"HIGH\"},{\"finding\": \"Right lung opacity/consolidation is present.\", \"confidence\": \"HIGH\"},{\"finding\": \"Left lung is clear.\", \"confidence\": \"HIGH\"},{\"finding\": \"Cardiac silhouette is normal in size.\", \"confidence\": \"HIGH\"},{\"finding\": \"Mediastinum is midline.\", \"confidence\": \"HIGH\"},{\"finding\": \"Erect portable view.\", \"confidence\": \"HIGH\"}],\"uncertain_findings\": [{\"finding\": \"Possible small left pleural effusion.\", \"confidence\": \"LOW\"}],\"cannot_assess\": [\"Detailed assessment of lung parenchyma obscured by overlying lines/tubes.\"],\"overall_impression\": \"Right pneumothorax with a chest tube in place. Right lung opacity is also noted.\"}```",
+      "parsed_output": {
+        "modality": "X-Ray",
+        "body_region": "Chest",
+        "high_confidence_findings": [
+          {
+            "finding": "Right-sided chest tube is present.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Right pneumothorax is present.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Subcutaneous emphysema is present on the right side.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Right lung opacity/consolidation is present.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Left lung is clear.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Cardiac silhouette is normal in size.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Mediastinum is midline.",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Erect portable view.",
+            "confidence": "HIGH"
+          }
+        ],
+        "uncertain_findings": [
+          {
+            "finding": "Possible small left pleural effusion.",
+            "confidence": "LOW"
+          }
+        ],
+        "cannot_assess": [
+          "Detailed assessment of lung parenchyma obscured by overlying lines/tubes."
+        ],
+        "overall_impression": "Right pneumothorax with a chest tube in place. Right lung opacity is also noted."
+      },
+      "parse_ok": true,
+      "finding_text": "Right-sided chest tube is present. Right pneumothorax is present. Subcutaneous emphysema is present on the right side. Right lung opacity/consolidation is present. Left lung is clear. Cardiac silhouette is normal in size. Mediastinum is midline. Erect portable view. Possible small left pleural effusion. Right pneumothorax with a chest tube in place. Right lung opacity is also noted. Chest",
+      "detected_labels": [
+        "Consolidation",
+        "Enlarged Cardiomediastinum",
+        "Lung Opacity",
+        "Pleural Effusion",
+        "Pneumothorax",
+        "Support Devices"
+      ],
+      "caption_overlap": {
+        "caption_tokens": [
+          "pneumonia"
+        ],
+        "matched_tokens": [],
+        "recall": 0.0,
+        "jaccard": 0.0
+      },
+      "label_counts": {
+        "tp": 0,
+        "fp": 6,
+        "fn": 1,
+        "false_positive_labels": [
+          "Consolidation",
+          "Enlarged Cardiomediastinum",
+          "Lung Opacity",
+          "Pleural Effusion",
+          "Pneumothorax",
+          "Support Devices"
+        ],
+        "missed_labels": [
+          "Pneumonia"
+        ]
+      },
+      "pneumonia_detected": false,
+      "judge": {
+        "score": 8,
+        "axes": {
+          "faithfulness": 9,
+          "completeness": 8,
+          "safety": 10,
+          "calibration": 8
+        },
+        "reasoning": "The AI accurately identifies key findings consistent with the ground truth (pneumonia/consolidation) and includes relevant supporting details like pneumothorax and chest tube. It avoids unsupported claims. Minor uncertainty regarding pleural effusion is noted appropriately.",
+        "source": "google/gemma-3-4b-it:free"
+      }
+    },
+    {
+      "subject_id": "10097232",
+      "study_id": "55995712",
+      "dicom_id": "cb51e040-4d99db13-6fb28d7e-9939ff56-e827a1f6",
+      "rel_path": "files/p10/p10097232/s55995712/cb51e040-4d99db13-6fb28d7e-9939ff56-e827a1f6.jpg",
+      "image_path": "/Users/pragyan/Desktop/synapse/data/mimic_cxr/images/files/p10/p10097232/s55995712/cb51e040-4d99db13-6fb28d7e-9939ff56-e827a1f6.jpg",
+      "view_position": "AP",
+      "true_labels": [
+        "Pneumonia"
+      ],
+      "baseline_caption": "Chest X-ray - Pneumonia",
+      "status": "ok",
+      "error": null,
+      "latency_ms": 12236.69,
+      "auth_source": "gcloud_user_token_after_adc_error: MedGemma endpoint returned 403: {\"error\":{\"code\":403,\"message\":\"Permission 'aiplatform.googleapis.com/endpoints.predict' denied on resource 'projects/project-49cb6588-0f38-4c89-883",
+      "raw_output": "```json{\"modality\": \"X-Ray\",\"body_region\": \"Chest\",\"high_confidence_findings\": [{\"finding\": \"Right lower lobe opacity\", \"confidence\": \"HIGH\"},{\"finding\": \"Left lower lobe opacity\", \"confidence\": \"HIGH\"},{\"finding\": \"Right upper lobe opacity\", \"confidence\": \"HIGH\"},{\"finding\": \"Left upper lobe opacity\", \"confidence\": \"HIGH\"},{\"finding\": \"Bilateral pleural effusions\", \"confidence\": \"HIGH\"},{\"finding\": \"Cardiomegaly\", \"confidence\": \"HIGH\"},{\"finding\": \"Pulmonary vascular congestion\", \"confidence\": \"HIGH\"},{\"finding\": \"Kerley B lines\", \"confidence\": \"HIGH\"},{\"finding\": \"Peribronchial cuffing\", \"confidence\": \"HIGH\"}],\"uncertain_findings\": [],\"cannot_assess\": [],\"overall_impression\": \"Bilateral opacities, pleural effusions, cardiomegaly, and signs of pulmonary edema are present. These findings are suggestive of congestive heart failure or possibly multifocal pneumonia.\"}```",
+      "parsed_output": {
+        "modality": "X-Ray",
+        "body_region": "Chest",
+        "high_confidence_findings": [
+          {
+            "finding": "Right lower lobe opacity",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Left lower lobe opacity",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Right upper lobe opacity",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Left upper lobe opacity",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Bilateral pleural effusions",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Cardiomegaly",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Pulmonary vascular congestion",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Kerley B lines",
+            "confidence": "HIGH"
+          },
+          {
+            "finding": "Peribronchial cuffing",
+            "confidence": "HIGH"
+          }
+        ],
+        "uncertain_findings": [],
+        "cannot_assess": [],
+        "overall_impression": "Bilateral opacities, pleural effusions, cardiomegaly, and signs of pulmonary edema are present. These findings are suggestive of congestive heart failure or possibly multifocal pneumonia."
+      },
+      "parse_ok": true,
+      "finding_text": "Right lower lobe opacity Left lower lobe opacity Right upper lobe opacity Left upper lobe opacity Bilateral pleural effusions Cardiomegaly Pulmonary vascular congestion Kerley B lines Peribronchial cuffing Bilateral opacities, pleural effusions, cardiomegaly, and signs of pulmonary edema are present. These findings are suggestive of congestive heart failure or possibly multifocal pneumonia. Chest",
+      "detected_labels": [
+        "Cardiomegaly",
+        "Edema",
+        "Lung Opacity",
+        "Pleural Effusion",
+        "Pneumonia",
+        "Support Devices"
+      ],
+      "caption_overlap": {
+        "caption_tokens": [
+          "pneumonia"
+        ],
+        "matched_tokens": [
+          "pneumonia"
+        ],
+        "recall": 1.0,
+        "jaccard": 0.0323
+      },
+      "label_counts": {
+        "tp": 1,
+        "fp": 5,
+        "fn": 0,
+        "false_positive_labels": [
+          "Cardiomegaly",
+          "Edema",
+          "Lung Opacity",
+          "Pleural Effusion",
+          "Support Devices"
+        ],
+        "missed_labels": []
+      },
+      "pneumonia_detected": true,
+      "judge": {
+        "score": 8,
+        "axes": {
+          "faithfulness": 9,
+          "completeness": 8,
+          "safety": 10,
+          "calibration": 7
+        },
+        "reasoning": "The AI correctly identifies key findings consistent with pneumonia and related conditions. It's largely faithful to the ground truth. While it lists several findings, some are less directly indicative of pneumonia than others (e.g., cardiomegaly). The overall impression is reasonable, though slightly speculative. Calibration could be improved as the confidence levels seem high across the board.",
+        "source": "google/gemma-3-4b-it:free"
+      }
+    }
+  ]
+}

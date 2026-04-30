@@ -25,3 +25,4 @@ graphify-out/
 .graphify_uncached.txt
 .graphifyignore
 ~$*
+report/

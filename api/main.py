@@ -1036,12 +1036,13 @@ def _get_graph_data(search_term: str, patient_id: str = None) -> dict:
     except Exception as e:
         print(f"Graph query error: {e}")
         err_msg = str(e).lower()
-        if any(token in err_msg for token in ("routing", "connect", "certificate", "ssl", "neo4j")):
+        if any(token in err_msg for token in ("routing", "connect", "certificate", "ssl", "neo4j", "dns", "resolve")):
             return {
                 "nodes": [],
                 "edges": [],
                 "stats": {},
-                "error": "Knowledge graph unavailable. Check Neo4j connectivity and local SSL certificates.",
+                "unavailable": True,
+                "message": "Knowledge graph unavailable. Check Neo4j connectivity, DNS, and local SSL certificates.",
             }
         return {
             "nodes": [],

@@ -2474,6 +2474,15 @@
     opacity: 0.4;
 }
 
+.cd .graph-empty--unavailable {
+    color: #92400E;
+}
+
+.cd .graph-empty--unavailable svg {
+    color: #D97706;
+    opacity: 0.7;
+}
+
 .cd .graph-empty h3 {
     font-size: 16px;
     color: var(--cd-text-dim);

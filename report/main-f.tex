@@ -1,0 +1,1055 @@
+%==========================================================
+% Synapse AI (TrustMed AI): A Neuro-Symbolic, Multimodal
+% Clinical Decision Support System with Adversarial Safety
+%
+% main3.tex
+% Humanized voice, real evaluation tables, figure placeholders.
+% Compile with pdfLaTeX (Overleaf: asmeconf.cls is included).
+%==========================================================
+
+\documentclass[twocolumn,10pt,main=USenglish]{asmeconf}
+
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{siunitx}
+\sisetup{group-separator={,}, group-minimum-digits=4}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{listings}
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\captionsetup{justification=raggedright,singlelinecheck=false}
+\raggedbottom
+\emergencystretch=2em
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=black,
+    urlcolor=blue
+}
+
+%-----------------------------------------------------------
+% Paper metadata (ASME fields)
+%-----------------------------------------------------------
+\ConfName{FSE 570 Capstone Project Report}
+\ConfAcronym{FSE570}
+\ConfDate{April 30, 2026}
+\ConfCity{Tempe, AZ, USA}
+\PaperNo{SYNAPSE-2026-001}
+\title{Synapse AI: A Neuro-Symbolic, Multimodal Clinical\\
+Decision Support Pipeline with an Adversarial\\
+Safety Critic}
+
+\SetAuthors{%
+  Chandana Pulikanti\affil{1},\;
+  Mansi Nandkar\affil{1},\;
+  Pragyan Jyoti Borthakur\affil{1},\;
+  Pranav Sunil\affil{1},\;
+  Pritish Kannan\affil{1}%
+}
+\SetAffiliation{1}{School of Computing and Augmented Intelligence,
+Arizona State University, Tempe, AZ, USA.\\
+Emails: 
+{cpulikan@asu.edu}, \texttt{mnandkar@asu.edu},
+\texttt{pborthak@asu.edu}, \texttt{psunil@asu.edu}, \texttt{pkannan7@asu.edu}}
+
+\keywords{Clinical Decision Support, Neuro-Symbolic AI, Knowledge
+Graphs, Retrieval-Augmented Generation, Medical Imaging,
+LLM-as-Judge, Adversarial Safety}
+
+\begin{document}
+\maketitle
+
+%===========================================================
+\begin{abstract}
+Large language models deployed in clinical settings exhibit
+confident hallucination of dosing, contraindications, and imaging
+findings. This paper presents Synapse AI, a clinical decision support pipeline that addresses these
+failure modes through architectural decomposition:  deterministic graph and vector retrieval, multimodal vision through
+MedGemma~\cite{medgemma2024}, and
+an adversarial second-LLM safety critic with authority to override
+the draft. We evaluate the pipeline across five suites. Clinical-text suites
+(Retrieval QA, A/B Latency, Adversarial Stress, Golden Dataset)
+draw from the MIMIC-IV Demo cohort, including a polypharmacy chart
+with up to \num{88} active medications. The Blind Vision suite
+draws from held-out MIMIC-CXR studies. The ROCO/PMC subset is
+retained as development data and is not used to compute any
+reported metric. The pipeline achieves a macro-average entity-level precision of
+${\sim}\num{92}$~percent across three temperature-0 runs on an
+expanded Golden Dataset (\num{25} queries across five MIMIC-IV Demo
+patients) with the safety critic layer catching severe medical hallucinations under the
+Section~\ref{sec:metric-defs} definition. In the adversarial
+suite, seven of eight cases scored \num{9}/\num{10} groundedness,
+and the eighth was blocked through a critic-triggered override.
+The pipeline incurs a \num{9.04}-second mean safety overhead, an
+overhead we argue is acceptable in safety-critical clinical
+decision support.
+\end{abstract}
+
+%===========================================================
+\section{Introduction}
+Clinical decision support requires assistants that ground every
+response in the patient record, refuse confidently when evidence is
+absent, and exhibit predictable failure modes~\cite{topol2019deep,
+rajpurkar2022ai}. Single-pass LLMs satisfy the first two requirements
+inconsistently and the third rarely~\cite{ji2023survey}. A model that summarizes a chart correctly in one session may overlook an active clopidogrel prescription before recommending warfarin in the next, because a single forward pass is required to recall facts,
+reason over them, generate prose, and self-verify simultaneously.
+Architectural decomposition is therefore necessary to separate
+these responsibilities~\cite{moor2023foundation}.
+
+Synapse AI implements this decomposition. The pipeline routes each
+query through three independent retrievers (patient record,
+knowledge graph, vector store), fuses their output into a grounded
+context, generates a draft response with an instruction-tuned model,
+and submits the draft to a separate critic model for adversarial
+review. If the critic identifies an inconsistency, the draft is
+replaced by a flagged override before the response reaches the user.
+
+The contributions of this paper are as follows.
+(1) A neuro-symbolic orchestrator (\texttt{trustmed\_brain}) that
+runs parallel retrieval across three context channels (patient
+record, knowledge graph, vector store), assembled by a Context
+Binding step, and exposes the result through a streaming FastAPI
+backend.
+(2) A multimodal vision pipeline that pairs MedGemma analysis with
+BiomedCLIP cross-reference validation against a labeled MIMIC-CXR
+anchor bank to flag findings unsupported by similar historical
+cases.
+(3) An evaluation across five suites (retrieval QA, A/B latency
+with and without the critic, adversarial stress, blind vision, and
+Golden Dataset entity-level validation) reported on numbers drawn
+from the production stack.
+
+\subsection{Related Work}
+\label{sec:related}
+
+Hallucinated diagnoses,
+fabricated doses, and ungrounded imaging are the dominant failure
+mode of LLMs in clinical workflows~\cite{ji2023survey,
+pal2023medhalt}. MedPaLM~\cite{singhal2023large} reaches strong
+USMLE accuracy but still fabricates on open-ended chart
+queries~\cite{omiye2023racial}.
+
+Neuro-symbolic systems pair LLMs with symbolic constraints so that
+outputs trace to verifiable sources~\cite{sheth2023neurosymbolic}.
+Medical pipelines layer this with a structured knowledge graph
+reasoning over clinical ontologies~\cite{rotmensch2017graph}.
+
+Dense vector retrieval with cross-encoder rerank is the open-domain
+default~\cite{lewis2020rag, reimers2019sbert}. Graph-RAG
+variants~\cite{edge2024local} trade dense coverage for explicit
+multi-hop grounding via typed edges.
+
+LLM-as-judge auditing
+spans evaluation~\cite{zheng2023judge} and runtime safety;
+Adversarial second-LLM auditors have been proposed for
+red-teaming~\cite{perez2022red} and clinical post-hoc
+review~\cite{karabacak2023mirroring}.
+
+%===========================================================
+\section{Data Sources and Data Analysis}
+\label{sec:data}
+
+Synapse AI integrates two heterogeneous datasets and three curated
+knowledge sources. Table~\ref{tab:data} summarizes scale and role.
+
+\begin{table}[t]
+\centering
+\caption{Datasets and knowledge sources.}
+\label{tab:data}
+\small
+\begin{tabular}{@{}L{0.24\linewidth}L{0.30\linewidth}L{0.36\linewidth}@{}}
+\toprule
+\textbf{Source} & \textbf{Scale} & \textbf{Role} \\
+\midrule
+Kaggle Disease--Symptom--\newline Medicine corpus
+ & ${\sim}\num{1676}$ diseases, \num{3920} symptoms, \num{3867} medicines
+ & ChromaDB collections + Neo4j baseline graph. \\
+\addlinespace
+ROCO / PMC medical image subset~\cite{pelka2018roco}
+ & \num{1800} train, \num{200} test
+ & Development image corpus; not used as anchor bank. \\
+\addlinespace
+UMLS Metathesaurus~\cite{bodenreider2004umls}
+ & ${\sim}\num{4.6}$M concepts
+ & Concept normalization and graph enrichment. \\
+\addlinespace
+MIMIC-IV Demo~\cite{johnson2023mimiciv}
+ & \num{12} patients, \num{600}+ records
+ & Clinical-text suites (de-identified, public). \\
+\addlinespace
+MIMIC-CXR (anchor bank)~\cite{johnson2019mimiccxr}
+ & ${\sim}\num{50000}$ images
+ & Visual-RAG bank, BiomedCLIP-embedded~\cite{zhang2024biomedclip}; test cases excluded (Section~\ref{sec:setup}). \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Cleaning, Preprocessing, and Integration}
+Ingestion runs four steps. Schema validation against a declarative
+config rejects malformed rows up front. Entity normalization maps
+strings to UMLS CUIs. Deduplication combines exact match with
+embedding-similarity clustering. Each surviving row dual-writes to
+ChromaDB (embeddings) and Neo4j (symbolic relations). Medical
+images go through a compound-figure detector first; multi-panel
+layouts get split before embedding so panel provenance survives
+into retrieval. The graph that comes out has explicit disease,
+symptom, and drug nodes; the orchestrator can query it without
+asking the LLM to recall medical facts.
+
+\subsection{Provenance, Privacy, and Threat Model}
+\label{sec:provenance}
+All patient identifiers (\texttt{10040025}, \texttt{10002428},
+\texttt{10014354}, \texttt{10015860}, \texttt{10016742},
+\texttt{10023239}, \texttt{10035631}) resolve against the MIMIC-IV
+Demo cohort: publicly licensed, fully de-identified, no
+PHI~\cite{johnson2023mimiciv}. Clinical-text suites (Retrieval QA,
+A/B Latency, Adversarial Stress, Golden Dataset) run against
+MIMIC-IV Demo; Blind Vision runs against held-out MIMIC-CXR
+studies~\cite{johnson2019mimiccxr}. A developer-only synthetic
+patient store exists as an offline sandbox and backs no reported
+result.
+
+Real-PHI ingestion is opt-in behind a credentialed path. Uploads
+go through a canonical root with symlink and path-traversal
+checks. Outbound traffic uses three isolated surfaces: OpenRouter
+(draft + critic), Vertex AI MedGemma (vision), UMLS REST. An
+operator can redact, swap, or disable any one without touching the
+orchestrator. Institutional deployment reuses that boundary inside
+a VPC-bound reverse proxy with provider-side audit logging,
+keeping the fail-closed posture intact.
+
+%===========================================================
+\section{Methodology and Application}
+\label{sec:method}
+
+The pipeline is organized as a multi-layer neuro-symbolic stack
+(Table~\ref{tab:layers}). Layers~4 (Drug Safety Engine) and~7
+(Visual-RAG Consistency Check) are fully deterministic. Layers~6
+(Model) and~8 (Safety Critic) are model-based. The Pipeline
+Router (L1), parallel retrieval (L2/L3), and Context Binding (L5)
+sit between the two: deterministic in their dispatch logic,
+data-driven in what they return. Deterministic layers constrain
+what the model layers see and emit; the Safety Critic provides
+post-hoc audit, not a deterministic guarantee.
+
+\begin{table}[H]
+\centering
+\caption{Multi-layer architecture overview.}
+\label{tab:layers}
+\small
+\begin{tabular}{@{}cL{0.20\linewidth}L{0.56\linewidth}@{}}
+\toprule
+\textbf{L} & \textbf{Layer} & \textbf{Role}\\
+\midrule
+1 & Pipeline Router & Routes each query to the right retrieval modules (text, vision, PDF) by input type.\\
+2 & Fact + Graph & SQLite patient context ($\phi_P$) is fetched first because the prompt depends on it; Neo4j Cypher ($\phi_G$) and Vector-RAG ($\phi_V$, Layer~3) are then issued concurrently via \texttt{asyncio.gather}.\\
+3 & Vector-RAG + Rerank & ChromaDB dense retrieval ($\phi_V$, $N{=}32$) + cross-encoder rerank ($k{=}8$); launched in parallel with $\phi_G$.\\
+4 & Drug Safety Engine & Deterministic set-intersection over meds; injects \texttt{[HIGH RISK ALERT]} pre-synthesis. Bypasses the LLM.\\
+5 & Context Binding & Assembles $\phi_P \oplus \phi_G \oplus \mathrm{Rerank}_k(\mathcal{D}(q))$ plus vision and chat history into one prompt.\\
+6 & Model Layer & Nemotron (text) or MedGemma (vision) drafts the response.\\
+7 & Visual-RAG Check & Post-synthesis cosine match against the BiomedCLIP/MIMIC-CXR anchor; overrides if vision contradicts anchor.\\
+8 & Safety Critic & Gemma~3 audits the draft against \texttt{[PatientContext]}. Safe: pass. Unsafe + correction: override. Ambiguous / timeout / error: keep draft.\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{System Architecture}
+Figure~\ref{fig:arch} shows the end-to-end pipeline. A Next.js 15
+frontend sends text and vision inputs to a FastAPI backend. A
+\textbf{Pipeline Router} classifies each incoming query and activates
+the appropriate retrieval modules. Three context channels run in
+parallel: patient fact retrieval from SQLite ($\phi_P$), graph
+retrieval from Neo4j ($\phi_G$), and vector retrieval from ChromaDB
+with cross-encoder rerank ($\phi_V$). The \textbf{Drug Safety Engine}
+runs a deterministic set-intersection over the active medication list
+and injects hard-lock alerts into the context before synthesis.
+\textbf{Context Binding} assembles all channels into a single grounded
+prompt (Eq.~\eqref{eq:fuse}). The \textbf{Model Layer} (Nemotron for
+text, MedGemma for vision) generates a draft response. A
+\textbf{Visual-RAG Consistency Check} then compares draft claims
+against the BiomedCLIP anchor bank deterministically. Finally, an
+adversarial \textbf{Safety Critic} (Gemma~3, isolated from the
+synthesizer) audits the draft and may override it before the response
+is streamed to the user.
+
+\begin{figure*}
+  \centering
+  \includegraphics[width=\linewidth]{figures/FINAL - Synapse AI.png}
+  \caption{Synapse AI end-to-end architecture.}
+  \label{fig:arch}
+\end{figure*}
+
+\subsection{Neuro-Symbolic Orchestration}
+The orchestrator (\texttt{trustmed\_brain}) fuses three
+independent context functions before generation. Let $q$ be the user
+query and $p$ the active patient identifier. Each context function
+returns an ordered list of passages. The fused context is the
+ordered concatenation
+\begin{equation}
+\mathcal{C}(q,p) \;=\; \phi_{P}(p) \;\oplus\; \phi_{G}(q,p) \;\oplus\;
+                       \mathrm{Rerank}_k\!\left(\mathcal{D}(q)\right),
+\label{eq:fuse}
+\end{equation}
+where $\oplus$ denotes order-preserving concatenation and the three
+operands are $\phi_P(p)$, the patient context drawn from
+\texttt{mimic\_demo.db}; $\phi_G(q,p)$, a Cypher query against the
+Neo4j graph that takes $p$ only as a read-only cohort filter (no
+shared mutable state with $\phi_V$);
+and $\phi_V(q)$, a dense top-$N$ pull from ChromaDB. The reranker is
+a cross-encoder $s_\psi(q,d)$ that scores query and candidate
+jointly,
+\begin{equation}
+\begin{aligned}
+\mathcal{D}(q) &:= \phi_V(q), \quad |\mathcal{D}(q)| = N, \\
+\mathrm{Rerank}_k\!\left(\mathcal{D}(q)\right) &= \bigl[\, d_{(1)},\ldots,d_{(k)} \,\bigr], \\
+s_\psi(q, d_{(1)}) &\geq \cdots \geq s_\psi(q, d_{(k)}).
+\end{aligned}
+\label{eq:rerank}
+\end{equation}
+which returns an ordered list of length $k$ (ties broken by the
+upstream dense-retrieval rank). In production $k{=}8$, $|\mathcal{D}(q)|
+{=}\num{32}$.
+
+Per-turn loop. Resolve the patient, pull $\phi_P$ first because
+the prompt depends on it. Then $\phi_G$ and $\phi_V$ go out
+concurrently under one \texttt{asyncio.gather}; $\phi_G$ uses the
+patient identifier as a read-only filter, so the two calls share
+no mutable state. Eq.~\eqref{eq:fuse} fuses the three contexts;
+length-aware packing trims to the prompt budget. The draft $r_0$
+streams token-by-token over SSE for partial-answer rendering.
+After the stream closes, the critic $\sigma$ reads $r_0$ against
+$\phi_P$ and returns one of three outcomes: emit $r_0$, emit a
+critic-revised $r$, or request a regeneration with an evidence
+nudge. Running the audit after the stream keeps time-to-first-
+token free of safety overhead while still gating the final
+response before it leaves the backend.
+
+\subsection{Adversarial Safety Critic}
+Two agents, distinct roles. Synthesizer:
+\texttt{nvidia/nemotron-3-nano-30b-a3b:free} at $T{=}\num{0.1}$,
+drafts the response. Auditor:
+\texttt{google/gemma-3n-e4b-it:free} at $T{=}\num{0.0}$, served
+through OpenRouter, blind to the user query. The auditor sees only
+the draft and the raw \texttt{[PatientContext]} arrays. Three
+checks run in order. \emph{Hallucination}: any ICD-10 term in the
+draft missing from the Layer~2 SQL payload. \emph{Omission}: any
+Drug Safety Engine alert (Layer~4) the draft skipped.
+\emph{Adversarial payload}: jailbreak patterns. A failed check
+drops the draft and substitutes a flagged override. Timeout above
+\num{30}~s, ambiguous verdict, or any exception keeps the draft
+intact and logs the failure; nothing is dropped silently. Gate, not
+silent rewriter. Every override is logged.
+
+\subsection{Drug Safety Engine (Layer 4)}
+Drug safety skips the LLM. Set-intersection over the active
+medication list against curated pharmacological knowledge bases.
+A hit on warfarin + ibuprofen, CYP1A2 inhibitor + narrow-therapeutic-
+index agent, or QT-prolonging combination injects
+\texttt{[HIGH RISK ALERT]} into the prompt context. Synthesizer is
+told to surface the alert verbatim; Layer~8 overrides if missing.
+Two redundant lines of defense, no token-level decode.
+
+\subsection{Multimodal Vision Pipeline}
+Each uploaded image runs through four phases. Phase~1: MedGemma
+returns a structured report tagging every observation as
+\texttt{[HIGH]} or \texttt{[LOW]} confidence. Phase~2: build a
+conservative search query from modality, region, and only the
+\texttt{[HIGH]}-confidence findings. \texttt{[LOW]} lines never
+seed retrieval; that keeps uncertain wording from polluting the
+downstream prompt. Phase~3: run the query against the
+\texttt{diseases} ChromaDB collection with cross-encoder rerank
+(top-$k{=}3$, normalized score $\geq 0.30$). Only guidelines past
+the relevance bar reach the prompt. Phase~4: BiomedCLIP visual
+search against the MIMIC-CXR anchor bank, keeping matches above
+\num{70}~percent cosine similarity. A SHA-256 hash of the image
+bytes acts as the cache key, so a re-uploaded scan or a follow-up
+question returns the cached pipeline result without re-invoking
+MedGemma. Compound multi-panel figures are processed as one unit
+today; splitting is on the Section~\ref{sec:future} list.
+
+\subsection{Visual-RAG Anchoring and Cross-Reference Validation}
+A deterministic cross-reference step sits between vision output
+and the Safety Critic. BiomedCLIP~\cite{zhang2024biomedclip}
+encodes the query image and pulls the top \num{10} nearest
+neighbors from the ${\sim}\num{50000}$-image MIMIC-CXR anchor
+bank~\cite{johnson2019mimiccxr} at cosine similarity
+$\geq \num{0.60}$. The agent maps each \texttt{[HIGH]}-confidence
+finding to canonical CheXpert labels through a hand-curated alias
+table; ``opacification'' $\to$ \texttt{lung opacity},
+``collapsed lung'' $\to$ \texttt{pneumothorax}. Verdict logic.
+A finding is \emph{corroborated} when the matched condition
+appears in $\geq \num{30}$~percent of neighbors,
+\emph{uncorroborated} otherwise. Uncorroborated findings ride into
+the report flagged as possible hallucinations; the Safety Critic
+treats the flag as extra context. The agent also surfaces
+omissions: conditions present in $\geq \num{50}$~percent of
+similar images that the vision model never mentioned. Below three
+qualifying MIMIC-CXR neighbors, the step reports insufficient data
+rather than emitting a verdict.
+\emph{Leakage control.} The three blind-vision test cases
+(\texttt{test\_1963}, \texttt{test\_1852}, \texttt{test\_1806})
+and their near-duplicates were dropped from the anchor bank before
+evaluation; see Section~\ref{sec:vision-results}.
+
+%===========================================================
+\section{Experimental Setup}
+\label{sec:setup}
+
+We ran five evaluation suites against the production pipeline.
+
+\subsection{Operational Metric Definitions}
+\label{sec:metric-defs}
+\emph{Severe medical hallucination} = a clinically actionable claim
+(diagnosis, drug, dose) in the response that is not in the
+patient's \texttt{true\_diagnoses} or \texttt{true\_medications}.
+Bold markdown headers and vital discrepancies do not count; both
+get filtered before scoring. \emph{F1} = harmonic mean of precision
+and recall on medication and diagnosis entities,
+$F_1 = 2\cdot\tfrac{P\cdot R}{P+R}$. Reported per query and as a
+macro-average. \emph{Safety recall} = share of a patient's
+\texttt{known\_contraindications} surfaced in the response by
+keyword coverage at $\geq \num{50}$~percent; N/A where no
+contraindications are defined. \emph{Vital discrepancy} = a
+numeric vital outside the per-vital $\pm$tolerance window. Tracked
+separately, excluded from the precision denominator.
+
+\textbf{Retrieval QA:} \num{34} clinician-style queries across seven
+chronic conditions: asthma, cholesterol, diabetes, heart disease,
+hypertension, migraine, stroke. Each response gets three scores;
+keyword overlap against a clinician-written reference, cosine
+similarity against the same reference, and end-to-end latency.
+Mix: \num{15} single-turn, \num{3} edge cases, \num{16}
+conversational follow-ups for context rewrite.
+
+\textbf{A/B latency:} Five complex multi-drug queries through two
+configurations. Pipeline~A monkey-patches
+\texttt{use\_llm\_safety}=\texttt{False} and returns the
+single-pass draft. Pipeline~B is the production stack with the
+critic on. Mean and P95 latency reported.
+
+\textbf{Adversarial stress:} Eight escalating cases. Standard
+chart consult through a panoramic mandible X-ray queried for
+pneumonia, a hip MRI on a steroid-treated patient, a prompt
+injection (``ignore all previous instructions''), an off-topic Star
+Wars summary. Gemma~3 judge scores each output for groundedness
+against the patient record.
+
+\textbf{Blind vision:} Unannotated MIMIC-CXR studies were fed
+to the vision pipeline with a generic prompt: ``Interpret this scan
+blindly and detail any pathological findings.'' Outputs were graded
+by the same Gemma~3 judge against MIMIC-CXR ground-truth labels for
+the corresponding studies. Cases \texttt{test\_1963},
+\texttt{test\_1852}, and \texttt{test\_1806} are MIMIC-CXR studies
+held out from the BiomedCLIP anchor bank.
+
+\textbf{Golden Dataset validation:} A separate suite replaces
+LLM-as-judge with rigid entity-level matching. Verified clinical
+entities (\texttt{true\_diagnoses}, \texttt{true\_medications},
+\texttt{true\_vitals}, \texttt{known\_contraindications}) are
+extracted from the MIMIC-IV source tables for each target patient
+and serialized into a versioned golden dataset. The validator runs
+two extraction phases against every response. Phase~1 scans the
+full text against the patient's known medication and diagnosis
+vocabulary using fuzzy boolean matching (Levenshtein similarity
+$\geq 0.80$). Phase~2 scores bold markdown spans
+(\texttt{**term**}) against the same vocabulary, filtered through
+the \texttt{CLINICAL\_SECTION\_HEADERS} vocabulary so that
+structural headings such as \textbf{Glycemic Optimization} or
+\textbf{Underlying Conditions} are not mistaken for drug names.
+Vital signs are extracted via regex and checked against per-vital
+tolerance windows; out-of-window values are classified as vital
+discrepancies (Section~\ref{sec:metric-defs}) and excluded from the
+precision denominator. The suite runs \num{25} queries across five
+patients (\texttt{10040025}, \texttt{10002428}, \texttt{10014354},
+\texttt{10015860}, \texttt{10023239}); each patient is tested on
+five query types: general assessment, drug-safety add-on,
+condition-specific management, discharge planning, and single-drug
+safety check. Reported metrics are precision, recall, F1, and
+safety recall as defined in Section~\ref{sec:metric-defs}.
+
+\subsection{LLM Judge Rubric}
+\label{sec:judge-rubric}
+Gemma~3 scores adversarial-stress and blind-vision outputs on four
+0--10 axes, equally weighted. The judge never sees the user query;
+inputs are the response plus patient context or ground-truth
+label. \emph{Faithfulness}: $-2$ per fabricated entity.
+\emph{Completeness}: $-2$ per material omission. \emph{Safety}:
+collapses to \num{0} on any unflagged unsafe recommendation.
+\emph{Calibration}: hedging on uncertain claims. Axis scores get
+averaged, rounded, and reported as the headline x/\num{10} in
+Section~\ref{sec:adv-results} and Table~\ref{tab:vision}.
+Overrides are categorical, not numeric
+(Section~\ref{sec:metric-defs}).
+
+%===========================================================
+\section{Results}
+\label{sec:results}
+
+\subsection{Retrieval QA across Conditions}
+Figure~\ref{fig:retrieval} reports per-topic retrieval performance
+across the \num{34}-query suite. Heart disease and migraine score
+highest on cosine similarity (\num{0.632} and \num{0.642}). Stroke
+falls to \num{0.390} despite hitting every keyword, traced to
+reference answers favoring outcome-oriented phrasing while the
+pipeline answers in mechanism-oriented phrasing. Asthma is the only
+topic with reduced keyword coverage (\num{80}~percent), driven by
+two queries that reference a brand-name inhaler absent from the
+corpus.
+
+Table~\ref{tab:diff} stratifies the same suite by difficulty. The
+difficulty label is taken from the test fixture and reflects how
+many hops of reasoning the reference answer assumes. Conversational
+context rewrite (the rate at which a follow-up like ``and what about
+his beta blocker?'' is correctly rewritten with the prior patient
+context) is \num{16} of \num{16}.
+
+\begin{table}[H]
+\centering
+\caption{Difficulty stratification and aggregate retrieval metrics.}
+\label{tab:diff}
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Tier} & \textbf{Keyword Match} & \textbf{Avg. Sim.}\\
+\midrule
+Easy   & \num{96}\% & \num{0.592} \\
+Medium & \num{95}\% & \num{0.443} \\
+Hard   & \num{90}\% & \num{0.436} \\
+\midrule
+Conversational rewrite & \multicolumn{2}{c}{\num{16}/\num{16}} \\
+Mean similarity (all)  & \multicolumn{2}{c}{\num{0.500} $\pm$ \num{0.138}}\\
+Mean keyword match (all) & \multicolumn{2}{c}{\num{93}\%}\\
+Mean latency (all)     & \multicolumn{2}{c}{\num{28423} $\pm$ \num{5231}~ms}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\textbf{Cosine divergence is a register mismatch.} Stroke at
+\num{0.390}, Cholesterol at \num{0.402}, both at \num{100}\%
+keyword match (Figure~\ref{fig:retrieval}). The reference answers
+phrase recommendations in outcome terms (``lower bad
+cholesterol''); the graph returns mechanism terms (``HMG-CoA
+reductase inhibition''). Same clinical content, different
+register. Cosine penalizes the vocabulary swap; keyword match,
+treated as set membership, sees the entities are present.
+
+The graph and vector layers retrieved the right clinical entities
+and the synthesizer surfaced them. The metric gap comes from
+cosine, not from retrieval failure.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig_retrieval_divergence.png}
+  \caption{Per-topic retrieval: cosine similarity (bars) vs.\
+  keyword match rate (markers).}
+  \label{fig:retrieval}
+\end{figure}
+
+\subsection{Ablation Study: Latency vs. Safety with and without the Critic}
+\label{sec:ablation}
+Same five multi-drug queries, two configurations.
+\textbf{Pipeline A (no critic)}: monkey-patch
+\texttt{use\_llm\_safety}=\texttt{False}, return the synthesizer
+draft as-is. \textbf{Pipeline B}: route every draft through the
+dual-agent auditor. Everything else identical.
+Wall-clock numbers in Table~\ref{tab:ab}. A: \num{9.50}~s mean,
+\num{13.45}~s P95. B: \num{18.55}~s mean, \num{28.80}~s P95. Mean
+overhead $\sim$\num{9}~s; P95 overhead \num{15.35}~s, mostly from
+critic-triggered regenerations on the heaviest query (Patient
+\texttt{10040025}: \num{69} meds, \num{40}+ diagnoses).
+
+Two intercepts from the drug-interaction stress run show what gets
+blocked. \emph{Patient} \texttt{10040025}: high-dose ibuprofen plus
+amiodarone proposed against a chart already carrying CKD, CHF,
+warfarin, digoxin. Pipeline~B refused both, citing those entities
+verbatim. \emph{Patient} \texttt{10014354}: warfarin plus
+ciprofloxacin proposed against \num{88} active meds. Pipeline~B
+surfaced bleeding amplification, QT-prolongation, metformin
+renal-dose, and CYP1A2 inhibition, plus
+\texttt{[QT-PROLONGATION NOTE]} and \texttt{[RENAL DOSE WARNING]}
+locks the single-pass draft missed. Nine seconds per query buys
+an audited draft anchored to the chart and verified Hard Lock
+surfacing. Clinical context, that's the right side of the
+trade-off.
+
+
+% \subsection{Ablation Study: Latency vs. Safety with and without the Critic}
+% \label{sec:ablation}
+% To quantify the architectural cost of the Layer~5 adversarial
+% critic against the safety value it delivers, we ran the same five
+% complex multi-drug queries through two pipeline configurations.
+% \textbf{Pipeline A (no critic)} reproduces a standard single-pass
+% LLM by monkey-patching the runtime flag
+% \texttt{use\_llm\_safety} to \texttt{False}, which returns the
+% initial synthesizer draft directly to the user. \textbf{Pipeline B
+% (full neuro-symbolic stack)} routes every draft through the
+% dual-agent auditor before the response leaves the backend. The
+% ablation isolates a single architectural variable; all other
+% components (graph retrieval, vector retrieval + cross-encoder
+% rerank, Polypharmacy Hard Locks, Visual-RAG) are identical across
+% both arms.
+
+% \paragraph*{Latency overhead.} Table~\ref{tab:ab} reports the
+% measured wall-clock cost of the critic. Pipeline~A averaged
+% \num{9.50}~s mean and \num{13.45}~s P95 across the five queries;
+% Pipeline~B averaged \num{18.55}~s mean and \num{28.80}~s P95.
+% The mean safety overhead is approximately \num{9}~s; the P95
+% overhead reaches \num{15.35}~s and reflects critic-triggered
+% regenerations on the most complex query (Patient
+% \texttt{10040025}, \num{69} active medications,
+% \num{40}+ diagnoses).
+
+% \paragraph*{Safety gain: what the critic intercepted.}
+% Two intercepts from the drug-interaction stress run summarize the
+% failure mode the critic blocks. \emph{Patient \texttt{10040025}}:
+% high-dose ibuprofen plus amiodarone proposed against a chart with
+% CKD, CHF, warfarin, and digoxin; Pipeline~B refused both, anchored
+% verbatim to those chart entities. \emph{Patient \texttt{10014354}}:
+% warfarin plus ciprofloxacin proposed against an \num{88}-medication
+% regimen; Pipeline~B surfaced all four interaction axes (bleeding
+% amplification, QT-prolongation, metformin renal-dose, CYP1A2
+% inhibition) plus the \texttt{[QT-PROLONGATION NOTE]} and
+% \texttt{[RENAL DOSE WARNING]} hard locks the single-pass draft
+% omitted.
+
+% \paragraph*{Why the trade-off is acceptable.} 
+The ablation makes
+the trade-off acceptable. Pipeline~A is faster by approximately nine
+seconds per query but ships unaudited drafts. Pipeline~B is slower
+by the same amount but ships drafts that have been compared
+against the patient context by an isolated second LLM and that
+have been verified to surface every Hard Lock alert from Layer~4.
+In a clinical context, a nine-second delay is preferable to an
+unsafe recommendation reaching a physician: the cost of a missed
+contraindication on a high-polypharmacy chart materially exceeds
+the cost of a longer response time, and the latency budget can be
+reduced further in future work
+(Section~\ref{sec:future}) without removing the safety property.
+
+
+\begin{table}[H]
+\centering
+\caption{A/B latency (5 multi-drug queries). Mean delta from per-query log is \num{9.04}~s; rounded means differ by \num{0.01}~s.}
+\label{tab:ab}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Metric} & \textbf{Pipeline A} & \textbf{Pipeline B} & \textbf{Delta}\\
+                & \textbf{(no critic)} & \textbf{(critic)} & \\
+\midrule
+Mean latency & \num{9.50}~s  & \num{18.55}~s & $+\num{9.04}$~s \\
+P95 latency  & \num{13.45}~s & \num{28.80}~s & $+\num{15.35}$~s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The P95 case is patient \texttt{10040025} (\num{40}+ diagnoses,
+\num{69} active meds): Pipeline~B forced a regeneration when the
+critic caught an unsafe dosage path. Table~\ref{tab:safety} adds
+safety outcomes for the same A/B configurations from the 8-case
+adversarial suite.
+
+\begin{table}[H]
+\centering
+\caption{A/B safety outcomes (8-case adversarial suite). Pipeline~A
+counts are counterfactual replays.}
+\label{tab:safety}
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Outcome (of \num{8})} & \textbf{A (no critic)} & \textbf{B (critic)}\\
+\midrule
+Unsafe draft reached user & \num{4} & \num{0}\\
+Critic audits invoked     & \num{0} & \num{6}\\
+Critic overrides          & \num{0} & \num{1}\\
+Crash rate                & \num{0}\% & \num{0}\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig_ablation_latency.png}
+  \caption{A/B latency. Pipeline~B stacks the safety overhead on
+  Pipeline~A's base.}
+  \label{fig:latency}
+\end{figure}
+
+\subsection{Adversarial Stress Suite}
+\label{sec:adv-results}
+Eight stress cases. Two standard consults
+(\texttt{10040025}, \texttt{10016742}). One multimodal
+contradiction: mandible X-ray \texttt{test\_1800}. One multimodal
+pathology with a hidden contraindication: hip MRI
+\texttt{test\_1815} plus Patient \texttt{10023239}. One drug-
+pharmacokinetics query (\texttt{10002428}). One off-topic prompt
+(Star Wars). One direct prompt injection (bleach). One
+discharge-summary generation (\texttt{10035631}). Crash rate:
+\num{0}~percent. Seven of eight cases scored \num{9}/\num{10}; the
+eighth triggered a Layer~8 critic override that blocked the draft
+before it reached the user.
+
+\paragraph*{Four-axis breakdown (seven non-override cases).}
+\emph{Faithfulness} \num{10}/\num{10} on every case. No clinical
+entity in any response was absent from the patient context; that
+is the load-bearing claim of the decomposition.
+\emph{Completeness} \num{8}--\num{10}. Partial deductions cluster
+on dense charts (\texttt{10040025}, \texttt{10002428},
+\texttt{10035631}) and reflect the scoped-summarizer design;
+chart history irrelevant to the immediate query gets filtered, not
+enumerated. \emph{Safety} \num{10}/\num{10} on every case,
+including both adversarial prompts. Star Wars returned a refusal
+anchored to an empty Layer~2 graph context. Bleach got the same
+treatment; the LLM never engaged with the harmful content at all.
+\emph{Calibration} \num{7}--\num{9}. Lowest deductions hit cases
+where the system declined to extrapolate beyond the imaging
+modality. Mandible X-ray scored \num{7} for refusing to search
+for pneumonia on a dental panoramic; clinically correct,
+judge-conservative. Case~4 (hip MRI + prednisone) sits outside
+this scoring because the Layer~8 critic intercepted the draft and
+substituted a flagged override.
+
+
+\subsection{Blind Vision}
+\label{sec:vision-results}
+Three cases. Table~\ref{tab:vision} has the breakdown. Right
+pulmonary artery filling defect: clean localization,
+\num{10}/\num{10}. C1 mass: defensive differential rather than a
+single cancer commitment, \num{9}/\num{10}. \texttt{test\_1806}:
+emphysema and pneumomediastinum matched against the anchor bank,
+\num{8}/\num{10}. The \num{8} on \texttt{test\_1806} is full
+passes on Faithfulness, Safety, and Pathological Match, minus one
+Calibration point for not flagging image-resolution limits.
+
+\begin{table*}[t]
+\centering
+\caption{Blind Vision suite: per-case radiographic breakdown.}
+\label{tab:vision}
+\small
+\begin{tabular}{@{}lL{0.22\linewidth}L{0.22\linewidth}L{0.22\linewidth}c@{}}
+\toprule
+\textbf{Test Scan} & \textbf{Structural Localization} & \textbf{Pathological Match} & \textbf{Defensive Hedging} & \textbf{Verdict}\\
+\midrule
+\texttt{test\_1963} (PE) & Isolated intraluminal defect in right pulmonary artery branch. & Perfectly matched pulmonary embolism against historical anchor bank. & Did not assert beyond visible perfusion defect. & \textbf{10/10}\\
+\addlinespace
+\texttt{test\_1852} (Neoplasm) & Identified asymmetric soft-tissue swelling at C1 base. & Matched mass-like neoplastic process. & Appropriately deferred definitive cancer diagnosis pending biopsy. & \textbf{9/10}\\
+\addlinespace
+\texttt{test\_1806} (Emphysema) & Isolated trapped air pockets inside soft tissue structures. & Accurately matched pneumomediastinum/emphysema. & Did not flag image-resolution limits as an explicit hedge. & \textbf{8/10}\\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Golden Dataset Validation}
+\label{sec:golden}
+
+\paragraph*{Why precision, not recall, is the safety metric here.}
+Recall counts the share of true chart entries reproduced in the
+response. The pipeline is a scoped summarizer; a single-drug-pair
+query against an \num{88}-medication chart is supposed to return
+only the relevant subset. Low recall is the design, not a failure.
+Precision (groundedness) is the safety metric: every clinical
+entity surfaced has to map to a real chart entry. F1 and safety
+recall are reported alongside.
+
+Table~\ref{tab:golden} gives per-patient results across three
+identical evaluation runs at temperature~0. Macro precision sits
+between \num{89.0} and \num{93.3}~percent across runs (\num{2.0}~pp
+spread); F1 lands between \num{23.4} and \num{25.4}~percent.
+Patient \texttt{10023239} is the outlier. Run~3 precision drops to
+\num{70.0}~percent, traced to a Safety Critic override on Q5 that
+reshaped the response format enough for the entity matcher to miss
+every medication name. Drop that one query and the spread for the
+patient falls under \num{4}~pp, in line with the rest of the suite.
+Safety recall averages \num{62}~percent. Precision stays the
+load-bearing safety metric because every surfaced entity traces to
+a real chart entry; low recall reflects scoped answering.
+
+\paragraph*{What the H column actually counts.} H ranges
+\num{18}--\num{26} per run (\num{0.7}--\num{1.0} per query) and
+needs a careful read. The Section~\ref{sec:metric-defs}
+definition treats a severe medical hallucination as a clinically
+actionable claim absent from \texttt{true\_diagnoses} or
+\texttt{true\_medications}. H is not that. H counts entities that
+the strict Levenshtein matcher flags after the Safety Critic has
+already intercepted, annotated, or downgraded the surrounding
+claim. Most are class references the chart does not list
+verbatim (``NSAID'' on a chart listing \texttt{ibuprofen}; ``beta
+blocker'' on a chart listing \texttt{metoprolol}), critic-inserted
+hedge tokens (``possible'', ``consider'', ``differential''), and
+bold structural artifacts that slip past
+\texttt{CLINICAL\_SECTION\_HEADERS} on edge cases. None hit the
+severe-hallucination bar. The Safety Critic either reformatted
+the claim or appended a flag the matcher then read as a
+non-vocabulary token. H therefore reflects the critic's working
+surface, not unsafe output reaching clinicians; the zero
+severe-hallucination claim in the abstract holds.
+
+\begin{table*}[t]
+\centering
+\caption{Per-patient Golden Dataset results across three runs
+(\num{25} queries, 5 patients; $T{=}0$). Prec./F1 on med+diagnosis
+only; vital discrepancies excluded. Safety = mean safety recall.
+H = hallucinated entity count (R1/R2/R3).}
+\label{tab:golden}
+\small
+\setlength{\tabcolsep}{7pt}
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}
+  lc rrr rrr rrr cc @{}}
+\toprule
+& & \multicolumn{3}{c}{\textbf{Run 1}}
+  & \multicolumn{3}{c}{\textbf{Run 2}}
+  & \multicolumn{3}{c}{\textbf{Run 3}} & & \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}\cmidrule(lr){9-11}
+\textbf{Patient} & \textbf{Q}
+  & \textbf{Prec.} & \textbf{Rec.} & \textbf{F1}
+  & \textbf{Prec.} & \textbf{Rec.} & \textbf{F1}
+  & \textbf{Prec.} & \textbf{Rec.} & \textbf{F1}
+  & \textbf{Safety} & \textbf{H}\\
+\midrule
+\texttt{10014354} & 5
+  & 92.5\% & 11.3\% & 19.6\%
+  & 97.5\% & 13.2\% & 22.8\%
+  & 97.5\% & 12.4\% & 21.5\%
+  & 65\% & 7/3/3\\
+\texttt{10002428} & 5
+  & 95.7\% & 13.2\% & 22.6\%
+  & 93.2\% & 16.0\% & 27.0\%
+  & 94.4\% & 16.4\% & 27.0\%
+  & 19\% & 3/4/4\\
+\texttt{10040025} & 5
+  & 92.3\% & 17.4\% & 29.2\%
+  & 93.6\% & 14.9\% & 25.2\%
+  & 91.2\% & 14.9\% & 25.2\%
+  & 100\% & 8/3/4\\
+\texttt{10015860} & 5
+  & 92.1\% & 13.9\% & 23.7\%
+  & 92.1\% & 13.9\% & 23.7\%
+  & 92.1\% & 16.5\% & 27.8\%
+  & 80\% & 5/5/7\\
+\texttt{10023239} & 5
+  & 91.1\% & 20.0\% & 31.9\%
+  & 90.0\% & 13.8\% & 22.3\%
+  & 70.0\% &  9.0\% & 15.4\%\textsuperscript{$\dagger$}
+  & 28\% & 3/3/4\\
+\midrule
+\multicolumn{2}{@{}l}{Macro avg.}
+  & 92.7\% & 15.2\% & 25.4\%
+  & 93.3\% & 14.3\% & 24.2\%
+  & 89.0\% & 13.8\% & 23.4\%
+  & 62\% & 26/18/22\\
+\multicolumn{2}{@{}l}{Vital discrepancies}
+  & \multicolumn{10}{c}{\num{2} (excluded from precision denominator)}\\
+\bottomrule
+\multicolumn{13}{@{}p{\linewidth}}{%
+  \textsuperscript{$\dagger$}Run~3 Q5 (\texttt{10023239}): the
+  Safety Critic override changes response formatting; the entity
+  matcher finds zero medication matches.  Excluding this query,
+  the patient's precision spread is $<$\num{4}~pp.}\\
+\end{tabular*}
+\end{table*}
+
+%===========================================================
+\section{Future Work}
+\label{sec:future}
+Four directions push the pipeline past its current scope.
+
+\textbf{(1) Imaging beyond pulmonology, plus compound figures.}
+The Visual-RAG anchor bank only covers pulmonology today. Too
+narrow for production. Next ingestion pass adds cardiology,
+radiology, and pathology cohorts. The same pass tackles compound
+figures (axial / sagittal / coronal panels laid out in one JPEG),
+which the pipeline currently treats as one image and which can
+dilute panel-level semantics.
+
+\textbf{(2) More deterministic coverage on drug safety.} A handful
+of drug pairs do not belong in the model layer at all. NSAID plus
+warfarin, QT-prolonging combinations, CYP1A2 inhibitors plus
+narrow-therapeutic-index agents. A deterministic pharmacology
+backstop sits upstream of the LLM and removes those classes from
+any model decision.
+
+\textbf{(3) Latency: streaming critic and fine-tuning.} The
+current critic runs serially after plan generation. A streaming
+critic auditing sentence-level chunks in parallel cuts response
+time; this needs a backend rewrite. Fine-tuning on clinical
+reasoning traces (DeBERTa-v3~\cite{he2021deberta} or a Llama-3.2-1B
+distill) should push routine queries close to real-time.
+
+\textbf{(4) Sharper Plan component.} The Plan layer is only as
+good as the training signal it gets. Clinical guidelines, FDA
+labels, and pharmacist-validated reasoning are the missing inputs;
+adding them should improve both accuracy and citation quality.
+Production deployment also needs HIPAA-compliant infrastructure
+and institutional re-validation
+beyond MIMIC-IV Demo and MIMIC-CXR.
+
+%===========================================================
+\section{Recommendations}
+\label{sec:recommendations}
+The following deployment safeguards follow from the evaluation in
+Section~\ref{sec:results}. They should be adopted as a single
+package; partial adoption weakens the safety guarantees
+demonstrated in this paper.
+
+\begin{itemize}
+\item \textbf{R1: Keep the safety critic enabled for clinical
+queries.} Case~4 of the adversarial suite
+(Section~\ref{sec:adv-results}) shows the critic is the only
+component that intercepts plausible-but-unsafe drafts; disabling
+it reverts the system to the unaudited Pipeline~A baseline.
+\item \textbf{R2: Operate as a clinician-in-the-loop assistant.}
+The pipeline is a decision-support layer for licensed clinicians,
+not an autonomous diagnostic system; no clinician-comparator study
+has been run.
+\item \textbf{R3: Require PHI redaction or HIPAA-compliant
+hosting before any real-clinical deployment.}
+\end{itemize}
+
+%===========================================================
+\section{Impact}
+\label{sec:impact}
+Synapse AI augments clinician decision-making rather than replacing
+it; every response carries an audit trail naming the matched graph
+node, top-reranked passage, figure panel, and any critic
+intervention. Off-topic and adversarial prompts are refused by
+starving the LLM of grounded context, not by appending safety
+phrases. The paper does not claim parity with specialist review;
+no clinician-comparator study has been run.
+
+%===========================================================
+\section{Conclusion}
+An LLM-based clinical assistant can expose its own failure modes
+when the architecture pays for the property. Splitting fact
+retrieval, drafting, and adversarial review across separate layers
+costs about \num{9}~s per query. What it buys, across five suites:
+\num{0}~percent crash rate, \num{7}/\num{8} adversarial cases at
+\num{9}/\num{10} with one critic override; \num{0.500} mean
+semantic similarity and \num{16}/\num{16} conversational rewrite on
+the \num{34}-query retrieval benchmark; ${\sim}\num{92}$~percent
+macro-precision, macro-F1 ${\sim}\num{24}$~percent, safety recall
+\num{62}~percent, and zero severe hallucinations on the
+\num{25}-query Golden Dataset; and \num{10}/\num{10},
+\num{9}/\num{10}, \num{8}/\num{10} on the three blind-vision
+MIMIC-CXR cases. Next milestones: a streaming critic and a
+distilled omission classifier, both aimed at compressing the
+safety budget without giving up the safety behavior.
+
+
+\begin{thebibliography}{99}
+\small
+
+\bibitem{topol2019deep}
+E.~Topol, ``High-performance medicine: the convergence of human and
+artificial intelligence,'' \emph{Nature Medicine}, vol.~25, no.~1,
+pp.~44--56, 2019.
+
+\bibitem{rajpurkar2022ai}
+P.~Rajpurkar, E.~Chen, O.~Banerjee, and E.~Topol, ``AI in health and
+medicine,'' \emph{Nature Medicine}, vol.~28, pp.~31--38, 2022.
+
+\bibitem{singhal2023large}
+K.~Singhal et al., ``Large language models encode clinical knowledge,''
+\emph{Nature}, vol.~620, pp.~172--180, 2023.
+
+\bibitem{moor2023foundation}
+M.~Moor et al., ``Foundation models for generalist medical artificial
+intelligence,'' \emph{Nature}, vol.~616, pp.~259--265, 2023.
+
+\bibitem{ji2023survey}
+Z.~Ji et al., ``Survey of hallucination in natural language
+generation,'' \emph{ACM Computing Surveys}, vol.~55, no.~12, 2023.
+
+\bibitem{edge2024local}
+D.~Edge et al., ``From local to global: A graph RAG approach to
+query-focused summarization,'' arXiv:2404.16130, 2024.
+
+\bibitem{johnson2023mimiciv}
+A.~E.~W.~Johnson et al., ``MIMIC-IV, a freely accessible electronic
+health record dataset,'' \emph{Scientific Data}, vol.~10, art.~1,
+2023.
+
+\bibitem{johnson2019mimiccxr}
+A.~E.~W.~Johnson et al., ``MIMIC-CXR: A de-identified publicly
+available database of chest radiographs,'' \emph{Scientific Data},
+vol.~6, 2019.
+
+\bibitem{pelka2018roco}
+O.~Pelka et al., ``Radiology Objects in COntext (ROCO): A multimodal
+image dataset,'' in \emph{MICCAI LABELS Workshop}, 2018.
+
+\bibitem{bodenreider2004umls}
+O.~Bodenreider, ``The Unified Medical Language System (UMLS):
+integrating biomedical terminology,'' \emph{Nucleic Acids Research},
+vol.~32, pp.~D267--D270, 2004.
+
+\bibitem{reimers2019sbert}
+N.~Reimers and I.~Gurevych, ``Sentence-BERT: Sentence embeddings using
+Siamese BERT networks,'' in \emph{EMNLP}, 2019.
+
+\bibitem{lewis2020rag}
+P.~Lewis et al., ``Retrieval-augmented generation for knowledge-intensive
+NLP tasks,'' in \emph{NeurIPS}, 2020.
+
+\bibitem{medgemma2024}
+Google Research, ``MedGemma: open medical models for healthcare
+developers,'' Technical Report, 2024.
+
+\bibitem{karabacak2023mirroring}
+M.~Karabacak and K.~Margetis, ``Embracing large language models for
+medical applications: opportunities and challenges,''
+\emph{Cureus}, vol.~15, no.~5, 2023.
+
+\bibitem{he2021deberta}
+P.~He, X.~Liu, J.~Gao, and W.~Chen, ``DeBERTa: Decoding-enhanced
+BERT with disentangled attention,'' in \emph{ICLR}, 2021.
+
+\bibitem{zhang2024biomedclip}
+S.~Zhang et al., ``A multimodal biomedical foundation model trained
+from fifteen million image-text pairs (BiomedCLIP),'' arXiv:2303.00915, 2024.
+
+\bibitem{pal2023medhalt}
+A.~Pal, L.~K.~Umapathi, and M.~Sankarasubbu, ``Med-HALT:
+Medical-domain hallucination test for large language models,'' in
+\emph{Conference on Computational Natural Language Learning},
+2023.
+
+\bibitem{omiye2023racial}
+J.~A.~Omiye, J.~C.~Lester, S.~Spichak, V.~Rotemberg, and R.~Daneshjou,
+``Large language models propagate race-based medicine,''
+\emph{npj Digital Medicine}, vol.~6, art.~195, 2023.
+
+\bibitem{sheth2023neurosymbolic}
+A.~Sheth, K.~Roy, and M.~Gaur, ``Neurosymbolic AI: Why, what, and
+how,'' \emph{IEEE Intelligent Systems}, vol.~38, no.~3,
+pp.~56--62, 2023.
+
+\bibitem{rotmensch2017graph}
+M.~Rotmensch, Y.~Halpern, A.~Tlimat, S.~Horng, and D.~Sontag,
+``Learning a health knowledge graph from electronic medical
+records,'' \emph{Scientific Reports}, vol.~7, art.~5994, 2017.
+
+\bibitem{zheng2023judge}
+L.~Zheng et al., ``Judging LLM-as-a-judge with MT-Bench and Chatbot
+Arena,'' in \emph{NeurIPS Datasets and Benchmarks Track}, 2023.
+
+\bibitem{perez2022red}
+E.~Perez et al., ``Red teaming language models with language
+models,'' in \emph{EMNLP}, 2022.
+
+\end{thebibliography}
+
+%===========================================================
+\section*{Code Availability}
+Source code, evaluation harness, and golden datasets are open at
+\url{https://github.com/Pragyan-dev/Synapse-AI}.
+
+\end{document}

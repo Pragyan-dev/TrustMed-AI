@@ -441,6 +441,12 @@ export function SelectionExplainToolbar({ enabled, containerRef }) {
  * It applies the highlighter to the rendered HTML elements (like paragraphs and lists)
  * rather than modifying the raw markdown string before parsing.
  */
+function normalizeHeadings(text) {
+    if (!text) return text
+    // Ensure ATX headings have a space after # characters (CommonMark requirement)
+    return text.replace(/^(#{1,6})([^\s#])/gm, '$1 $2')
+}
+
 export function MarkdownWithHighlight({ children, enabled = true }) {
     return (
         <ReactMarkdown
@@ -459,7 +465,7 @@ export function MarkdownWithHighlight({ children, enabled = true }) {
                 blockquote: ({ node: _node, ...props }) => <blockquote {...props}><MedicalTermHighlighter enabled={enabled}>{props.children}</MedicalTermHighlighter></blockquote>,
             }}
         >
-            {children}
+            {normalizeHeadings(children)}
         </ReactMarkdown>
     )
 }

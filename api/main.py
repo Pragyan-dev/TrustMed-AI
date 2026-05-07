@@ -43,6 +43,7 @@ from src.trustmed_brain import (
     ask_trustmed_direct,
     generate_soap_note,
     get_patient_context,
+    check_drug_interactions,
 )
 import traceback
 from src.vision_agent import get_vision_cache_stats, clear_vision_cache
@@ -681,10 +682,12 @@ async def _stream_chat(request: ChatRequest):
                     "final_response": final_response
                 }
                 yield f"data: {json.dumps(done_event)}\n\n"
+                return
             else:
                 yield f"data: {json.dumps(event)}\n\n"
     except Exception as e:
         yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+        return
 
 
 @app.post("/chat/stream")
@@ -892,12 +895,43 @@ async def soap_note(request: SOAPRequest):
 
     try:
         patient_context = "N/A"
+        patient_data = None
+        current_med_names = []
+        drug_alerts = ""
+
         if request.patient_id:
             patient_context = await asyncio.to_thread(get_patient_context, "", request.patient_id)
             if not patient_context:
                 patient_context = f"No patient context found for ID {request.patient_id}"
+            try:
+                patient_data = await asyncio.to_thread(get_patient_data_json, request.patient_id)
+                if patient_data:
+                    meds = patient_data.get("medications") or []
+                    current_med_names = [m["name"] for m in meds if m.get("name")]
+            except Exception:
+                patient_data = None
 
-        note = await asyncio.to_thread(generate_soap_note, history, patient_context, "N/A")
+            try:
+                drug_alerts = await asyncio.wait_for(
+                    asyncio.to_thread(check_drug_interactions, patient_context),
+                    timeout=10.0,
+                )
+            except Exception:
+                drug_alerts = ""
+
+        # Extract imaging context from prior assistant messages
+        vision_context = "N/A"
+        for msg in reversed(history):
+            content = msg.get("content", "")
+            if msg.get("role") == "assistant" and "Imaging Findings" in content:
+                vision_context = content
+                break
+
+        note = await asyncio.to_thread(
+            generate_soap_note,
+            history, patient_context, vision_context,
+            current_med_names, drug_alerts,
+        )
         if "error" in note:
             raise HTTPException(status_code=400, detail=note["error"])
         return note

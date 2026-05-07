@@ -83,7 +83,12 @@ const streamSseEvents = async (response, onEvent) => {
             if (!jsonStr) continue
 
             try {
-                onEvent(JSON.parse(jsonStr))
+                const event = JSON.parse(jsonStr)
+                const shouldContinue = onEvent(event)
+                if (shouldContinue === false || event.type === 'done' || event.type === 'error') {
+                    await reader.cancel().catch(() => {})
+                    return
+                }
             } catch {
                 // Ignore malformed partial events and continue streaming.
             }

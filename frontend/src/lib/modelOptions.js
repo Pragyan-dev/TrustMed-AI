@@ -7,6 +7,7 @@ export const AVAILABLE_TEXT_MODELS = [
   { id: 'sourceful/riverflow-v2-pro', label: 'Riverflow V2 Pro' },
   { id: 'qwen/qwen3-vl-235b-a22b-thinking', label: 'Qwen 3 VL 235B' },
   { id: 'google/gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro' },
+  { id: 'google/gemini-3-flash-preview', label: 'Gemini 3 Flash' },
   { id: 'nvidia/llama-nemotron-embed-vl-1b-v2:free', label: 'Nemotron Embed VL 1B' },
 ]
 

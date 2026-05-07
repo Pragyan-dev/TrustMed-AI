@@ -105,3 +105,7 @@ if TRUSTMED_SAFETY_MODE not in {"off", "balanced", "strict"}:
 VISION_PROVIDER = os.getenv("VISION_PROVIDER", "openrouter").strip().lower()
 if VISION_PROVIDER not in {"openrouter", "vertex"}:
     VISION_PROVIDER = "openrouter"
+
+SOAP_MODEL = os.getenv("SOAP_MODEL", "google/gemini-3-flash-preview").strip()
+if not SOAP_MODEL:
+    SOAP_MODEL = "google/gemini-3-flash-preview"

@@ -59,6 +59,7 @@ from src.runtime_config import (
     TRUSTMED_QUALITY_MODE,
     ENABLE_LLM_GRAPH,
     TRUSTMED_SAFETY_MODE,
+    SOAP_MODEL,
 )
 from src.ssl_bootstrap import configure_ssl_certificates, get_ssl_cert_path, get_ssl_context
 
@@ -2772,7 +2773,7 @@ def generate_soap_note(
     try:
         raw = _invoke_with_retry(
             _make_soap_llm, prompt, max_retries=3,
-            models=["nvidia/nemotron-3-nano-30b-a3b:free"]
+            models=[SOAP_MODEL],
         ).strip()
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[1]

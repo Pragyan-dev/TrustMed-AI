@@ -112,6 +112,7 @@ function KnowledgeGraphPanel({
   const [isLoading, setIsLoading] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   const [error, setError] = useState(null)
+  const [unavailableMessage, setUnavailableMessage] = useState(null)
   const [selectedNode, setSelectedNode] = useState(null)
   const [hoveredNode, setHoveredNode] = useState(null)
   const graphRef = useRef()
@@ -192,6 +193,7 @@ function KnowledgeGraphPanel({
 
     setIsLoading(true)
     setError(null)
+    setUnavailableMessage(null)
     setSelectedNode(null)
 
     try {
@@ -203,7 +205,20 @@ function KnowledgeGraphPanel({
       if (!res.ok) throw new Error('Failed to fetch graph data')
       const data = await res.json()
 
+      if (data.unavailable) {
+        setUnavailableMessage(data.message || 'Knowledge graph is temporarily unavailable.')
+        setGraphData({ nodes: [], links: [] })
+        setStats(null)
+        return
+      }
+
       if (data.error) {
+        if (/knowledge graph unavailable/i.test(data.error)) {
+          setUnavailableMessage(data.error)
+          setGraphData({ nodes: [], links: [] })
+          setStats(null)
+          return
+        }
         setError(data.error)
         setGraphData({ nodes: [], links: [] })
         setStats(null)
@@ -264,6 +279,7 @@ function KnowledgeGraphPanel({
       setStats(data.stats || null)
       queueGraphFit(280)
     } catch (err) {
+      setUnavailableMessage(null)
       setError(err.message)
     } finally {
       setIsLoading(false)
@@ -294,6 +310,7 @@ function KnowledgeGraphPanel({
       setGraphData({ nodes: [], links: [] })
       setStats(null)
       setError(null)
+      setUnavailableMessage(null)
       setSelectedNode(null)
       return
     }
@@ -594,8 +611,17 @@ function KnowledgeGraphPanel({
         {/* Error */}
         {error && <div className="graph-error">{error}</div>}
 
+        {/* Unavailable state */}
+        {unavailableMessage && !isLoading && !hasData && (
+          <div className="graph-empty graph-empty--unavailable">
+            <Network size={64} strokeWidth={1} />
+            <h3>Knowledge Graph Unavailable</h3>
+            <p>{unavailableMessage}</p>
+          </div>
+        )}
+
         {/* Empty state */}
-        {!hasData && !isLoading && !error && (
+        {!hasData && !isLoading && !error && !unavailableMessage && (
           <div className="graph-empty">
             <Network size={64} strokeWidth={1} />
             <h3>Knowledge Graph</h3>

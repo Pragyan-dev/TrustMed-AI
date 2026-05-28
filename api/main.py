@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from threading import Lock
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -29,17 +29,25 @@ from pydantic import BaseModel
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
+from src.runtime_config import (
+    PROJECT_ROOT as RUNTIME_PROJECT_ROOT,
+    CHAT_HISTORY_DIR,
+    UPLOADS_DIR,
+    STORAGE_DIR,
+    PATIENT_FILES_DIR,
+    PATIENT_FILES_REGISTRY,
+)
 from src.trustmed_brain import (
     ask_trustmed,
     ask_trustmed_streaming,
     ask_trustmed_direct,
     generate_soap_note,
     get_patient_context,
+    check_drug_interactions,
 )
 import traceback
 from src.vision_agent import get_vision_cache_stats, clear_vision_cache
 from src.graph_visualizer import get_graph_json
-from src.subfigure_detector import detect_compound_figure, split_compound_figure
 from src.patient_context_tool import get_patient_data_json
 from src.patient_report_context import (
     load_attachment_sidecar,
@@ -66,11 +74,8 @@ app.add_middleware(
 # Persistent Chat History
 # =============================================================================
 
-HISTORY_DIR = os.path.join(PROJECT_ROOT, "chat_history")
-UPLOADS_DIR = os.path.join(PROJECT_ROOT, "uploads")
-STORAGE_DIR = os.path.join(PROJECT_ROOT, "storage")
-PATIENT_FILES_DIR = os.path.join(UPLOADS_DIR, "patient-files")
-PATIENT_FILES_REGISTRY = os.path.join(STORAGE_DIR, "patient_files.json")
+PROJECT_ROOT = RUNTIME_PROJECT_ROOT
+HISTORY_DIR = CHAT_HISTORY_DIR
 ATTACHMENT_REGISTRY_LOCK = Lock()
 ATTACHMENT_PUBLIC_FIELDS = (
     "id",
@@ -599,10 +604,6 @@ class LinkClinicianUploadRequest(BaseModel):
     title: Optional[str] = None
 
 
-class DetectPanelsRequest(BaseModel):
-    image_path: str
-
-
 # =============================================================================
 # Endpoints
 # =============================================================================
@@ -681,10 +682,12 @@ async def _stream_chat(request: ChatRequest):
                     "final_response": final_response
                 }
                 yield f"data: {json.dumps(done_event)}\n\n"
+                return
             else:
                 yield f"data: {json.dumps(event)}\n\n"
     except Exception as e:
         yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+        return
 
 
 @app.post("/chat/stream")
@@ -892,12 +895,43 @@ async def soap_note(request: SOAPRequest):
 
     try:
         patient_context = "N/A"
+        patient_data = None
+        current_med_names = []
+        drug_alerts = ""
+
         if request.patient_id:
             patient_context = await asyncio.to_thread(get_patient_context, "", request.patient_id)
             if not patient_context:
                 patient_context = f"No patient context found for ID {request.patient_id}"
+            try:
+                patient_data = await asyncio.to_thread(get_patient_data_json, request.patient_id)
+                if patient_data:
+                    meds = patient_data.get("medications") or []
+                    current_med_names = [m["name"] for m in meds if m.get("name")]
+            except Exception:
+                patient_data = None
 
-        note = await asyncio.to_thread(generate_soap_note, history, patient_context, "N/A")
+            try:
+                drug_alerts = await asyncio.wait_for(
+                    asyncio.to_thread(check_drug_interactions, patient_context),
+                    timeout=10.0,
+                )
+            except Exception:
+                drug_alerts = ""
+
+        # Extract imaging context from prior assistant messages
+        vision_context = "N/A"
+        for msg in reversed(history):
+            content = msg.get("content", "")
+            if msg.get("role") == "assistant" and "Imaging Findings" in content:
+                vision_context = content
+                break
+
+        note = await asyncio.to_thread(
+            generate_soap_note,
+            history, patient_context, vision_context,
+            current_med_names, drug_alerts,
+        )
         if "error" in note:
             raise HTTPException(status_code=400, detail=note["error"])
         return note
@@ -914,12 +948,7 @@ async def get_patient(patient_id: str):
     """
     try:
         data = await asyncio.to_thread(get_patient_data_json, patient_id)
-        if (
-            not data.get("vitals")
-            and not data.get("diagnoses")
-            and not data.get("medications")
-            and not data.get("report_summaries")
-        ):
+        if not _patient_data_has_content(data):
             raise HTTPException(status_code=404, detail=f"No data found for patient {patient_id}")
         return data
     except HTTPException:
@@ -996,11 +1025,8 @@ async def create_session(source: str = "clinician"):
 
 
 # =============================================================================
-# Knowledge Graph & Panel Detection Endpoints
+# Knowledge Graph Endpoints
 # =============================================================================
-
-PANELS_DIR = os.path.join(UPLOADS_DIR, "panels")
-
 
 def _get_graph_data(search_term: str, patient_id: str = None) -> dict:
     """Fetch graph data from Neo4j as plain JSON."""
@@ -1010,12 +1036,13 @@ def _get_graph_data(search_term: str, patient_id: str = None) -> dict:
     except Exception as e:
         print(f"Graph query error: {e}")
         err_msg = str(e).lower()
-        if any(token in err_msg for token in ("routing", "connect", "certificate", "ssl", "neo4j")):
+        if any(token in err_msg for token in ("routing", "connect", "certificate", "ssl", "neo4j", "dns", "resolve")):
             return {
                 "nodes": [],
                 "edges": [],
                 "stats": {},
-                "error": "Knowledge graph unavailable. Check Neo4j connectivity and local SSL certificates.",
+                "unavailable": True,
+                "message": "Knowledge graph unavailable. Check Neo4j connectivity, DNS, and local SSL certificates.",
             }
         return {
             "nodes": [],
@@ -1036,66 +1063,6 @@ async def get_graph(search_term: str = Query(..., min_length=2), patient_id: str
         return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/detect-panels")
-async def detect_panels(request: DetectPanelsRequest):
-    """
-    Detect if an image is a compound figure and split into panels.
-    Saves each panel as a separate PNG in uploads/panels/.
-    """
-    image_path = request.image_path
-    if not os.path.exists(image_path):
-        raise HTTPException(status_code=404, detail="Image file not found")
-
-    try:
-        # Run detection in thread (OpenCV is CPU-bound)
-        analysis = await asyncio.to_thread(detect_compound_figure, image_path)
-
-        result = {
-            "is_compound": analysis.is_compound,
-            "confidence": round(analysis.confidence, 3),
-            "num_panels": analysis.num_panels,
-            "layout": analysis.layout.value if analysis.layout else "single",
-            "grid_structure": analysis.grid_structure,
-            "panels": []
-        }
-
-        if analysis.is_compound:
-            # Split and save each panel
-            os.makedirs(PANELS_DIR, exist_ok=True)
-            subfigures = await asyncio.to_thread(split_compound_figure, image_path)
-
-            for sf in subfigures:
-                panel_filename = f"panel_{uuid.uuid4().hex[:8]}_{sf.panel_id}.png"
-                panel_path = os.path.join(PANELS_DIR, panel_filename)
-                sf.image.save(panel_path)
-
-                result["panels"].append({
-                    "panel_id": sf.panel_id,
-                    "label": sf.label or sf.panel_id,
-                    "image_url": f"/panels/{panel_filename}",
-                    "bbox": {
-                        "x1": sf.bbox.x1, "y1": sf.bbox.y1,
-                        "x2": sf.bbox.x2, "y2": sf.bbox.y2,
-                        "width": sf.bbox.width, "height": sf.bbox.height
-                    },
-                    "grid_position": list(sf.grid_position),
-                    "confidence": round(sf.confidence, 3)
-                })
-
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/panels/{filename}")
-async def serve_panel(filename: str):
-    """Serve a split panel image."""
-    filepath = os.path.join(PANELS_DIR, filename)
-    if not os.path.exists(filepath):
-        raise HTTPException(status_code=404, detail="Panel image not found")
-    return FileResponse(filepath, media_type="image/png")
 
 
 # =============================================================================
@@ -1504,6 +1471,16 @@ def _merge_summary_with_fallback(payload: dict, fallback: dict) -> dict:
     return merged
 
 
+def _patient_data_has_content(patient_data: Optional[dict]) -> bool:
+    if not patient_data:
+        return False
+
+    return any(
+        patient_data.get(key)
+        for key in ("vitals", "diagnoses", "medications", "report_summaries")
+    )
+
+
 @app.post("/patient/{patient_id}/summary")
 async def patient_summary(patient_id: str):
     """
@@ -1513,7 +1490,7 @@ async def patient_summary(patient_id: str):
     try:
         # Get raw clinical data
         patient_data = await asyncio.to_thread(get_patient_data_json, patient_id)
-        if not patient_data or "error" in str(patient_data).lower():
+        if not _patient_data_has_content(patient_data):
             raise HTTPException(status_code=404, detail="Patient not found")
 
         fallback_result = _build_patient_summary_fallback(patient_data)

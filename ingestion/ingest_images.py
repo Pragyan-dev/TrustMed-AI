@@ -8,22 +8,16 @@ for multimodal semantic search capabilities.
 import os
 import io
 import sys
-import tempfile
 import torch
 import requests
 import chromadb
 from PIL import Image
 from dotenv import load_dotenv
 
-# Add project root to path for subfigure detector
+# Add project root to path for local imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-try:
-    from src.subfigure_detector import detect_compound_figure, split_compound_figure
-    COMPOUND_DETECTION_AVAILABLE = True
-except ImportError:
-    COMPOUND_DETECTION_AVAILABLE = False
-    print("⚠️ subfigure_detector not available. Compound figure detection disabled.")
+from src.runtime_config import CHROMA_DB_DIR
 
 load_dotenv()
 
@@ -31,7 +25,6 @@ load_dotenv()
 # Configuration
 # =============================================================================
 
-CHROMA_DB_DIR = "./data/chroma_db"
 COLLECTION_NAME = "medical_images"
 
 # BiomedCLIP model via open_clip
@@ -78,7 +71,13 @@ def load_model():
         print(f"📦 Loading model: {MODEL_NAME}")
         _device = get_device()
         
-        import open_clip
+        try:
+            import open_clip
+        except ImportError as exc:
+            raise RuntimeError(
+                "Visual-RAG ingestion requires the optional open_clip_torch package. "
+                "Install it before running image ingestion, or keep ENABLE_VISUAL_RAG=false."
+            ) from exc
         
         # Set HF token for authentication
         if HF_TOKEN:
@@ -181,20 +180,14 @@ def get_collection():
 # Ingestion Functions
 # =============================================================================
 
-def ingest_image(image_path: str, modality: str = "X-ray", metadata: dict = None,
-                  detect_compound: bool = True):
+def ingest_image(image_path: str, modality: str = "X-ray", metadata: dict = None):
     """
     Ingest a single image into the ChromaDB collection.
-
-    If compound figure detection is enabled and the image contains multiple
-    panels (e.g., A/B/C/D), each panel is also stored individually for
-    better retrieval quality.
 
     Args:
         image_path: Path to the image file or URL
         modality: Image modality (X-ray, MRI, CT, etc.)
         metadata: Additional metadata to store
-        detect_compound: Whether to check for compound figures (default: True)
     """
     collection = get_collection()
 
@@ -207,82 +200,9 @@ def ingest_image(image_path: str, modality: str = "X-ray", metadata: dict = None
         "source": "BiomedCLIP",
         "filename": filename,
         "path": image_path,
-        "is_compound": False,
-        "is_subfigure": False,
     }
     if metadata:
         meta.update(metadata)
-
-    # Check for compound figures
-    if (detect_compound and COMPOUND_DETECTION_AVAILABLE
-            and not image_path.startswith("http")):
-        try:
-            analysis = detect_compound_figure(image_path)
-
-            if analysis.is_compound and analysis.confidence >= 0.5:
-                print(f"📊 Compound figure: {analysis.num_panels} panels detected in {filename}")
-
-                # Update parent metadata
-                meta["is_compound"] = True
-                meta["num_panels"] = analysis.num_panels
-                meta["grid_layout"] = f"{analysis.grid_structure[0]}x{analysis.grid_structure[1]}"
-                meta["panel_labels"] = ",".join(analysis.detected_labels)
-
-                # Ingest the parent (full image)
-                print(f"🔄 Processing parent: {image_path}")
-                embedding = embed_image(image_path)
-                collection.upsert(
-                    ids=[doc_id],
-                    embeddings=[embedding],
-                    metadatas=[meta]
-                )
-                print(f"✅ Ingested parent [{filename}]")
-
-                # Ingest each subfigure
-                subfigures = split_compound_figure(image_path)
-                for sf in subfigures:
-                    subfig_id = f"{doc_id}_panel_{sf.panel_id}"
-                    temp_path = os.path.join(
-                        tempfile.gettempdir(),
-                        f"trustmed_ingest_{sf.panel_id}.jpg"
-                    )
-
-                    try:
-                        sf.image.save(temp_path, "JPEG", quality=95)
-                        subfig_embedding = embed_image(temp_path)
-
-                        subfig_meta = {
-                            "modality": modality,
-                            "source": "BiomedCLIP",
-                            "filename": f"{filename}_panel_{sf.panel_id}",
-                            "path": image_path,
-                            "is_compound": False,
-                            "is_subfigure": True,
-                            "parent_id": doc_id,
-                            "panel_label": sf.panel_id,
-                            "grid_position": f"{sf.grid_position[0]},{sf.grid_position[1]}",
-                        }
-                        if metadata:
-                            # Inherit non-compound metadata from parent
-                            for k, v in metadata.items():
-                                if k not in subfig_meta:
-                                    subfig_meta[k] = v
-
-                        collection.upsert(
-                            ids=[subfig_id],
-                            embeddings=[subfig_embedding],
-                            metadatas=[subfig_meta]
-                        )
-                        print(f"  ✅ Panel {sf.panel_id} ingested")
-
-                    finally:
-                        if os.path.exists(temp_path):
-                            os.remove(temp_path)
-
-                return  # Done — parent + subfigures all ingested
-
-        except Exception as e:
-            print(f"⚠️ Compound detection failed for {filename}: {e}. Ingesting as single image.")
 
     # Standard single-image ingestion
     print(f"🔄 Processing: {image_path}")

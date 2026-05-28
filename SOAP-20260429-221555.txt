@@ -1,0 +1,63 @@
+SOAP Note — SOAP-20260429-221555
+Generated: Apr 29, 2026, 10:15 PM
+──────────────────────────────────────────────────
+
+SUBJECTIVE
+──────────────────────────────
+Chief Complaint: Chest X-ray analysis
+History of Present Illness: Not discussed
+Relevant History: Not discussed
+
+OBJECTIVE
+──────────────────────────────
+Vitals: Not discussed
+Physical Findings: Not discussed
+Imaging / Lab Results: Diffuse bilateral interstitial opacities involving the lower zones, subtle opacity in the right lower lobe, subtle cardiac enlargement, no pleural effusion or pneumothorax.
+Clinical Observations: Not discussed
+
+ASSESSMENT
+──────────────────────────────
+Primary Diagnosis: Infectious/inflammatory process
+Differential Diagnoses:
+  • Pneumonia
+  • Lung opacity with pleural involvement
+Clinical Reasoning: Imaging shows bilateral interstitial opacities suggestive of infection or inflammation, but the exact etiology cannot be determined from the radiograph alone.
+Severity: Not discussed
+
+PLAN
+──────────────────────────────
+Medications:
+  • *nutrient drink 
+  • lisinopril
+  • acetazolamide
+  • fluticasone
+  • ranitidine HCl
+  • omeprazole
+  • mirtazapine
+  • methylphenidate
+  • Tylenol
+  • Mapap (acetaminophen)
+  • Tylenol Extra Strength
+  • multivitamin
+  • Natural Calcium
+  • Calcium
+  • heparin (porcine)
+  • pilocarpine HCl
+  • Biotene Oralbalance
+  • vancomycin
+  • risperidone
+  • bupropion HCl
+  • tetrahydrozoline-zinc
+  • Artificial Tears
+  • triamcinolone acetonide
+  • desonide
+  • albuterol sulfate
+  • Levoxyl
+  • levothyroxine
+  • Spiriva with HandiHaler
+Lifestyle Modifications:
+  • Low-sodium diet, regular aerobic exercise, BP monitoring
+  • Low-fat diet, increase dietary fiber, weight management
+  • Smoking cessation, avoid respiratory irritants, respiratory hygiene
+Follow-Up: Not discussed
+Patient Education: Not discussed

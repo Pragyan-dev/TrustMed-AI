@@ -15,9 +15,12 @@ import os
 import base64
 import requests
 import json
+import importlib.util
+import subprocess
 from langchain_core.tools import tool
 from dotenv import load_dotenv
 from src.ssl_bootstrap import configure_ssl_certificates, get_ssl_cert_path
+from src.runtime_config import VISION_PROVIDER, VISION_MAX_TOKENS, VERTEX_VISION_MAX_TOKENS
 
 load_dotenv()
 configure_ssl_certificates()
@@ -33,6 +36,40 @@ VERTEX_SA_JSON = os.getenv('VERTEX_SERVICE_ACCOUNT_JSON', '')  # optional
 VERTEX_DEDICATED_DOMAIN = os.getenv('VERTEX_DEDICATED_DOMAIN', '')  # e.g. 12345.us-central1-123456.prediction.vertexai.goog
 
 
+def _gcloud_vertex_token() -> str:
+    """Return the access token for the active gcloud account."""
+    try:
+        return subprocess.check_output(
+            ["gcloud", "auth", "print-access-token"],
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=30,
+        ).strip()
+    except Exception as exc:
+        raise ValueError(f"gcloud access-token fallback failed: {exc}") from exc
+
+
+def _adc_vertex_token() -> str:
+    """Return a Vertex access token from service-account or ADC credentials."""
+    import google.auth
+    import google.auth.transport.requests as google_requests
+
+    if VERTEX_SA_JSON and os.path.exists(VERTEX_SA_JSON):
+        from google.oauth2 import service_account
+
+        credentials = service_account.Credentials.from_service_account_file(
+            VERTEX_SA_JSON, scopes=['https://www.googleapis.com/auth/cloud-platform']
+        )
+    else:
+        credentials, _ = google.auth.default(
+            scopes=['https://www.googleapis.com/auth/cloud-platform']
+        )
+
+    auth_req = google_requests.Request()
+    credentials.refresh(auth_req)
+    return credentials.token
+
+
 def call_medgemma_vertex(image_path: str, prompt: str) -> str:
     """
     Call the MedGemma 27B model deployed on Vertex AI Model Garden (vLLM)
@@ -46,22 +83,14 @@ def call_medgemma_vertex(image_path: str, prompt: str) -> str:
     if not VERTEX_PROJECT_ID or not VERTEX_ENDPOINT_ID:
         raise ValueError("VERTEX_PROJECT_ID and VERTEX_ENDPOINT_ID must be set in .env")
 
-    import google.auth
-    import google.auth.transport.requests as google_requests
-
-    # Authenticate
-    if VERTEX_SA_JSON and os.path.exists(VERTEX_SA_JSON):
-        from google.oauth2 import service_account
-        credentials = service_account.Credentials.from_service_account_file(
-            VERTEX_SA_JSON, scopes=['https://www.googleapis.com/auth/cloud-platform']
-        )
-    else:
-        credentials, _ = google.auth.default(
-            scopes=['https://www.googleapis.com/auth/cloud-platform']
-        )
-
-    auth_req = google_requests.Request()
-    credentials.refresh(auth_req)
+    auth_source = "application_default_credentials"
+    try:
+        access_token = _adc_vertex_token()
+    except Exception as adc_exc:
+        if VERTEX_SA_JSON and os.path.exists(VERTEX_SA_JSON):
+            raise
+        auth_source = f"gcloud_user_token_after_adc_error: {str(adc_exc)[:180]}"
+        access_token = _gcloud_vertex_token()
 
     # Encode image to base64 data URI
     with open(image_path, 'rb') as f:
@@ -80,7 +109,7 @@ def call_medgemma_vertex(image_path: str, prompt: str) -> str:
 
     url = f"{base_url}/chat/completions"
     headers = {
-        "Authorization": f"Bearer {credentials.token}",
+        "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json",
     }
     payload = {
@@ -95,7 +124,7 @@ def call_medgemma_vertex(image_path: str, prompt: str) -> str:
             }
         ],
         "temperature": 0.1,
-        "max_tokens": 500,
+        "max_tokens": VERTEX_VISION_MAX_TOKENS,
     }
 
     resp = requests.post(
@@ -105,6 +134,25 @@ def call_medgemma_vertex(image_path: str, prompt: str) -> str:
         timeout=120,
         verify=get_ssl_cert_path() or True,
     )
+    if resp.status_code in {401, 403} and auth_source == "application_default_credentials" and not VERTEX_SA_JSON:
+        fallback_error = None
+        try:
+            headers["Authorization"] = f"Bearer {_gcloud_vertex_token()}"
+            resp = requests.post(
+                url,
+                headers=headers,
+                json=payload,
+                timeout=120,
+                verify=get_ssl_cert_path() or True,
+            )
+        except Exception as exc:
+            fallback_error = exc
+        if fallback_error is not None:
+            raise ValueError(
+                f"MedGemma endpoint returned {resp.status_code}: {resp.text[:500]}; "
+                f"gcloud fallback failed: {fallback_error}"
+            ) from fallback_error
+
     if resp.status_code != 200:
         raise ValueError(
             f"MedGemma endpoint returned {resp.status_code}: {resp.text[:500]}"
@@ -180,6 +228,18 @@ def set_preferred_vision_model(model_id: str = None):
 def get_vision_models_list() -> list:
     """Return the list of available vision models for UI display."""
     return list(VISION_MODELS)
+
+
+def _vertex_vision_available() -> bool:
+    """Return True only when Vertex was explicitly selected and deps/config exist."""
+    if VISION_PROVIDER != "vertex":
+        return False
+    if not (VERTEX_PROJECT_ID and VERTEX_ENDPOINT_ID and VERTEX_DEDICATED_DOMAIN):
+        return False
+    try:
+        return importlib.util.find_spec("google.auth") is not None
+    except ModuleNotFoundError:
+        return False
 
 
 # =============================================================================
@@ -328,8 +388,8 @@ def analyze_medical_image(image_path: str) -> str:
             "X-Title": "TrustMed AI Vision"
         }
         
-        # Try MedGemma on Vertex AI first (medically fine-tuned)
-        if VERTEX_PROJECT_ID and VERTEX_ENDPOINT_ID:
+        # Try MedGemma on Vertex AI only when explicitly configured.
+        if _vertex_vision_available():
             try:
                 print("  🧬 Trying MedGemma 27B (Vertex AI)...")
                 raw = call_medgemma_vertex(image_path, VISION_SYSTEM_PROMPT)
@@ -340,7 +400,7 @@ def analyze_medical_image(image_path: str) -> str:
                 print(f"  ⚠️ MedGemma Vertex failed ({ve}), falling back to OpenRouter...")
 
         # Build model order: preferred model first (if set), then remaining fallbacks
-        if _preferred_vision_model:
+        if _preferred_vision_model and not _preferred_vision_model.startswith("vertex/"):
             models_to_try = [_preferred_vision_model] + [m for m in VISION_MODELS if m != _preferred_vision_model]
         else:
             models_to_try = VISION_MODELS
@@ -371,7 +431,7 @@ def analyze_medical_image(image_path: str) -> str:
                     }
                 ],
                 "temperature": 0.1,   # Near-deterministic: reduces confabulation
-                "max_tokens": 400     # Constrained output prevents verbose hallucination
+                "max_tokens": VISION_MAX_TOKENS,
             }
             
             try:

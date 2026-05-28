@@ -17,6 +17,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from ingestion.ingest_images import embed_image, load_model
+from src.runtime_config import DATA_DIR as TRUSTMED_DATA_DIR, CHROMA_DB_DIR
 import chromadb
 
 
@@ -24,7 +25,7 @@ import chromadb
 # Configuration
 # =============================================================================
 
-DATA_DIR = Path("data/mimic_cxr")
+DATA_DIR = Path(TRUSTMED_DATA_DIR) / "mimic_cxr"
 IMAGES_DIR = DATA_DIR / "images"
 LABELS_CSV = DATA_DIR / "subset_labels.csv"
 COLLECTION_NAME = "medical_images"
@@ -70,7 +71,7 @@ def ingest_mimic_cxr():
     load_model()
 
     # Get ChromaDB collection
-    client = chromadb.PersistentClient(path="./data/chroma_db")
+    client = chromadb.PersistentClient(path=CHROMA_DB_DIR)
     collection = client.get_or_create_collection(
         name=COLLECTION_NAME,
         metadata={"description": "Medical images with BiomedCLIP embeddings"}

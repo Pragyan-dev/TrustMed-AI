@@ -85,24 +85,7 @@ with st.sidebar:
         if os.path.exists(image_path):
             st.image(uploaded_file, caption="Uploaded Scan", use_container_width=True)
 
-            # Auto-detect compound figures
-            try:
-                from src.subfigure_detector import detect_compound_figure, get_analysis_summary
-                analysis = detect_compound_figure(image_path)
-                if analysis.is_compound and analysis.confidence >= 0.5:
-                    rows, cols = analysis.grid_structure
-                    st.info(
-                        f"📊 **Compound figure detected:** {analysis.num_panels} panels "
-                        f"({rows}×{cols} grid, panels: {', '.join(analysis.detected_labels)}). "
-                        f"Each panel will be analyzed independently."
-                    )
-                    st.session_state.is_compound_figure = True
-                else:
-                    st.success("✅ Image ready for analysis")
-                    st.session_state.is_compound_figure = False
-            except Exception:
-                st.success("✅ Image ready for analysis")
-                st.session_state.is_compound_figure = False
+            st.success("✅ Image ready for analysis")
 
             print(f"[app.py] Image saved to: {image_path}")
 
@@ -342,4 +325,3 @@ if final_input:
                      st.session_state.messages.append({"role": "assistant", "content": response})
                  except Exception as e:
                      st.error(f"Error: {e}")
-

@@ -14,6 +14,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from ingestion.ingest_images import embed_image, load_model
+from src.runtime_config import DATA_DIR, CHROMA_DB_DIR
 import chromadb
 
 
@@ -21,7 +22,7 @@ import chromadb
 # Configuration
 # =============================================================================
 
-DATASET_DIR = "data/chest_xray/train"
+DATASET_DIR = os.path.join(DATA_DIR, "chest_xray", "train")
 COLLECTION_NAME = "medical_images"
 IMAGES_PER_CLASS = 500  # 500 NORMAL + 500 PNEUMONIA = 1000 total
 
@@ -45,7 +46,7 @@ def ingest_labeled_xrays(dataset_dir: str, images_per_class: int = 500):
     load_model()
     
     # Get ChromaDB collection
-    client = chromadb.PersistentClient(path="./data/chroma_db")
+    client = chromadb.PersistentClient(path=CHROMA_DB_DIR)
     collection = client.get_or_create_collection(
         name=COLLECTION_NAME,
         metadata={"description": "Medical images with BiomedCLIP embeddings"}

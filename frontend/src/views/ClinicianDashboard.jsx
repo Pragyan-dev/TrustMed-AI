@@ -9,7 +9,6 @@ import {
 import KnowledgeGraphPanel from '../components/KnowledgeGraphPanel'
 import SOAPNoteModal from '../components/SOAPNoteModal'
 import PatientInfoPanel from '../components/PatientInfoPanel'
-import CompoundPanelViewer from '../components/CompoundPanelViewer'
 import { MarkdownWithHighlight, SelectionExplainToolbar } from '../components/MedicalTermHighlighter'
 import SafeMarkdownWrapper from '../components/SafeMarkdownWrapper'
 import {
@@ -84,7 +83,12 @@ const streamSseEvents = async (response, onEvent) => {
             if (!jsonStr) continue
 
             try {
-                onEvent(JSON.parse(jsonStr))
+                const event = JSON.parse(jsonStr)
+                const shouldContinue = onEvent(event)
+                if (shouldContinue === false || event.type === 'done' || event.type === 'error') {
+                    await reader.cancel().catch(() => {})
+                    return
+                }
             } catch {
                 // Ignore malformed partial events and continue streaming.
             }
@@ -114,7 +118,6 @@ export default function ClinicianDashboard() {
     const [imagePreview, setImagePreview] = useState(null)
     const [uploadedImagePath, setUploadedImagePath] = useState(null)
     const [isUploading, setIsUploading] = useState(false)
-    const [panelData, setPanelData] = useState(null)
 
     // Session
     const [sessionId, setSessionId] = useState(null)
@@ -291,7 +294,6 @@ export default function ClinicianDashboard() {
         setSelectedImage(clipboardFile)
         setImagePreview(URL.createObjectURL(clipboardFile))
         setUploadedImagePath(null)
-        setPanelData(null)
         setIsUploading(true)
         if (fileInputRef.current) fileInputRef.current.value = ''
 
@@ -308,19 +310,6 @@ export default function ClinicianDashboard() {
                 }
                 const data = await response.json()
                 setUploadedImagePath(data.path)
-                // Detect compound panels
-                try {
-                    const panelRes = await fetch(`${API_BASE}/detect-panels`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ image_path: data.path })
-                    })
-                    if (!panelRes.ok) {
-                        throw new Error(await readApiError(panelRes, 'Panel detection failed.'))
-                    }
-                    const pData = await panelRes.json()
-                    setPanelData(pData)
-                } catch { setPanelData(null) }
                 return data.path
             } catch (error) {
                 console.error('Upload failed:', error)
@@ -350,7 +339,6 @@ export default function ClinicianDashboard() {
         setSelectedImage(null)
         setImagePreview(null)
         setUploadedImagePath(null)
-        setPanelData(null)
         if (fileInputRef.current) fileInputRef.current.value = ''
     }
 
@@ -801,11 +789,6 @@ export default function ClinicianDashboard() {
                             </div>
                         )}
 
-                        {panelData?.is_compound && (
-                            <div style={{ marginTop: '0.5rem' }}>
-                                <CompoundPanelViewer panelData={panelData} />
-                            </div>
-                        )}
                     </div>
 
 
@@ -934,7 +917,7 @@ export default function ClinicianDashboard() {
                                                 <small>
                                                     {imagePreview || uploadedImagePath
                                                         ? 'The next question can use multimodal image analysis automatically.'
-                                                        : 'Attach a chest X-ray or other medical image to add vision, panel detection, and graph evidence.'}
+                                                        : 'Attach a chest X-ray or other medical image to add vision and graph evidence.'}
                                                 </small>
                                             </div>
                                         </div>

@@ -19,7 +19,7 @@ import os
 import time
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
-from umls_client import UMLSClient
+from src.umls_client import UMLSClient
 
 load_dotenv()
 

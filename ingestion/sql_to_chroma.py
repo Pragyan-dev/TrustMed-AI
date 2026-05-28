@@ -4,20 +4,26 @@ from sentence_transformers import SentenceTransformer
 import chromadb
 import json
 import os
+import sys
 from chromadb.config import Settings
 from typing import List, Dict, Any
+from dotenv import load_dotenv
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.runtime_config import CHROMA_DB_DIR
+
+load_dotenv()
 
 # ----------------------------
 # CONFIG
 # ----------------------------
 
-DB_HOST = "localhost"
-DB_PORT = 5432
-DB_NAME = "health"
-DB_USER = "postgres"
-DB_PASSWORD = "Nokia#3310"
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME", "health")
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "1234")
 
-CHROMA_DB_DIR = "./chroma_db"
 # Create one collection per source table so each becomes an independent agent later.
 # These can be overridden with env vars if desired.
 CHROMA_COLLECTION_NAMES = {

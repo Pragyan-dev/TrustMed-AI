@@ -1,0 +1,1552 @@
+{
+  "schema_version": "1.0",
+  "run_id": "20260423T214459Z",
+  "generated_at": "2026-04-23T21:44:59.277883Z",
+  "project": "Synapse AI / TrustMed AI",
+  "scope": {
+    "intent": "End-to-end performance and availability test across backend API, data stores, retrieval/graph, model-backed text flows, non-MedGemma vision flow, session/history, uploads, patient portal, and frontend browser routes.",
+    "excluded": [
+      "Vertex AI MedGemma text and vision endpoints"
+    ],
+    "medgemma_exclusion_controls": {
+      "backend_started_with_blank_vertex_env": [
+        "VERTEX_PROJECT_ID",
+        "VERTEX_ENDPOINT_ID",
+        "VERTEX_DEDICATED_DOMAIN",
+        "VERTEX_SERVICE_ACCOUNT_JSON"
+      ],
+      "text_model_used_for_chat_samples": "nvidia/nemotron-3-nano-30b-a3b:free",
+      "vision_model_used_for_image_sample": "google/gemini-3-flash-preview",
+      "no_request_payload_used_vertex_medgemma_id": true
+    },
+    "patient_id": "10002428",
+    "limitations": [
+      "MedGemma/Vertex AI text and vision endpoints were intentionally excluded per request.",
+      "Model-backed measurements depend on OpenRouter availability/rate limits at run time.",
+      "Browser measurements were headless Chromium route loads on the local machine, not a distributed real-user monitoring sample."
+    ]
+  },
+  "environment": {
+    "python": "3.13.7",
+    "platform": "macOS-26.3.1-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "processor": "arm",
+    "cpu_logical": 10,
+    "cpu_physical": 10,
+    "memory_total_mb": 16384.0,
+    "node": {
+      "command": [
+        "node",
+        "--version"
+      ],
+      "returncode": 0,
+      "latency_ms": 29.73,
+      "stdout_preview": "v22.22.2\n",
+      "stderr_preview": "",
+      "passed": true
+    },
+    "npm": {
+      "command": [
+        "npm",
+        "--version"
+      ],
+      "returncode": 0,
+      "latency_ms": 173.42,
+      "stdout_preview": "10.9.7\n",
+      "stderr_preview": "",
+      "passed": true
+    },
+    "git": {
+      "branch": {
+        "command": [
+          "git",
+          "branch",
+          "--show-current"
+        ],
+        "returncode": 0,
+        "latency_ms": 20.6,
+        "stdout_preview": "pragyan\n",
+        "stderr_preview": "",
+        "passed": true
+      },
+      "commit": {
+        "command": [
+          "git",
+          "rev-parse",
+          "HEAD"
+        ],
+        "returncode": 0,
+        "latency_ms": 17.31,
+        "stdout_preview": "4b1018a4fc370f593030ab358164a6f81ce3354f\n",
+        "stderr_preview": "",
+        "passed": true
+      },
+      "status_short": {
+        "command": [
+          "git",
+          "status",
+          "--short"
+        ],
+        "returncode": 0,
+        "latency_ms": 22.5,
+        "stdout_preview": " M .gitignore\n",
+        "stderr_preview": "",
+        "passed": true
+      }
+    }
+  },
+  "data_store_checks": {
+    "sqlite_mimic_demo": {
+      "path": "/Users/pragyan/Desktop/synapse/data/mimic_demo.db",
+      "passed": true,
+      "table_counts": {
+        "vitalsign": 1038,
+        "diagnosis": 545,
+        "medrecon": 2764,
+        "triage": 222,
+        "edstays": 222,
+        "pyxis": 1082
+      }
+    },
+    "chroma": {
+      "path": "/Users/pragyan/Desktop/synapse/data/chroma_db",
+      "passed": true,
+      "collections": [
+        {
+          "name": "symptoms",
+          "count": 3932
+        },
+        {
+          "name": "medicines",
+          "count": 3881
+        },
+        {
+          "name": "diseases",
+          "count": 1702
+        },
+        {
+          "name": "medical_images",
+          "count": 4199
+        }
+      ]
+    }
+  },
+  "server_process_snapshots": [
+    {
+      "label": "before_tests",
+      "timestamp": "2026-04-23T21:44:59.720847Z",
+      "system_cpu_percent": 1.4,
+      "system_memory_percent": 64.0,
+      "processes": [
+        {
+          "pid": 75496,
+          "name": "Python",
+          "cmdline_preview": "/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -m uvicorn main:app --host 127.0.0.1 --port 8000",
+          "rss_mb": 578.92,
+          "cpu_percent": 0.2,
+          "status": "sleeping"
+        },
+        {
+          "pid": 75570,
+          "name": "node",
+          "cmdline_preview": "next-server (v15.5.14)    ",
+          "rss_mb": 86.72,
+          "cpu_percent": 0.0,
+          "status": "running"
+        }
+      ]
+    },
+    {
+      "label": "after_tests",
+      "timestamp": "2026-04-23T21:48:12.517831Z",
+      "system_cpu_percent": 6.2,
+      "system_memory_percent": 64.7,
+      "processes": [
+        {
+          "pid": 75496,
+          "name": "Python",
+          "cmdline_preview": "/Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -m uvicorn main:app --host 127.0.0.1 --port 8000",
+          "rss_mb": 525.56,
+          "cpu_percent": 0.2,
+          "status": "sleeping"
+        },
+        {
+          "pid": 75570,
+          "name": "node",
+          "cmdline_preview": "next-server (v15.5.14)    ",
+          "rss_mb": 78.5,
+          "cpu_percent": 0.0,
+          "status": "running"
+        }
+      ]
+    }
+  ],
+  "api_endpoint_tests": [
+    {
+      "name": "api_health",
+      "method": "GET",
+      "url": "http://127.0.0.1:8000/",
+      "started_at": "2026-04-23T21:45:01.889689Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 9.1,
+      "response_bytes": 58,
+      "content_type": "application/json",
+      "body_preview": "{\"message\": \"TrustMed AI API is running\", \"version\": \"2.0.0\"}",
+      "assertions": {
+        "version_is_2_0_0": true
+      }
+    },
+    {
+      "name": "api_health",
+      "method": "GET",
+      "url": "http://127.0.0.1:8000/",
+      "started_at": "2026-04-23T21:45:01.898834Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 1.22,
+      "response_bytes": 58,
+      "content_type": "application/json",
+      "body_preview": "{\"message\": \"TrustMed AI API is running\", \"version\": \"2.0.0\"}",
+      "assertions": {
+        "version_is_2_0_0": true
+      }
+    },
+    {
+      "name": "api_health",
+      "method": "GET",
+      "url": "http://127.0.0.1:8000/",
+      "started_at": "2026-04-23T21:45:01.900092Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 1.17,
+      "response_bytes": 58,
+      "content_type": "application/json",
+      "body_preview": "{\"message\": \"TrustMed AI API is running\", \"version\": \"2.0.0\"}",
+      "assertions": {
+        "version_is_2_0_0": true
+      }
+    },
+    {
+      "name": "vision_cache_stats",
+      "method": "GET",
+      "url": "http://127.0.0.1:8000/vision-cache",
+      "started_at": "2026-04-23T21:45:01.901298Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 1.23,
+      "response_bytes": 70,
+      "content_type": "application/json",
+      "body_preview": "{\"hits\": 0, \"misses\": 0, \"hit_rate\": \"N/A\", \"cached_images\": 0, \"max_size\": 50}"
+    },
+    {
+      "name": "vision_cache_clear",
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/vision-cache/clear",
+      "started_at": "2026-04-23T21:45:01.902572Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 1.71,
+      "response_bytes": 34,
+      "content_type": "application/json",
+      "body_preview": "{\"message\": \"Vision cache cleared\"}"
+    },
+    {
+      "name": "sessions_new_clinician",
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/sessions/new?source=clinician",
+      "started_at": "2026-04-23T21:45:01.904313Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 1.62,
+      "response_bytes": 141,
+      "content_type": "application/json",
+      "body_preview": "{\"id\": \"469d3b838804487e\", \"title\": \"New chat\", \"created_at\": 1776980701.905206, \"updated_at\": 1776980701.905289, \"messages\": [], \"source\": \"clinician\"}",
+      "created_session_id": "469d3b838804487e"
+    },
+    {
+      "name": "sessions_get_created",
+      "method": "GET",
+      "url": "http://127.0.0.1:8000/sessions/469d3b838804487e",
+      "started_at": "2026-04-23T21:45:01.905968Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 1.1,
+      "response_bytes": 141,
+      "content_type": "application/json",
+      "body_preview": "{\"id\": \"469d3b838804487e\", \"title\": \"New chat\", \"created_at\": 1776980701.905206, \"updated_at\": 1776980701.905289, \"messages\": [], \"source\": \"clinician\"}"
+    },
+    {
+      "name": "sessions_rename_created",
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/sessions/rename",
+      "started_at": "2026-04-23T21:45:01.907110Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 1.39,
+      "response_bytes": 82,
+      "content_type": "application/json",
+      "body_preview": "{\"message\": \"Session renamed\", \"title\": \"perf-e2e-20260423T214459Z-601cedee renamed\"}"
+    },
+    {
+      "name": "sessions_list_clinician",
+      "method": "GET",
+      "url": "http://127.0.0.1:8000/sessions?source=clinician",
+      "started_at": "2026-04-23T21:45:01.908527Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 15.82,
+      "response_bytes": 7612,
+      "content_type": "application/json",
+      "body_preview": "{\"sessions\": [{\"id\": \"469d3b838804487e\", \"title\": \"perf-e2e-20260423T214459Z-601cedee renamed\", \"message_count\": 0, \"updated_at\": 1776980701.908034, \"created_at\": 1776980701.905206, \"source\": \"clinician\"}, {\"id\": \"4afa974d41c64946\", \"title\": \"Summarize the current risks for patient 10002428.\", \"message_count\": 10, \"updated_at\": 1776892143.428888, \"created_at\": 1776891816.561027, \"source\": \"clinician\"}, {\"id\": \"eval_1776891596_conv\", \"title\": \"Tell me about hypertension\", \"message_count\": 4, \"updated_at\": 1776891825.0402539, \"created_at\": 1776891762.907784, \"source\": \"clinician\"}, {\"id\": \"eval_1776891596\", \"title\": \"What are the symptoms and treatment for Type 2...\", \"message_count\": 8, \"upda"
+    },
+    {
+      "name": "patient_record",
+      "method": "GET",
+      "url": "http://127.0.0.1:8000/patient/10002428",
+      "started_at": "2026-04-23T21:45:01.924555Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 3.8,
+      "response_bytes": 8327,
+      "content_type": "application/json",
+      "body_preview": "{\"patient_id\": \"10002428\", \"vitals\": {\"temperature\": 99.3, \"heart_rate\": 94.0, \"respiratory_rate\": 23.0, \"o2_saturation\": 94.0, \"systolic_bp\": 145.0, \"diastolic_bp\": 83.0, \"recorded_at\": \"2160-07-16 15:20:00\", \"source\": \"chart\", \"sort_order\": 15}, \"vitals_history\": [{\"temperature\": 97.8, \"heart_rate\": 83.0, \"respiratory_rate\": 16.0, \"o2_saturation\": 97.0, \"systolic_bp\": 104.0, \"diastolic_bp\": 58.0, \"recorded_at\": \"2157-07-16 09:27:00\", \"source\": \"chart\", \"sort_order\": 0}, {\"temperature\": 97.2, \"heart_rate\": 98.0, \"respiratory_rate\": 14.0, \"o2_saturation\": 98.0, \"systolic_bp\": 158.0, \"diastolic_bp\": 89.0, \"recorded_at\": \"2160-04-14 09:04:00\", \"source\": \"chart\", \"sort_order\": 1}, {\"temperature",
+      "assertions": {
+        "has_vitals": true,
+        "diagnosis_count": 18,
+        "medication_count": 28
+      }
+    },
+    {
+      "name": "patient_attachments_list",
+      "method": "GET",
+      "url": "http://127.0.0.1:8000/patient/10002428/attachments",
+      "started_at": "2026-04-23T21:45:01.928532Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 1.44,
+      "response_bytes": 522,
+      "content_type": "application/json",
+      "body_preview": "{\"attachments\": [{\"id\": \"bdab1805d51c4110\", \"patient_id\": \"10002428\", \"title\": \"Z677\", \"original_filename\": \"Z677.pdf\", \"mime_type\": \"application/pdf\", \"file_kind\": \"pdf\", \"uploaded_by\": \"patient\", \"uploaded_at\": \"2026-04-22T18:51:35.784568Z\", \"url\": \"/uploads/patient-files/10002428/pdf_f5ace5fec916.pdf\", \"processing_status\": \"completed\", \"processed_at\": \"2026-04-22T19:33:28.722925Z\", \"summary_preview\": \"Mycoplasma pneumoniae accounts for nearly 20% of all cases of pneumonia leading to Primary Atypical pneumonia.\", \"extraction_error\": null}]}"
+    },
+    {
+      "name": "explain_term_local_dictionary",
+      "method": "GET",
+      "url": "http://127.0.0.1:8000/explain-term?term=hypertension",
+      "started_at": "2026-04-23T21:45:01.930027Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 1.65,
+      "response_bytes": 294,
+      "content_type": "application/json",
+      "body_preview": "{\"term\": \"hypertension\", \"explanation\": \"High blood pressure; the long-term force of the blood against your artery walls is high enough that it may eventually cause health problems.\", \"clinician_note\": \"Defined as BP >= 130/80 mmHg (ACC/AHA guidelines).\", \"source\": \"Medical Dictionary\", \"cached\": true}"
+    },
+    {
+      "name": "graph_diabetes_patient_context",
+      "method": "GET",
+      "url": "http://127.0.0.1:8000/graph?search_term=Diabetes&patient_id=10002428",
+      "started_at": "2026-04-23T21:45:01.931707Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 574.44,
+      "response_bytes": 4410,
+      "content_type": "application/json",
+      "body_preview": "{\"nodes\": [{\"id\": \"Disease_Diabetes\", \"label\": \"Diabetes\", \"type\": \"Disease\", \"color\": \"#FF4B4B\", \"size\": 45, \"title\": \"Diabetes is a disease that occurs when your blood glucose, also called blood sugar, is too high. Blood glucose is your main source of energy and comes from the food you eat. Insulin, a hormone made by the pancreas, helps glucose from food get into your cells to be used for energy.\", \"cui\": \"\"}, {\"id\": \"Symptom_fatigue\", \"label\": \"fatigue\", \"type\": \"Symptom\", \"color\": \"#FFA500\", \"size\": 20, \"title\": \"Severity: 4\", \"severity\": 4}, {\"id\": \"Symptom_weight loss\", \"label\": \"weight loss\", \"type\": \"Symptom\", \"color\": \"#FFA500\", \"size\": 20, \"title\": \"Severity: 3\", \"severity\": 3}, {\"",
+      "graph_counts": {
+        "nodes": 16,
+        "edges": 15
+      }
+    },
+    {
+      "name": "upload_image_png",
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/upload-image",
+      "started_at": "2026-04-23T21:45:02.528285Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 2.85,
+      "response_bytes": 123,
+      "content_type": "application/json",
+      "body_preview": "{\"path\": \"/Users/pragyan/Desktop/synapse/uploads/scan_28a1a1e8ff8e.png\", \"filename\": \"perf-e2e-20260423T214459Z-601cedee.png\"}",
+      "uploaded_path": "/Users/pragyan/Desktop/synapse/uploads/scan_28a1a1e8ff8e.png"
+    },
+    {
+      "name": "detect_panels_uploaded_png",
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/detect-panels",
+      "started_at": "2026-04-23T21:45:02.531200Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 18.4,
+      "response_bytes": 105,
+      "content_type": "application/json",
+      "body_preview": "{\"is_compound\": false, \"confidence\": 0.0, \"num_panels\": 1, \"layout\": \"single\", \"grid_structure\": null, \"panels\": []}",
+      "panel_detection": {
+        "is_compound": false,
+        "num_panels": 1,
+        "confidence": 0.0
+      }
+    },
+    {
+      "name": "link_clinician_upload_to_patient",
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/patient/10002428/attachments/link-clinician-upload",
+      "started_at": "2026-04-23T21:45:02.549649Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 5.06,
+      "response_bytes": 456,
+      "content_type": "application/json",
+      "body_preview": "{\"id\": \"b01d3f7674b44a02\", \"patient_id\": \"10002428\", \"title\": \"perf e2e 20260423T214459Z 601cedee clinician image\", \"original_filename\": \"perf-e2e-20260423T214459Z-601cedee-clinician-image.png\", \"mime_type\": \"image/png\", \"file_kind\": \"image\", \"uploaded_by\": \"clinician\", \"uploaded_at\": \"2026-04-23T21:45:02.553424Z\", \"url\": \"/uploads/patient-files/10002428/image_3dc42e6164ab.png\", \"processing_status\": null, \"processed_at\": null, \"summary_preview\": null, \"extraction_error\": null}"
+    },
+    {
+      "name": "patient_attachment_upload_png",
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/patient/10002428/attachments",
+      "started_at": "2026-04-23T21:45:02.554853Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 2.68,
+      "response_bytes": 422,
+      "content_type": "application/json",
+      "body_preview": "{\"id\": \"7b735df36978462b\", \"patient_id\": \"10002428\", \"title\": \"perf e2e 20260423T214459Z 601cedee\", \"original_filename\": \"perf-e2e-20260423T214459Z-601cedee.png\", \"mime_type\": \"image/png\", \"file_kind\": \"image\", \"uploaded_by\": \"patient\", \"uploaded_at\": \"2026-04-23T21:45:02.556338Z\", \"url\": \"/uploads/patient-files/10002428/image_32e941a38538.png\", \"processing_status\": null, \"processed_at\": null, \"summary_preview\": null, \"extraction_error\": null}"
+    },
+    {
+      "name": "patient_attachment_upload_text_pdf",
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/patient/10002428/attachments",
+      "started_at": "2026-04-23T21:49:17.120389Z",
+      "pdf_generation_tool": "raw_pdf_text_stream",
+      "status_code": 200,
+      "latency_ms": 12.09,
+      "response_bytes": 532,
+      "content_type": "application/json",
+      "body_preview": "{\"id\": \"4863776c3c6140c8\", \"patient_id\": \"10002428\", \"title\": \"perf e2e pdf followup 4a38919a\", \"original_filename\": \"perf-e2e-pdf-followup-4a38919a.pdf\", \"mime_type\": \"application/pdf\", \"file_kind\": \"pdf\", \"uploaded_by\": \"patient\", \"uploaded_at\": \"2026-04-23T21:49:17.127268Z\", \"url\": \"/uploads/patient-files/10002428/pdf_75229e6d704f.pdf\", \"processing_status\": \"completed\", \"processed_at\": \"2026-04-23T21:49:17.127972Z\", \"summary_preview\": \"Report Date: 2026-04-21 Findings: Right lower lobe opacity with mild pleural effusion.\", \"extraction_error\": null}",
+      "passed": true,
+      "attachment_processing_status": "completed",
+      "summary_preview_chars": 86,
+      "attachment_id": "4863776c3c6140c8"
+    },
+    {
+      "name": "patient_attachments_list_after_uploads",
+      "method": "GET",
+      "url": "http://127.0.0.1:8000/patient/10002428/attachments",
+      "started_at": "2026-04-23T21:45:02.557937Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 1.41,
+      "response_bytes": 1402,
+      "content_type": "application/json",
+      "body_preview": "{\"attachments\": [{\"id\": \"7b735df36978462b\", \"patient_id\": \"10002428\", \"title\": \"perf e2e 20260423T214459Z 601cedee\", \"original_filename\": \"perf-e2e-20260423T214459Z-601cedee.png\", \"mime_type\": \"image/png\", \"file_kind\": \"image\", \"uploaded_by\": \"patient\", \"uploaded_at\": \"2026-04-23T21:45:02.556338Z\", \"url\": \"/uploads/patient-files/10002428/image_32e941a38538.png\", \"processing_status\": null, \"processed_at\": null, \"summary_preview\": null, \"extraction_error\": null}, {\"id\": \"b01d3f7674b44a02\", \"patient_id\": \"10002428\", \"title\": \"perf e2e 20260423T214459Z 601cedee clinician image\", \"original_filename\": \"perf-e2e-20260423T214459Z-601cedee-clinician-image.png\", \"mime_type\": \"image/png\", \"file_kind\": ",
+      "assertions": {
+        "created_attachment_ids_visible": true
+      }
+    },
+    {
+      "name": "patient_summary_model_backed_with_fallback",
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/patient/10002428/summary",
+      "started_at": "2026-04-23T21:45:43.047869Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 12084.34,
+      "response_bytes": 2298,
+      "content_type": "application/json",
+      "body_preview": "{\"summary\": \"Your recent check\\u2011up shows you have a mild fever, a slightly fast heart rate, a bit faster breathing, and oxygen levels that are a little low, along with high blood pressure. These signs are being watched closely and are not dangerously abnormal, but they suggest you are dealing with an infection and some cardiovascular concerns.\", \"vitals_explanation\": \"Your temperature of 99.3\\u00b0F is just a little above the normal 98.6\\u00b0F, meaning you have a mild fever. Your heart rate of 94 beats per minute is within the normal 60\\u2011100 range but a bit higher than usual. Your breathing rate of 23 breaths per minute is slightly above the typical 12\\u201120, which can happen when",
+      "assertions": {
+        "has_summary": true,
+        "next_steps_count": 1
+      }
+    },
+    {
+      "name": "chat_nonstream_full_rag_text",
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/chat",
+      "started_at": "2026-04-23T21:45:55.132314Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 27194.89,
+      "response_bytes": 885,
+      "content_type": "application/json",
+      "body_preview": "{\"response\": \"- **Active Diagnoses:** Pneumonia (unspecified organism), hypertension, pleural effusion, and acute respiratory failure (with associated cough and non\\u2011infectious gastroenteritis).  \\n- **Current Medications:** Lisinopril, acetazolamide, fluticasone, ranitidine, omeprazole, mirtazapine, methylphenidate, vancomycin, risperidone, bupropion, levothyroxine, albuterol, Spiriva, plus calcium, multivitamins, and other supportive supplements.  \\n- **Key Safety Concerns:** **Drug\\u2011interaction alerts** \\u2013 risk of hyper\\u2011kalemia with the ACE\\u2011inhibitor\\u202f+\\u202fdiuretic combination, QT\\u2011prolongation potential with risperidone, and the need for close renal/electr",
+      "response_chars": 768,
+      "response_preview": "- **Active Diagnoses:** Pneumonia (unspecified organism), hypertension, pleural effusion, and acute respiratory failure (with associated cough and non\u2011infectious gastroenteritis).  \n- **Current Medications:** Lisinopril, acetazolamide, fluticasone, ranitidine, omeprazole, mirtazapine, methylphenidate, vancomycin, risperidone, bupropion, levothyroxine, albuterol, Spiriva, plus calcium, multivitamins, and other supportive supplements.  \n- **Key Safety Concerns:** **Drug\u2011interaction alerts** \u2013 risk"
+    },
+    {
+      "name": "chat_persisted_for_soap_seed",
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/chat",
+      "started_at": "2026-04-23T21:46:22.327257Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 29833.22,
+      "response_bytes": 981,
+      "content_type": "application/json",
+      "body_preview": "{\"response\": \"**Clinical Assessment**\\nThe patient\\u2019s new\\u2011onset cough and shortness of breath fit a picture of acute respiratory infection. Serologic testing from the uploaded report shows elevated IgM and IgG against *Mycoplasma pneumoniae*, suggesting a possible atypical pneumonia. The patient's presentation of cough and shortness of breath aligns with this possibility, and the uploaded report notes that this pneumonia often presents with insidious fever and headache *prior to* respiratory symptoms. The documented pleural effusion and existing comorbidities (hypertension, hypercholesterolemia, and hypothyroidism) are significant considerations. The patient's existing respiratory f"
+    },
+    {
+      "name": "soap_note_generation",
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/soap-note",
+      "started_at": "2026-04-23T21:46:52.160508Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 8356.79,
+      "response_bytes": 1248,
+      "content_type": "application/json",
+      "body_preview": "{\"subjective\": {\"chief_complaint\": \"Cough and shortness of breath\", \"history_of_present_illness\": \"Patient reports new onset cough and shortness of breath, expressing concern for possible pneumonia.\", \"symptoms\": [\"Cough\", \"Shortness of breath\"], \"relevant_history\": \"Hypertension, hypercholesterolemia, hypothyroidism, respiratory failure\"}, \"objective\": {\"vitals\": \"Not discussed\", \"physical_findings\": \"Not discussed\", \"imaging_results\": \"Elevated IgM and IgG against Mycoplasma pneumoniae; Pleural effusion\", \"clinical_observations\": \"Compromised cardiopulmonary reserve due to existing respiratory failure and comorbidities\"}, \"assessment\": {\"primary_diagnosis\": \"Atypical pneumonia (Mycoplasma ",
+      "soap_keys": [
+        "_metadata",
+        "assessment",
+        "objective",
+        "plan",
+        "subjective"
+      ]
+    },
+    {
+      "name": "chat_vision_non_medgemma",
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/chat",
+      "started_at": "2026-04-23T21:47:20.984946Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 33332.14,
+      "response_bytes": 2804,
+      "content_type": "application/json",
+      "body_preview": "{\"response\": \"## \\ud83e\\ude7a Clinical Assessment\\nThe uploaded \\u201cmedical\\u2011style\\u201d graphic is a synthetic diagram composed of simple geometric shapes rather than a genuine clinical image. Consequently, no anatomical structures or pathological findings can be extracted from it, and it does not provide any actionable information about the patient\\u2019s current condition.\\n\\n## \\ud83d\\udd2c Imaging Findings\\nThe visual analysis indicates only two abstract panels labeled A and B, each containing light\\u2011gray shapes on a dark background. While the image is abstract, the presence of panels suggests it may have intended meaning within a specific medical context. However, because the",
+      "response_chars": 2647,
+      "response_preview": "## \ud83e\ude7a Clinical Assessment\nThe uploaded \u201cmedical\u2011style\u201d graphic is a synthetic diagram composed of simple geometric shapes rather than a genuine clinical image. Consequently, no anatomical structures or pathological findings can be extracted from it, and it does not provide any actionable information about the patient\u2019s current condition.\n\n## \ud83d\udd2c Imaging Findings\nThe visual analysis indicates only two abstract panels labeled A and B, each containing light\u2011gray shapes on a dark background. While the ",
+      "assertions": {
+        "medgemma_not_requested": true
+      }
+    }
+  ],
+  "streaming_tests": [
+    {
+      "name": "chat_stream_patient_scope_guard_direct",
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/chat/stream",
+      "started_at": "2026-04-23T21:45:02.559428Z",
+      "payload_summary": {
+        "assistant_mode": "patient",
+        "persist": false,
+        "patient_id": "10002428",
+        "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+        "vision_model": null,
+        "message_chars": 41,
+        "has_image_path": false
+      },
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 40488.42,
+      "first_event_ms": 14.47,
+      "first_token_ms": 30411.86,
+      "event_count": 17,
+      "event_types": [
+        "done",
+        "graph_context",
+        "patient_context",
+        "progress",
+        "replace",
+        "token"
+      ],
+      "events_preview": [
+        {
+          "type": "progress",
+          "step": "patient",
+          "message_preview": "\ud83d\udccb Retrieving patient context\u2026"
+        },
+        {
+          "type": "patient_context",
+          "step": null,
+          "message_preview": ""
+        },
+        {
+          "type": "graph_context",
+          "step": null,
+          "message_preview": ""
+        },
+        {
+          "type": "progress",
+          "step": "search",
+          "message_preview": "\ud83d\udd17 Searching knowledge graph & medical literature\u2026"
+        },
+        {
+          "type": "progress",
+          "step": "drugs",
+          "message_preview": "\ud83d\udc8a Checking drug interactions\u2026"
+        },
+        {
+          "type": "progress",
+          "step": "synthesis",
+          "message_preview": "\ud83e\udde0 Generating clinical response\u2026"
+        },
+        {
+          "type": "token",
+          "step": null,
+          "message_preview": "I\u2019m sorry"
+        },
+        {
+          "type": "token",
+          "step": null,
+          "message_preview": ", but I\u2019m designed to provide clinical assessment and"
+        },
+        {
+          "type": "token",
+          "step": null,
+          "message_preview": " medical guidance based on the patient\u2011specific data you"
+        },
+        {
+          "type": "token",
+          "step": null,
+          "message_preview": "\u2019ve shared. I\u2019m not able to assist with"
+        },
+        {
+          "type": "token",
+          "step": null,
+          "message_preview": " vacation planning or unrelated personal requests. If you have"
+        },
+        {
+          "type": "token",
+          "step": null,
+          "message_preview": " any medical questions or need further interpretation of the findings"
+        }
+      ],
+      "final_response_chars": 704,
+      "final_response_preview": "\"Thank you for your inquiry. I am an AI designed to provide clinical assessment and medical guidance based on patient-specific data. Given the complexity of the patient's current medical status, including diagnoses of pneumonia, acute respiratory failure, semicoma/stupor, and multiple other conditions, I am unable to assist with vacation planning. A thorough review of the patient's medication list is urgently needed to assess for potential drug interactions and adverse effects. Furthermore, a re",
+      "error_events": []
+    },
+    {
+      "name": "chat_stream_patient_report_context",
+      "method": "POST",
+      "url": "http://127.0.0.1:8000/chat/stream",
+      "started_at": "2026-04-23T21:47:00.517429Z",
+      "payload_summary": {
+        "assistant_mode": "patient",
+        "persist": false,
+        "patient_id": "10002428",
+        "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+        "vision_model": null,
+        "message_chars": 70,
+        "has_image_path": false
+      },
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 20467.38,
+      "first_event_ms": 11.62,
+      "first_token_ms": 3797.28,
+      "event_count": 51,
+      "event_types": [
+        "done",
+        "graph_context",
+        "patient_context",
+        "progress",
+        "replace",
+        "token"
+      ],
+      "events_preview": [
+        {
+          "type": "progress",
+          "step": "patient",
+          "message_preview": "\ud83d\udccb Retrieving patient context\u2026"
+        },
+        {
+          "type": "patient_context",
+          "step": null,
+          "message_preview": ""
+        },
+        {
+          "type": "graph_context",
+          "step": null,
+          "message_preview": ""
+        },
+        {
+          "type": "progress",
+          "step": "search",
+          "message_preview": "\ud83d\udcc4 Reading your latest uploaded report\u2026"
+        },
+        {
+          "type": "progress",
+          "step": "synthesis",
+          "message_preview": "\ud83e\udde0 Generating clinical response\u2026"
+        },
+        {
+          "type": "token",
+          "step": null,
+          "message_preview": "The"
+        },
+        {
+          "type": "token",
+          "step": null,
+          "message_preview": "most recent uploaded report (ID\u202fZ67"
+        },
+        {
+          "type": "token",
+          "step": null,
+          "message_preview": "7, dated\u202f2022\u20110"
+        },
+        {
+          "type": "token",
+          "step": null,
+          "message_preview": "8\u201111) focuses on serologic testing"
+        },
+        {
+          "type": "token",
+          "step": null,
+          "message_preview": " for *Mycoplasma pneumoniae* and its relationship to"
+        },
+        {
+          "type": "token",
+          "step": null,
+          "message_preview": " pneumonia. It notes that:\n\n- **Pneum"
+        },
+        {
+          "type": "token",
+          "step": null,
+          "message_preview": "onia due to *Mycoplasma pneumoniae*** is identified"
+        }
+      ],
+      "final_response_chars": 2132,
+      "final_response_preview": "The most recent uploaded report (ID Z677, dated 2022\u201108\u201111) focuses on serologic testing for *Mycoplasma pneumoniae* and its relationship to pneumonia. It notes that:\n\n- Pneumonia due to *Mycoplasma pneumoniae* is identified as a cause of \u201cprimary atypical pneumonia,\u201d accounting for roughly 20 % of all pneumonia cases.\n- The laboratory values you have\u2014IgG = 12.0 and IgM = 10.0\u2014are consistent with a recent or current infection, supporting the diagnosis of pneumonia that is already listed in your ",
+      "error_events": []
+    }
+  ],
+  "load_tests": [
+    {
+      "name": "mixed_lightweight_api_load",
+      "requests": 60,
+      "workers": 10,
+      "duration_s": 0.969,
+      "throughput_rps": 61.907,
+      "summary": {
+        "count": 60,
+        "passed": 60,
+        "failed": 0,
+        "success_rate": 1.0,
+        "latency_ms": {
+          "min": 1.27,
+          "mean": 159.82,
+          "median": 7.35,
+          "p95": 930.43,
+          "p99": 936.05,
+          "max": 939.01
+        }
+      },
+      "samples_preview": [
+        {
+          "name": "load_health",
+          "method": "GET",
+          "url": "http://127.0.0.1:8000/",
+          "started_at": "2026-04-23T21:47:54.317457Z",
+          "status_code": 200,
+          "passed": true,
+          "latency_ms": 9.77,
+          "response_bytes": 58,
+          "content_type": "application/json",
+          "body_preview": "{\"message\": \"TrustMed AI API is running\", \"version\": \"2.0.0\"}"
+        },
+        {
+          "name": "load_patient",
+          "method": "GET",
+          "url": "http://127.0.0.1:8000/patient/10002428",
+          "started_at": "2026-04-23T21:47:54.317704Z",
+          "status_code": 200,
+          "passed": true,
+          "latency_ms": 18.76,
+          "response_bytes": 8327,
+          "content_type": "application/json",
+          "body_preview": "{\"patient_id\": \"10002428\", \"vitals\": {\"temperature\": 99.3, \"heart_rate\": 94.0, \"respiratory_rate\": 23.0, \"o2_saturation\": 94.0, \"systolic_bp\": 145.0, \"diastolic_bp\": 83.0, \"recorded_at\": \"2160-07-16 15:20:00\", \"source\": \"chart\", \"sort_order\": 15}, \"vitals_history\": [{\"temperature\": 97.8, \"heart_rate\": 83.0, \"respiratory_rate\": 16.0, \"o2_saturation\": 97.0, \"systolic_bp\": 104.0, \"diastolic_bp\": 58.0, \"recorded_at\": \"2157-07-16 09:27:00\", \"source\": \"chart\", \"sort_order\": 0}, {\"temperature\": 97.2, \"heart_rate\": 98.0, \"respiratory_rate\": 14.0, \"o2_saturation\": 98.0, \"systolic_bp\": 158.0, \"diastolic_bp\": 89.0, \"recorded_at\": \"2160-04-14 09:04:00\", \"source\": \"chart\", \"sort_order\": 1}, {\"temperature"
+        },
+        {
+          "name": "load_explain_term",
+          "method": "GET",
+          "url": "http://127.0.0.1:8000/explain-term?term=diabetes",
+          "started_at": "2026-04-23T21:47:54.319091Z",
+          "status_code": 200,
+          "passed": true,
+          "latency_ms": 939.01,
+          "response_bytes": 293,
+          "content_type": "application/json",
+          "body_preview": "{\"term\": \"diabetes\", \"explanation\": \"Diabetes insipidus; any condition characterized by excessive or incontinent urine, now specifically as caused by impaired production of, or response to, the antidiuretic hormone vasopressin.\", \"clinician_note\": null, \"source\": \"English Dictionary\", \"cached\": false}"
+        },
+        {
+          "name": "load_health",
+          "method": "GET",
+          "url": "http://127.0.0.1:8000/",
+          "started_at": "2026-04-23T21:47:54.319673Z",
+          "status_code": 200,
+          "passed": true,
+          "latency_ms": 6.01,
+          "response_bytes": 58,
+          "content_type": "application/json",
+          "body_preview": "{\"message\": \"TrustMed AI API is running\", \"version\": \"2.0.0\"}"
+        },
+        {
+          "name": "load_patient",
+          "method": "GET",
+          "url": "http://127.0.0.1:8000/patient/10002428",
+          "started_at": "2026-04-23T21:47:54.320028Z",
+          "status_code": 200,
+          "passed": true,
+          "latency_ms": 20.28,
+          "response_bytes": 8327,
+          "content_type": "application/json",
+          "body_preview": "{\"patient_id\": \"10002428\", \"vitals\": {\"temperature\": 99.3, \"heart_rate\": 94.0, \"respiratory_rate\": 23.0, \"o2_saturation\": 94.0, \"systolic_bp\": 145.0, \"diastolic_bp\": 83.0, \"recorded_at\": \"2160-07-16 15:20:00\", \"source\": \"chart\", \"sort_order\": 15}, \"vitals_history\": [{\"temperature\": 97.8, \"heart_rate\": 83.0, \"respiratory_rate\": 16.0, \"o2_saturation\": 97.0, \"systolic_bp\": 104.0, \"diastolic_bp\": 58.0, \"recorded_at\": \"2157-07-16 09:27:00\", \"source\": \"chart\", \"sort_order\": 0}, {\"temperature\": 97.2, \"heart_rate\": 98.0, \"respiratory_rate\": 14.0, \"o2_saturation\": 98.0, \"systolic_bp\": 158.0, \"diastolic_bp\": 89.0, \"recorded_at\": \"2160-04-14 09:04:00\", \"source\": \"chart\", \"sort_order\": 1}, {\"temperature"
+        },
+        {
+          "name": "load_explain_term",
+          "method": "GET",
+          "url": "http://127.0.0.1:8000/explain-term?term=diabetes",
+          "started_at": "2026-04-23T21:47:54.320630Z",
+          "status_code": 200,
+          "passed": true,
+          "latency_ms": 930.37,
+          "response_bytes": 293,
+          "content_type": "application/json",
+          "body_preview": "{\"term\": \"diabetes\", \"explanation\": \"Diabetes insipidus; any condition characterized by excessive or incontinent urine, now specifically as caused by impaired production of, or response to, the antidiuretic hormone vasopressin.\", \"clinician_note\": null, \"source\": \"English Dictionary\", \"cached\": false}"
+        },
+        {
+          "name": "load_health",
+          "method": "GET",
+          "url": "http://127.0.0.1:8000/",
+          "started_at": "2026-04-23T21:47:54.321294Z",
+          "status_code": 200,
+          "passed": true,
+          "latency_ms": 7.65,
+          "response_bytes": 58,
+          "content_type": "application/json",
+          "body_preview": "{\"message\": \"TrustMed AI API is running\", \"version\": \"2.0.0\"}"
+        },
+        {
+          "name": "load_patient",
+          "method": "GET",
+          "url": "http://127.0.0.1:8000/patient/10002428",
+          "started_at": "2026-04-23T21:47:54.322602Z",
+          "status_code": 200,
+          "passed": true,
+          "latency_ms": 21.58,
+          "response_bytes": 8327,
+          "content_type": "application/json",
+          "body_preview": "{\"patient_id\": \"10002428\", \"vitals\": {\"temperature\": 99.3, \"heart_rate\": 94.0, \"respiratory_rate\": 23.0, \"o2_saturation\": 94.0, \"systolic_bp\": 145.0, \"diastolic_bp\": 83.0, \"recorded_at\": \"2160-07-16 15:20:00\", \"source\": \"chart\", \"sort_order\": 15}, \"vitals_history\": [{\"temperature\": 97.8, \"heart_rate\": 83.0, \"respiratory_rate\": 16.0, \"o2_saturation\": 97.0, \"systolic_bp\": 104.0, \"diastolic_bp\": 58.0, \"recorded_at\": \"2157-07-16 09:27:00\", \"source\": \"chart\", \"sort_order\": 0}, {\"temperature\": 97.2, \"heart_rate\": 98.0, \"respiratory_rate\": 14.0, \"o2_saturation\": 98.0, \"systolic_bp\": 158.0, \"diastolic_bp\": 89.0, \"recorded_at\": \"2160-04-14 09:04:00\", \"source\": \"chart\", \"sort_order\": 1}, {\"temperature"
+        },
+        {
+          "name": "load_explain_term",
+          "method": "GET",
+          "url": "http://127.0.0.1:8000/explain-term?term=diabetes",
+          "started_at": "2026-04-23T21:47:54.323509Z",
+          "status_code": 200,
+          "passed": true,
+          "latency_ms": 931.62,
+          "response_bytes": 293,
+          "content_type": "application/json",
+          "body_preview": "{\"term\": \"diabetes\", \"explanation\": \"Diabetes insipidus; any condition characterized by excessive or incontinent urine, now specifically as caused by impaired production of, or response to, the antidiuretic hormone vasopressin.\", \"clinician_note\": null, \"source\": \"English Dictionary\", \"cached\": false}"
+        },
+        {
+          "name": "load_health",
+          "method": "GET",
+          "url": "http://127.0.0.1:8000/",
+          "started_at": "2026-04-23T21:47:54.324324Z",
+          "status_code": 200,
+          "passed": true,
+          "latency_ms": 4.2,
+          "response_bytes": 58,
+          "content_type": "application/json",
+          "body_preview": "{\"message\": \"TrustMed AI API is running\", \"version\": \"2.0.0\"}"
+        }
+      ]
+    },
+    {
+      "name": "patient_scope_guard_stream_load",
+      "requests": 12,
+      "workers": 6,
+      "duration_s": 0.023,
+      "throughput_rps": 526.17,
+      "summary": {
+        "count": 12,
+        "passed": 12,
+        "failed": 0,
+        "success_rate": 1.0,
+        "latency_ms": {
+          "min": 7.82,
+          "mean": 10.07,
+          "median": 10.39,
+          "p95": 11.62,
+          "p99": 11.72,
+          "max": 11.75
+        }
+      },
+      "samples_preview": [
+        {
+          "name": "load_scope_guard_stream",
+          "method": "POST",
+          "url": "http://127.0.0.1:8000/chat/stream",
+          "started_at": "2026-04-23T21:47:55.286643Z",
+          "payload_summary": {
+            "assistant_mode": "patient",
+            "persist": false,
+            "patient_id": "10002428",
+            "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+            "vision_model": null,
+            "message_chars": 26,
+            "has_image_path": false
+          },
+          "status_code": 200,
+          "passed": true,
+          "latency_ms": 9.24,
+          "first_event_ms": 9.21,
+          "first_token_ms": null,
+          "event_count": 1,
+          "event_types": [
+            "done"
+          ],
+          "events_preview": [
+            {
+              "type": "done",
+              "step": null,
+              "message_preview": "I can only help with your health record, medications, vitals, imaging, lab results, and care plan. Ask me about your visit or chart data."
+            }
+          ],
+          "final_response_chars": 137,
+          "final_response_preview": "I can only help with your health record, medications, vitals, imaging, lab results, and care plan. Ask me about your visit or chart data.",
+          "error_events": []
+        },
+        {
+          "name": "load_scope_guard_stream",
+          "method": "POST",
+          "url": "http://127.0.0.1:8000/chat/stream",
+          "started_at": "2026-04-23T21:47:55.286903Z",
+          "payload_summary": {
+            "assistant_mode": "patient",
+            "persist": false,
+            "patient_id": "10002428",
+            "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+            "vision_model": null,
+            "message_chars": 26,
+            "has_image_path": false
+          },
+          "status_code": 200,
+          "passed": true,
+          "latency_ms": 10.97,
+          "first_event_ms": 10.9,
+          "first_token_ms": null,
+          "event_count": 1,
+          "event_types": [
+            "done"
+          ],
+          "events_preview": [
+            {
+              "type": "done",
+              "step": null,
+              "message_preview": "I can only help with your health record, medications, vitals, imaging, lab results, and care plan. Ask me about your visit or chart data."
+            }
+          ],
+          "final_response_chars": 137,
+          "final_response_preview": "I can only help with your health record, medications, vitals, imaging, lab results, and care plan. Ask me about your visit or chart data.",
+          "error_events": []
+        },
+        {
+          "name": "load_scope_guard_stream",
+          "method": "POST",
+          "url": "http://127.0.0.1:8000/chat/stream",
+          "started_at": "2026-04-23T21:47:55.287210Z",
+          "payload_summary": {
+            "assistant_mode": "patient",
+            "persist": false,
+            "patient_id": "10002428",
+            "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+            "vision_model": null,
+            "message_chars": 26,
+            "has_image_path": false
+          },
+          "status_code": 200,
+          "passed": true,
+          "latency_ms": 8.36,
+          "first_event_ms": 8.28,
+          "first_token_ms": null,
+          "event_count": 1,
+          "event_types": [
+            "done"
+          ],
+          "events_preview": [
+            {
+              "type": "done",
+              "step": null,
+              "message_preview": "I can only help with your health record, medications, vitals, imaging, lab results, and care plan. Ask me about your visit or chart data."
+            }
+          ],
+          "final_response_chars": 137,
+          "final_response_preview": "I can only help with your health record, medications, vitals, imaging, lab results, and care plan. Ask me about your visit or chart data.",
+          "error_events": []
+        },
+        {
+          "name": "load_scope_guard_stream",
+          "method": "POST",
+          "url": "http://127.0.0.1:8000/chat/stream",
+          "started_at": "2026-04-23T21:47:55.287853Z",
+          "payload_summary": {
+            "assistant_mode": "patient",
+            "persist": false,
+            "patient_id": "10002428",
+            "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+            "vision_model": null,
+            "message_chars": 26,
+            "has_image_path": false
+          },
+          "status_code": 200,
+          "passed": true,
+          "latency_ms": 10.13,
+          "first_event_ms": 10.11,
+          "first_token_ms": null,
+          "event_count": 1,
+          "event_types": [
+            "done"
+          ],
+          "events_preview": [
+            {
+              "type": "done",
+              "step": null,
+              "message_preview": "I can only help with your health record, medications, vitals, imaging, lab results, and care plan. Ask me about your visit or chart data."
+            }
+          ],
+          "final_response_chars": 137,
+          "final_response_preview": "I can only help with your health record, medications, vitals, imaging, lab results, and care plan. Ask me about your visit or chart data.",
+          "error_events": []
+        },
+        {
+          "name": "load_scope_guard_stream",
+          "method": "POST",
+          "url": "http://127.0.0.1:8000/chat/stream",
+          "started_at": "2026-04-23T21:47:55.288126Z",
+          "payload_summary": {
+            "assistant_mode": "patient",
+            "persist": false,
+            "patient_id": "10002428",
+            "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+            "vision_model": null,
+            "message_chars": 26,
+            "has_image_path": false
+          },
+          "status_code": 200,
+          "passed": true,
+          "latency_ms": 11.52,
+          "first_event_ms": 11.5,
+          "first_token_ms": null,
+          "event_count": 1,
+          "event_types": [
+            "done"
+          ],
+          "events_preview": [
+            {
+              "type": "done",
+              "step": null,
+              "message_preview": "I can only help with your health record, medications, vitals, imaging, lab results, and care plan. Ask me about your visit or chart data."
+            }
+          ],
+          "final_response_chars": 137,
+          "final_response_preview": "I can only help with your health record, medications, vitals, imaging, lab results, and care plan. Ask me about your visit or chart data.",
+          "error_events": []
+        },
+        {
+          "name": "load_scope_guard_stream",
+          "method": "POST",
+          "url": "http://127.0.0.1:8000/chat/stream",
+          "started_at": "2026-04-23T21:47:55.288566Z",
+          "payload_summary": {
+            "assistant_mode": "patient",
+            "persist": false,
+            "patient_id": "10002428",
+            "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+            "vision_model": null,
+            "message_chars": 26,
+            "has_image_path": false
+          },
+          "status_code": 200,
+          "passed": true,
+          "latency_ms": 11.75,
+          "first_event_ms": 11.73,
+          "first_token_ms": null,
+          "event_count": 1,
+          "event_types": [
+            "done"
+          ],
+          "events_preview": [
+            {
+              "type": "done",
+              "step": null,
+              "message_preview": "I can only help with your health record, medications, vitals, imaging, lab results, and care plan. Ask me about your visit or chart data."
+            }
+          ],
+          "final_response_chars": 137,
+          "final_response_preview": "I can only help with your health record, medications, vitals, imaging, lab results, and care plan. Ask me about your visit or chart data.",
+          "error_events": []
+        }
+      ]
+    }
+  ],
+  "component_benchmarks": [
+    {
+      "name": "patient_context_tool_direct",
+      "passed": true,
+      "latency_ms": 10.18,
+      "response_chars": 2654
+    },
+    {
+      "name": "vector_context_fast_direct",
+      "passed": true,
+      "latency_ms": 1175.14,
+      "response_chars": 30198,
+      "preview": "[MEDICINES]\nsed to check your blood sugar levels before you travel and to have a snack with you on long journeys. - Check with your doctor before taking up any new physical exercise, as this will have an effect on your blood sugar levels and you may need to check your blood or urine levels more regularly. - Make sure you know what it feels like if your blood sugar is low. This is known as hypoglycaemia, or a 'hypo'. Although alogliptin is unlikely to cause low blood sugar, other medicines that y"
+    },
+    {
+      "name": "drug_interaction_checker_direct",
+      "passed": true,
+      "latency_ms": 734.14,
+      "response_chars": 0,
+      "preview": "",
+      "note": "Empty response is acceptable when no graph-backed or rule-backed alert is present or Neo4j is unavailable."
+    }
+  ],
+  "browser_route_tests": [
+    {
+      "name": "browser_route_load",
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1000
+      },
+      "route": "/",
+      "url": "http://127.0.0.1:5173/",
+      "started_at": "2026-04-23T21:48:05.982070Z",
+      "passed": true,
+      "status_code": 200,
+      "wall_time_ms": 913.56,
+      "navigation_timing_ms": {
+        "domContentLoaded": 266.3,
+        "loadEvent": 405.7,
+        "responseEnd": 39.6,
+        "transferSize": 3267,
+        "encodedBodySize": 2967,
+        "resourceCount": 17,
+        "totalResourceTransferSize": 195707
+      },
+      "body_text_chars": 388,
+      "console_warnings_errors": [],
+      "console_warning_error_count": 0
+    },
+    {
+      "name": "browser_route_load",
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1000
+      },
+      "route": "/clinician",
+      "url": "http://127.0.0.1:5173/clinician",
+      "started_at": "2026-04-23T21:48:06.974020Z",
+      "passed": true,
+      "status_code": 200,
+      "wall_time_ms": 875.89,
+      "navigation_timing_ms": {
+        "domContentLoaded": 8.6,
+        "loadEvent": 36,
+        "responseEnd": 2.8,
+        "transferSize": 2265,
+        "encodedBodySize": 1965,
+        "resourceCount": 18,
+        "totalResourceTransferSize": 81569
+      },
+      "body_text_chars": 1349,
+      "console_warnings_errors": [],
+      "console_warning_error_count": 0
+    },
+    {
+      "name": "browser_route_load",
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1000
+      },
+      "route": "/patient",
+      "url": "http://127.0.0.1:5173/patient",
+      "started_at": "2026-04-23T21:48:07.919746Z",
+      "passed": true,
+      "status_code": 200,
+      "wall_time_ms": 589.74,
+      "navigation_timing_ms": {
+        "domContentLoaded": 25.3,
+        "loadEvent": 64.7,
+        "responseEnd": 3.3,
+        "transferSize": 4510,
+        "encodedBodySize": 4210,
+        "resourceCount": 17,
+        "totalResourceTransferSize": 10130
+      },
+      "body_text_chars": 734,
+      "console_warnings_errors": [],
+      "console_warning_error_count": 0
+    },
+    {
+      "name": "browser_route_load",
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1000
+      },
+      "route": "/patient/about",
+      "url": "http://127.0.0.1:5173/patient/about",
+      "started_at": "2026-04-23T21:48:08.582040Z",
+      "passed": true,
+      "status_code": 200,
+      "wall_time_ms": 654.38,
+      "navigation_timing_ms": {
+        "domContentLoaded": 40.5,
+        "loadEvent": 71.4,
+        "responseEnd": 5.9,
+        "transferSize": 8219,
+        "encodedBodySize": 7919,
+        "resourceCount": 17,
+        "totalResourceTransferSize": 3615
+      },
+      "body_text_chars": 4312,
+      "console_warnings_errors": [],
+      "console_warning_error_count": 0
+    },
+    {
+      "name": "browser_route_load",
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 844
+      },
+      "route": "/",
+      "url": "http://127.0.0.1:5173/",
+      "started_at": "2026-04-23T21:48:09.310545Z",
+      "passed": true,
+      "status_code": 200,
+      "wall_time_ms": 772.12,
+      "navigation_timing_ms": {
+        "domContentLoaded": 138.5,
+        "loadEvent": 268.9,
+        "responseEnd": 2.9,
+        "transferSize": 3267,
+        "encodedBodySize": 2967,
+        "resourceCount": 17,
+        "totalResourceTransferSize": 195707
+      },
+      "body_text_chars": 388,
+      "console_warnings_errors": [],
+      "console_warning_error_count": 0
+    },
+    {
+      "name": "browser_route_load",
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 844
+      },
+      "route": "/clinician",
+      "url": "http://127.0.0.1:5173/clinician",
+      "started_at": "2026-04-23T21:48:10.151585Z",
+      "passed": true,
+      "status_code": 200,
+      "wall_time_ms": 853.9,
+      "navigation_timing_ms": {
+        "domContentLoaded": 8.6,
+        "loadEvent": 41.7,
+        "responseEnd": 2.8,
+        "transferSize": 2265,
+        "encodedBodySize": 1965,
+        "resourceCount": 18,
+        "totalResourceTransferSize": 81569
+      },
+      "body_text_chars": 1349,
+      "console_warnings_errors": [],
+      "console_warning_error_count": 0
+    },
+    {
+      "name": "browser_route_load",
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 844
+      },
+      "route": "/patient",
+      "url": "http://127.0.0.1:5173/patient",
+      "started_at": "2026-04-23T21:48:11.075245Z",
+      "passed": true,
+      "status_code": 200,
+      "wall_time_ms": 583.85,
+      "navigation_timing_ms": {
+        "domContentLoaded": 9.4,
+        "loadEvent": 60.6,
+        "responseEnd": 2.6,
+        "transferSize": 4510,
+        "encodedBodySize": 4210,
+        "resourceCount": 17,
+        "totalResourceTransferSize": 10130
+      },
+      "body_text_chars": 734,
+      "console_warnings_errors": [],
+      "console_warning_error_count": 0
+    },
+    {
+      "name": "browser_route_load",
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 844
+      },
+      "route": "/patient/about",
+      "url": "http://127.0.0.1:5173/patient/about",
+      "started_at": "2026-04-23T21:48:11.725596Z",
+      "passed": true,
+      "status_code": 200,
+      "wall_time_ms": 600.66,
+      "navigation_timing_ms": {
+        "domContentLoaded": 10.4,
+        "loadEvent": 39.5,
+        "responseEnd": 3.2,
+        "transferSize": 8219,
+        "encodedBodySize": 7919,
+        "resourceCount": 17,
+        "totalResourceTransferSize": 3615
+      },
+      "body_text_chars": 4312,
+      "console_warnings_errors": [],
+      "console_warning_error_count": 0
+    }
+  ],
+  "quality_gates": [
+    {
+      "name": "frontend_production_build",
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "cwd": "/Users/pragyan/Desktop/synapse/frontend",
+      "started_at": "2026-04-23T21:49:56.331228Z",
+      "passed": true,
+      "returncode": 0,
+      "latency_ms": 9798.39,
+      "stdout_preview": "\n> frontend@0.0.0 build\n> next build\n\n   \u25b2 Next.js 15.5.14\n\n   Creating an optimized production build ...\n \u2713 Compiled successfully in 2.1s\n   Linting and checking validity of types ...\n   Collecting page data ...\n   Generating static pages (0/7) ...\n   Generating static pages (1/7) \n   Generating static pages (3/7) \n   Generating static pages (5/7) \n \u2713 Generating static pages (7/7)\n   Finalizing page optimization ...\n   Collecting build traces ...\n\nRoute (app)                                 Size  First Load JS\n\u250c \u25cb /                                      163 B         106 kB\n\u251c \u25cb /_not-found                            998 B         103 kB\n\u251c \u25cb /clinician                           1.33 kB         104 kB\n\u251c \u25cb /patient                             51.6 kB         157 kB\n\u2514 \u25cb /patient/about                       6.21 kB         112 kB\n+ First Load JS shared by all             102 kB\n  \u251c chunks/255-38b49df12a94ee57.js         46 kB\n  \u251c chunks/4bd1b696-c023c6e3521b1417.js  54.2 kB\n  \u2514 other shared chunks (total)          2.07 kB\n\n\n\u25cb  (Static)  prerendered as static content\n\n",
+      "stderr_preview": "\n \u26a0 The Next.js plugin was not detected in your ESLint configuration. See https://nextjs.org/docs/app/api-reference/config/eslint#migrating-existing-config\n"
+    },
+    {
+      "name": "patient_attachment_pytest",
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "tests/test_patient_attachments.py",
+        "-q"
+      ],
+      "cwd": "/Users/pragyan/Desktop/synapse",
+      "started_at": "2026-04-23T21:50:04.801826Z",
+      "passed": true,
+      "returncode": 0,
+      "latency_ms": 8470.26,
+      "stdout_preview": "..............                                                           [100%]\n14 passed in 6.29s\n",
+      "stderr_preview": ""
+    },
+    {
+      "name": "report_json_valid",
+      "command": [
+        "python3",
+        "-m",
+        "json.tool",
+        "/Users/pragyan/Desktop/synapse/results/e2e_performance_report_20260423T214459Z.json"
+      ],
+      "cwd": "/Users/pragyan/Desktop/synapse",
+      "started_at": "2026-04-23T21:50:04.845988Z",
+      "passed": true,
+      "returncode": 0,
+      "latency_ms": 44.14,
+      "stdout_preview": "(valid JSON; full formatter output omitted)",
+      "stderr_preview": ""
+    }
+  ],
+  "cleanup": [
+    {
+      "name": "cleanup_delete_session_469d3b838804487e",
+      "method": "DELETE",
+      "url": "http://127.0.0.1:8000/sessions/469d3b838804487e",
+      "started_at": "2026-04-23T21:48:12.371822Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 2.93,
+      "response_bytes": 61,
+      "content_type": "application/json",
+      "body_preview": "{\"message\": \"Session deleted\", \"session_id\": \"469d3b838804487e\"}"
+    },
+    {
+      "name": "cleanup_delete_session_perf-e2e-20260423T214459Z-601cedee-soap-session",
+      "method": "DELETE",
+      "url": "http://127.0.0.1:8000/sessions/perf-e2e-20260423T214459Z-601cedee-soap-session",
+      "started_at": "2026-04-23T21:48:12.374850Z",
+      "status_code": 200,
+      "passed": true,
+      "latency_ms": 1.41,
+      "response_bytes": 92,
+      "content_type": "application/json",
+      "body_preview": "{\"message\": \"Session deleted\", \"session_id\": \"perf-e2e-20260423T214459Z-601cedee-soap-session\"}"
+    },
+    {
+      "name": "cleanup_patient_attachment_registry",
+      "passed": true,
+      "registry_path": "/Users/pragyan/Desktop/synapse/storage/patient_files.json",
+      "removed_records": 2
+    },
+    {
+      "name": "cleanup_file",
+      "path": "/Users/pragyan/Desktop/synapse/uploads/patient-files/10002428/image_32e941a38538.png",
+      "passed": true
+    },
+    {
+      "name": "cleanup_file",
+      "path": "/Users/pragyan/Desktop/synapse/uploads/patient-files/10002428/image_3dc42e6164ab.png",
+      "passed": true
+    },
+    {
+      "name": "cleanup_file",
+      "path": "/Users/pragyan/Desktop/synapse/uploads/scan_28a1a1e8ff8e.png",
+      "passed": true
+    },
+    {
+      "name": "cleanup_pdf_followup_registry",
+      "passed": true,
+      "removed_records": 1,
+      "registry_path": "/Users/pragyan/Desktop/synapse/storage/patient_files.json"
+    },
+    {
+      "name": "cleanup_pdf_followup_file",
+      "path": "/Users/pragyan/Desktop/synapse/uploads/patient-files/10002428/pdf_75229e6d704f.pdf",
+      "passed": true
+    },
+    {
+      "name": "cleanup_pdf_followup_file",
+      "path": "/Users/pragyan/Desktop/synapse/uploads/patient-files/10002428/pdf_75229e6d704f.pdf.report.json",
+      "passed": true
+    }
+  ],
+  "summary": {
+    "overall_passed": true,
+    "api_endpoint_summary": {
+      "count": 24,
+      "passed": 24,
+      "failed": 0,
+      "success_rate": 1.0,
+      "latency_ms": {
+        "min": 1.1,
+        "mean": 4644.15,
+        "median": 3.33,
+        "p95": 29437.47,
+        "p99": 32527.39,
+        "max": 33332.14
+      }
+    },
+    "streaming_summary": {
+      "count": 2,
+      "passed": 2,
+      "failed": 0,
+      "success_rate": 1.0,
+      "latency_ms": {
+        "min": 20467.38,
+        "mean": 30477.9,
+        "median": 30477.9,
+        "p95": 39487.37,
+        "p99": 40288.21,
+        "max": 40488.42
+      }
+    },
+    "browser_route_summary": {
+      "count": 8,
+      "passed": 8,
+      "failed": 0,
+      "success_rate": 1.0,
+      "latency_ms": {
+        "min": 583.85,
+        "mean": 730.51,
+        "median": 713.25,
+        "p95": 900.38,
+        "p99": 910.92,
+        "max": 913.56
+      }
+    },
+    "component_summary": {
+      "count": 3,
+      "passed": 3,
+      "failed": 0,
+      "success_rate": 1.0,
+      "latency_ms": {
+        "min": 10.18,
+        "mean": 639.82,
+        "median": 734.14,
+        "p95": 1131.04,
+        "p99": 1166.32,
+        "max": 1175.14
+      }
+    },
+    "load_test_summaries": {
+      "mixed_lightweight_api_load": {
+        "count": 60,
+        "passed": 60,
+        "failed": 0,
+        "success_rate": 1.0,
+        "latency_ms": {
+          "min": 1.27,
+          "mean": 159.82,
+          "median": 7.35,
+          "p95": 930.43,
+          "p99": 936.05,
+          "max": 939.01
+        }
+      },
+      "patient_scope_guard_stream_load": {
+        "count": 12,
+        "passed": 12,
+        "failed": 0,
+        "success_rate": 1.0,
+        "latency_ms": {
+          "min": 7.82,
+          "mean": 10.07,
+          "median": 10.39,
+          "p95": 11.62,
+          "p99": 11.72,
+          "max": 11.75
+        }
+      }
+    },
+    "failed_count": 0,
+    "failed_tests": [],
+    "notable_findings": [
+      "API endpoint p95 latency across sampled endpoint tests: 29437.47 ms",
+      "Streaming p95 latency across sampled stream tests: 39487.37 ms",
+      "mixed_lightweight_api_load throughput: 61.907 requests/sec with p95 930.43 ms",
+      "patient_scope_guard_stream_load throughput: 526.17 requests/sec with p95 11.62 ms",
+      "PDF attachment upload and local text extraction passed in 12.09 ms.",
+      "All sampled endpoint, streaming, component, and browser route tests passed.",
+      "Quality gates passed: frontend production build, patient attachment pytest suite, and JSON syntax validation.",
+      "Observed issue: Backend Chroma path is startup-directory-sensitive (high).",
+      "Observed issue: One patient off-topic travel prompt missed the lightweight scope guard (medium)."
+    ],
+    "quality_gates_passed": true,
+    "quality_gate_count": 3,
+    "observed_issues": [
+      {
+        "title": "Backend Chroma path is startup-directory-sensitive",
+        "severity": "high",
+        "evidence": "During API chat samples the FastAPI server logged Collection [medicines], [diseases], and [symptoms] does not exist. The server was launched from api/ as documented, while src/trustmed_brain.py uses CHROMA_DB_DIR = ./data/chroma_db. Direct component testing from the repo root reached populated Chroma collections and returned 30,198 chars in 1,175.14 ms.",
+        "impact": "Full chat responses still completed through graph/patient/model paths, but vector retrieval was effectively absent in the documented backend startup configuration.",
+        "bd_issue": "created in this session: Fix backend Chroma path when FastAPI is launched from api/"
+      },
+      {
+        "title": "One patient off-topic travel prompt missed the lightweight scope guard",
+        "severity": "medium",
+        "evidence": "chat_stream_patient_scope_guard_direct for vacation planning emitted patient_context, graph_context, retrieval, drug, synthesis, token, replace, and done events and took 40,488.42 ms. The concurrent movie prompts did short-circuit with p95 11.62 ms.",
+        "impact": "Some unrelated patient questions can pay full model/retrieval latency instead of returning the intended scoped response.",
+        "bd_issue": "created in this session: Tighten patient portal off-topic scope guard for travel prompts"
+      }
+    ]
+  }
+}

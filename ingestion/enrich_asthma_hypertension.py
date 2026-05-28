@@ -17,9 +17,11 @@ import json
 import chromadb
 from sentence_transformers import SentenceTransformer
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.runtime_config import CHROMA_DB_DIR
+
 # ─── Configuration ───────────────────────────────────────────────────────────
 
-CHROMA_DB_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "chroma_db")
 MAX_CHARS_PER_CHUNK = 2000
 CHUNK_OVERLAP = 200
 BATCH_SIZE = 64
